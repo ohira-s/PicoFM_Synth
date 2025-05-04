@@ -20,6 +20,12 @@
 #            FM WAVE-->VOICE-->FILTER-->VCA with synthio.
 #            MIDI-IN.
 #
+#     0.0.2: 05/04/2025
+#            Noise wave.
+#            LFO amplitude moderation and bend modulation.
+#            Parameters save and load to SD card.
+#            Foundation functions for the parameter editor.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -40,13 +46,16 @@
 
 import asyncio
 import time
-import board
+import board, busio
 import digitalio
+import sdcardio, storage, os
+
 import audiomixer
 import synthio
 
 import ulab.numpy as np		# To generate wave shapes
 import random
+import json
 
 # for PWM audio with an RC filter
 # import audiopwmio
@@ -118,7 +127,18 @@ async def midi_in():
                     del notes[stop_note]
 
                 # Play the note
-                notes[midi_msg.note] = synthio.Note(frequency=synthio.midi_to_hz(midi_msg.note), filter=SynthIO.filter(), waveform=SynthIO.wave_shape())
+                notes[midi_msg.note] = synthio.Note(
+                    frequency=synthio.midi_to_hz(midi_msg.note),
+                    filter=SynthIO.filter(),
+                    waveform=SynthIO.wave_shape()
+                )
+                
+                if SynthIO.lfo_sound_amplitude() is not None:
+                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_amplitude()
+                
+                if SynthIO.lfo_sound_bend() is not None:
+                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_bend()
+
                 synthesizer.envelope = SynthIO.vca_envelope()
                 synthesizer.press(notes[midi_msg.note])
                 notes_stack.insert(0, midi_msg.note)
@@ -833,13 +853,27 @@ class FM_Waveshape_class:
 # CLASS: synthio
 ################################################
 class SynthIO_class:
+    # Synthesize voices
     MAX_VOICES = 16
     
+    # Fileters
     FILTER_PASS = 0
     FILTER_LPF  = 1
     FILTER_HPF  = 2
     FILTER_BPF  = 3
     
+    # Parameter data types
+    TYPE_INT    = 0
+    TYPE_INDEX  = 1
+    TYPE_FLOAT  = 2
+    TYPE_STRING = 3
+    
+    # View management
+    VIEW_OFF_ON = ['OFF', 'ON']
+    VIEW_ALGORITHM = [' 0:<1>*2', ' 1:<1>+2', ' 2:<1>+2+<3>+4', ' 3:(<1>+2*3)*4', ' 4:<1>*2*3*4', ' 5:<1>*2+<3>*4', ' 6:<1>+2*3*4', ' 7:<1>+2*3+4']
+    VIEW_WAVE = [' 0:Sine', ' 1:Saw', ' 2:Triangle', ' 3:Square50%', ' 4:ABS(Sine)', ' 5:PLUS(Sine)', ' 6:Noise']
+    VIEW_FILTER = [' 0:PASS', ' 1:LPF', ' 2:HPF', ' 3:BPF']
+
     def __init__(self):
         # I2S on Audio
         self.audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_wsel, data=i2s_data)
@@ -859,12 +893,15 @@ class SynthIO_class:
         self._synth_params = {
             # SOUND
             'SOUND': {
-                'BANK'      : 0,
-                'SOUND'     : 0,
-                'SOUND_NAME': 'NO NAME',
-                'AMPLITUDE' : 0,
-                'LFO_RATE'  : 2.4,
-                'LFO_SCALE' : 0.05
+                'BANK'       : 0,
+                'SOUND'      : 0,
+                'SOUND_NAME' : 'NO NAME',
+                'AMPLITUDE'  : 0,
+                'LFO_RATE_A' : 4.0,
+                'LFO_SCALE_A': 1.8,
+                'BEND'       : 0,
+                'LFO_RATE_B' : 4.0,
+                'LFO_SCALE_B': 1.8
             },
             
             # OSCILLATORS
@@ -899,7 +936,8 @@ class SynthIO_class:
                 'RESONANCE' : 1.0,
                 'MODULATION': 0,
                 'LFO_RATE'  : 1.20,
-                'LFO_SCALE' : 1.00
+                'LFO_FQMAX' : 1000,
+                'LFO_FQMIN' :  100,
             },
             
             # VCA
@@ -911,12 +949,62 @@ class SynthIO_class:
             }
         }
         
-        self._wave_shape   = None
-        self._lfo_sound    = None
-        self._lfo_filter   = None
-        self._filter       = None
-        self._envelope_vca = None
+        # Parameter attributes
+        self._params_attr = {
+            'SOUND': {
+                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
+                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
+                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
+                'BEND'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
+                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'}
+            },
+            
+            'OSCILLATORS': {
+                'algolithm'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_ALGORITHM) - 1, 'VIEW': SynthIO_class.VIEW_ALGORITHM},
+                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 3, 'VIEW': '{:3d}'},
+                'waveshape'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_WAVE) - 1, 'VIEW': SynthIO_class.VIEW_WAVE},
+                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
+                'feedback'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
+                'start_level'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'attack_time'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
+                'decay_time'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
+                'sustain_level': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'release_time' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
+                'end_level'    : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'}
+            },
+
+            'FILTER': {
+                'TYPE'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
+                'FREQUENCY' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'RESONANCE' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'MODULATION': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
+                'LFO_FQMAX' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'LFO_FQMIN' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'}
+            },
+
+            'VCA': {
+                'ATTACK' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:5.2f}'},
+                'DECAY'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:5.2f}'},
+                'SUSTAIN': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:5.2f}'},
+                'RELEASE': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:5.2f}'}
+            }
+        }
+
+        # synthio related objects for internal use
+        self._wave_shape     = None
+        self._lfo_sound_amp  = None
+        self._lfo_sound_bend = None
+        self._lfo_filter     = None
+        self._filter         = None
+        self._envelope_vca   = None
         
+        # Set up the synthio with the current parameters
         self.setup_synthio()
 
     # Get synthio.Synthesizer object
@@ -924,7 +1012,10 @@ class SynthIO_class:
         return self._synth
 
     # Set / Get parameter category->key:value
-    def synthio_parameter(self, category, params=None):
+    def synthio_parameter(self, category=None, params=None):
+        if category is None:
+            return self._synth_params
+            
         if category in self._synth_params.keys():
             if params is not None:
                 for parm in params.keys():
@@ -949,7 +1040,7 @@ class SynthIO_class:
             for dataset in self._synth_params['OSCILLATORS']:
                 if 'algorithm' in dataset.keys():
                     if operator < 0:
-                        return dataset['algorithm']
+                        return dataset
                     
                 elif 'oscillator' in dataset.keys():
                     if dataset['oscillator'] == osc_num:
@@ -1002,46 +1093,85 @@ class SynthIO_class:
     # Generate the Sound
     def generate_sound(self):
         if self._synth_params['SOUND']['AMPLITUDE'] == 0:
-            self._lfo_sound = None
+            self._lfo_sound_amp = None
             
         else:
-            self._lfo_sound = synthio.LFO(
-                self._synth_params['SOUND']['LFO_RATE'],
-                self._synth_params['SOUND']['LFO_SCALE']
+            self._lfo_sound_amp = synthio.LFO(
+                rate=self._synth_params['SOUND']['LFO_RATE_A'],
+                scale=self._synth_params['SOUND']['LFO_SCALE_A']
             )
+
+        if self._synth_params['SOUND']['BEND'] == 0:
+            self._lfo_sound_bend = None
+            
+        else:
+            self._lfo_sound_bend = synthio.LFO(
+                rate=self._synth_params['SOUND']['LFO_RATE_B'],
+                scale=self._synth_params['SOUND']['LFO_SCALE_B']
+            )
+
+    # Get the sound amplitude LFO
+    def lfo_sound_amplitude(self):
+        return self._lfo_sound_amp
+
+    # Get the sound bend LFO
+    def lfo_sound_bend(self):
+        return self._lfo_sound_bend
 
     # Generate the Filter
     def generate_filter(self):
         ftype = self._synth_params['FILTER']['TYPE']
         freq  = self._synth_params['FILTER']['FREQUENCY']
         reso  = self._synth_params['FILTER']['RESONANCE']
+
+        # Remove the LFO from the global LFO
+        if self._lfo_filter is not None:
+            self._synth.blocks.append(self._lfo_filter)
+            
+        # Generate a modulator
+        if self._synth_params['FILTER']['MODULATION'] == 0:
+            self._lfo_filter = None
+            
+        else:
+            wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * 1.0, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)), dtype=np.int16)
+            self._lfo_filter = synthio.LFO(
+                rate=self._synth_params['FILTER']['LFO_RATE'],
+                scale=self._synth_params['FILTER']['LFO_FQMAX'] - self._synth_params['FILTER']['LFO_FQMIN'],
+                offset=self._synth_params['FILTER']['LFO_FQMIN'],
+                waveform=wave
+            )
+
+            self._synth.blocks.append(self._lfo_filter)  # add lfo to global LFO runner to get it to tick
         
         # Generate a filter
         if    ftype == SynthIO_class.FILTER_PASS:
             self._filter = None
             
         elif  ftype == SynthIO_class.FILTER_LPF:
-            self._filter = self._synth.low_pass_filter(freq, reso)
-            
+            if self._lfo_filter is None:
+                self._filter = self._synth.low_pass_filter(freq, reso)
+            else:
+                self._filter = self._synth.low_pass_filter(freq + self._lfo_filter.value, reso)
+
         elif  ftype == SynthIO_class.FILTER_HPF:
-            self._filter = self._synth.high_pass_filter(freq, reso)
+            if self._lfo_filter is None:
+                self._filter = self._synth.high_pass_filter(freq, reso)
+            else:
+                self._filter = self._synth.high_pass_filter(freq + self._lfo_filter.value, reso)
             
         elif  ftype == SynthIO_class.FILTER_BPF:
-            self._filter = self._synth.band_pass_filter(freq, reso)
-
-        # Generate a modulator
-        if self._synth_params['FILTER']['MODULATION'] == 0:
-            self._lfo_filter = None
-            
-        else:
-            self._lfo_filter = synthio.LFO(
-                self._synth_params['FILTER']['LFO_RATE'],
-                self._synth_params['FILTER']['LFO_SCALE']
-            )
+            if self._lfo_filter is None:
+                self._filter = self._synth.band_pass_filter(freq, reso)
+            else:
+                self._filter = self._synth.band_pass_filter(freq + self._lfo_filter.value, reso)
 
     # Get the filter
     def filter(self):
         return self._filter
+
+    # Get the filter LFO
+    def lfo_filter(self):
+        return self._lfo_filter
 
     # Generate the VCA
     def generate_vca(self):
@@ -1340,32 +1470,113 @@ class SynthIO_class:
                     'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
                     'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
                 }
+            ],
+
+            [ {'algolithm': 5},		# 12 Cymbal
+                {
+                    'oscillator': 0, 'waveshape': 0, 'frequency':  750, 'amplitude': 150, 'feedback':  9,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 250,
+                    'sustain_level': 0.5, 'release_time': 0, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 1, 'waveshape': 6, 'frequency': 1000, 'amplitude': 128, 'feedback':  0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 2, 'waveshape': 3, 'frequency':  730, 'amplitude':  50, 'feedback': 10,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 250,
+                    'sustain_level': 0.5, 'release_time': 0, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 3, 'waveshape': 6, 'frequency':  300, 'amplitude': 128, 'feedback':  0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                }
+            ],
+
+            [ {'algolithm': 5},		# 13 Gun Shot 3
+                {
+                    'oscillator': 0, 'waveshape': 5, 'frequency': 330, 'amplitude':  20, 'feedback': 25,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 150,
+                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 1, 'waveshape': 5, 'frequency': 800, 'amplitude':  55, 'feedback':  0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 150,
+                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 2, 'waveshape': 6, 'frequency': 970, 'amplitude': 180, 'feedback':  8,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 3, 'waveshape': 5, 'frequency': 500, 'amplitude': 200, 'feedback':  0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                }
+            ],
+
+            [ {'algolithm': 5},		# 14
+                {
+                    'oscillator': 0, 'waveshape': 0, 'frequency': 350, 'amplitude': 150, 'feedback': 60,
+                    'start_level': 0.0, 'attack_time': 300, 'decay_time': 150,
+                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 1, 'waveshape': 6, 'frequency': 900, 'amplitude':  10, 'feedback':  0,
+                    'start_level': 0.0, 'attack_time': 300, 'decay_time': 150,
+                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
+                },
+                {
+                    'oscillator': 2, 'waveshape': 3, 'frequency': 960, 'amplitude':  50, 'feedback':  1,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 3, 'waveshape': 4, 'frequency': 310, 'amplitude': 245, 'feedback':  0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                }
             ]
         ]
 
     def play_test_waves(self):
-        # set up filters
-        self.synthio_parameter('FILTER', {
-            'TYPE': SynthIO_class.FILTER_PASS,
-            'FREQUENCY' : 2000,
-            'RESONANCE' : 2.2,
-            'MODULATION': 0,
-            'LFO_RATE'  : 1.0,
-            'LFO_SCALE' : 1.0
+        # Customise sound
+        self.synthio_parameter('SOUND', {
+            'AMPLITUDE'  : 1,
+            'LFO_RATE_A' : 23.0,
+            'LFO_SCALE_A': 0.7,
+            'BEND'       : 1,
+            'LFO_RATE_B' : 16.0,
+            'LFO_SCALE_B': 0.025
         })
 
+        # Customise filter
+        self.synthio_parameter('FILTER', {
+            'TYPE': SynthIO_class.FILTER_BPF,
+            'FREQUENCY' : 4100,
+            'RESONANCE' : 1.6,
+            'MODULATION': 0,			# HAVING SOME PROBLEMS
+            'LFO_RATE'  : 0.01,
+            'FQMAX'     : 1000,
+            'FQMIN'     : 100
+        })
+
+        # Customise VCA
         self.synthio_parameter('VCA', {
 #            'ATTACK' : 0.2,
             'ATTACK' : 0.0,
-            'DECAY'  : 0.3,
-            'SUSTAIN': 0.5,
-            'RELEASE': 0.2
+            'DECAY'  : 0.9,
+            'SUSTAIN': 0.0,
+            'RELEASE': 0.0
 #            'RELEASE': 1.6
         })
 
         test_pattern = len(self.test_waves) - 1
         test_count = -1
-        play_waves = []
+        play_waves = [12,13]
         #play_waves = [test_pattern]
         for fm_params in self.test_waves:
             test_count += 1
@@ -1379,8 +1590,10 @@ class SynthIO_class:
                     else:
                         self.wave_parameter(parm['oscillator'], parm)
 
+                self.load_parameter_file(0, test_count)
                 self.setup_synthio()
-
+#                self.save_parameter_file(0, test_count)
+                
                 print('====================')
                 print('ALGO=', algo)
                 print('--------------------')
@@ -1392,6 +1605,14 @@ class SynthIO_class:
                 # A note
                 note1 = synthio.Note(frequency=330, filter=self.filter(), waveform=self.wave_shape())
                 note2 = synthio.Note(frequency=440, filter=self.filter(), waveform=self.wave_shape())
+                if SynthIO.lfo_sound_amplitude() is not None:
+                    note1.amplitude=SynthIO.lfo_sound_amplitude()
+                    note2.amplitude=SynthIO.lfo_sound_amplitude()
+
+                if SynthIO.lfo_sound_bend() is not None:
+                    note1.bend=SynthIO.lfo_sound_bend()
+                    note2.bend=SynthIO.lfo_sound_bend()
+
                 self._synth.press(note1)
                 time.sleep(1.0)
                 self._synth.press(note2)
@@ -1400,13 +1621,217 @@ class SynthIO_class:
                 time.sleep(1.0)
                 self._synth.release(note2)
 
+        # Load default
+#        self.load_parameter_file(0,0)
+#        
+#        # A note
+#        note1 = synthio.Note(frequency=330, filter=self.filter(), waveform=self.wave_shape())
+#        note2 = synthio.Note(frequency=440, filter=self.filter(), waveform=self.wave_shape())
+#        if SynthIO.lfo_sound_amplitude() is not None:
+#            note2.amplitude=SynthIO.lfo_sound_amplitude()
+#
+#        if SynthIO.lfo_sound_bend() is not None:
+#            note2.bend=SynthIO.lfo_sound_bend()
+#
+#        self._synth.press(note1)
+#        time.sleep(1.0)
+#        self._synth.press(note2)
+#        time.sleep(1.0)
+#        self._synth.release(note1)
+#        time.sleep(1.0)
+#        self._synth.release(note2)
+        
+#        print('SOUND FILES=', self.find_sound_files(0,'NAME'))
+
+    def view_value(self, category, parameter, oscillator=None):
+        # Oscillator category parameter
+        if category == 'OSCILLATORS' and oscillator is not None:
+            data_set = wave_parameter(oscillator)
+
+        # Other category parameter
+        else:
+            data_set = synthio_parameter(category)
+
+        # Parameter attributes
+        data_value = data_set[parameter]
+        data_attr  = self._params_attr[category][parameter]
+        
+        # Index
+        if   data_attr['TYPE'] == SynthIO_class.TYPE_INDEX:
+            return data_attr['VIEW'][data_value]
+
+        # Others
+        else:
+            return data_attr['VIEW'].format(data_value)
+
+    # Increment a parameter value
+    #   delta:
+    #     TYPE_INT, INDEX: increment value
+    #     TYPE_FLOAT: (cursor >=0:INT, <=-1:DECIMAL, increment value for a digit)
+    #     TYPE_STRING: (cursor, increment value for chr)
+    def increment_value(self, delta, category, parameter, oscillator=None):
+        # Oscillator category parameter
+        if category == 'OSCILLATORS' and oscillator is not None:
+            data_set = wave_parameter(oscillator)
+
+        # Other category parameter
+        else:
+            data_set = synthio_parameter(category)
+
+        # Parameter attributes
+        data_value = data_set[parameter]
+        data_attr  = self._params_attr[category][parameter]
+        
+        # Increment Integer
+        if   data_attr['TYPE'] == SynthIO_class.TYPE_INT or data_attr['TYPE'] == SynthIO_class.TYPE_INDEX:
+            data_value = data_value + delta
+            if data_value < data_attr['MIN']:
+                data_value = data_attr['MAX']
+            elif data_value > data_attr['MAX']:
+                data_value = data_attr['MIN']
+        
+        # Increment a Float digit on the cursor in float numeric (cursor: 3210.-1-2, inc value)
+        elif data_attr['TYPE'] == SynthIO_class.TYPE_FLOAT:
+            data_value = data_value + delta[1] * (10 ** delta[0])
+            if data_value < data_attr['MIN']:
+                data_value = data_attr['MAX']
+            elif data_value > data_attr['MAX']:
+                data_value = data_attr['MIN']
+                
+        # Increment a Charactor on the cursor in string (cursor: 0123..., inc value)
+        elif data_attr['TYPE'] == SynthIO_class.TYPE_STRING:
+            cur = delta[0]
+            inc = delta[1]
+            if cur < data_attr['MAX']:
+                if len(data_value) < data_attr['MAX']:
+                    for i in list(range(data_attr['MAX'] - len(data_value))):
+                        data_value += ' '
+                    
+                    ch = data_value[cur]
+                    ch = chr(ord(ch) + delta)
+                    data_value = data_value[:cur] + ch + data_value[cur+1:]
+
+        data_set[parameter] = data_value
+
+        return data_value
+
+    # Load parameter file
+    def load_parameter_file(self, bank, sound):
+        success = True
+        try:
+            with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json', 'r') as f:
+                file_data = json.load(f)
+                print('LOADED:', file_data)
+                f.close()
+            
+            # Overwrite parameters loaded
+            print('DATA KEYS:', file_data.keys())
+            for category in file_data.keys():
+                if category == 'OSCILLATORS':
+                    for osc in file_data[category]:
+                        # Oscillator
+                        if 'oscillator' in osc.keys():
+                            self.wave_parameter(osc['oscillator'], osc)
+                            
+                        # Algorithm
+                        else:
+                            self.wave_parameter(-1, osc)
+                            
+                # Others
+                else:
+                    self.synthio_parameter(category, file_data[category])
+            
+            # Set up the synthesizer
+            self.setup_synthio()
+            
+        except Exception as e:
+            print('SD LOAD EXCEPTION:', e)
+            success = False
+        
+        return success
+
+    # Save parameter file
+    def save_parameter_file(self, bank, sound):
+        try:
+            with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json', 'w') as f:
+                json.dump(self.synthio_parameter(), f)
+                f.close()
+
+        except Exception as e:
+            print('SD SAVE EXCEPTION:', e)
+            success = False
+
+    # Get a sound name from a file
+    def get_sound_name_of_file(self, bank, sound):
+        sound_name = '<NEW FILE>  '
+        try:
+            with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(number) + '.json', 'r') as f:
+                file_data = json.load(f)
+                f.close()
+
+                if file_data is not None:
+                    if 'SOUND' in file_data.keys():
+                        if 'SOUND_NAME' in file_data['SOUND'].keys():
+                            sound_name = file_data['SOUND']['SOUND_NAME']
+                
+        except:
+            pass
+        
+        return sound_name
+
+    # Find sound files in the current bank and search name
+    def find_sound_files(self, bank, name=''):
+        name = name.strip()
+#        print('SEARCH:', bank, name)
+        
+        # List all file numbers
+        sound_files = []
+        for filenum in list(range(1000)):
+            sound_files.append('{:03d}:'.format(filenum))
+
+        # Search files
+        path_files = os.listdir('/sd/SYNTH/SOUND/BANK' + str(bank))
+#        print('FILES:', path_files)
+        for pf in path_files:
+#            print('FILE=', pf)
+            if pf[-5:] == '.json':
+                if pf[0:4] == 'PFMS':
+                    bk = int(pf[4])
+                    if bk == bank:
+                        filenum = int(pf[5:7])
+                        with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/' + pf, 'r') as f:
+                            file_data = json.load(f)
+                            if 'SOUND' in file_data.keys():
+                                if 'SOUND_NAME' in file_data['SOUND'].keys():
+                                    sound_name = file_data['SOUND']['SOUND_NAME']
+                                    if len(name) <= 3 or sound_name.find(name) >= 0:
+                                        sound_files[filenum] = sound_files[filenum] + sound_name
+                                        
+                            f.close()
+
+        return sound_files
+
+
 ###################################
 # CLASS: Application
 ###################################
 class Application_class:
     
     def __init__(self):
-        pass
+        self.init_sdcard()
+
+    def init_sdcard(self):
+        # SD Card
+        sd_mosi  = board.GP19
+        sd_sck   = board.GP18
+        sd_miso  = board.GP16
+        sd_cs    = board.GP17
+         
+        # sd card setup
+        sd_spi = busio.SPI(clock=sd_sck, MOSI=sd_mosi, MISO=sd_miso)
+        sdcard = sdcardio.SDCard(sd_spi, sd_cs)
+        vfs = storage.VfsFat(sdcard)
+        storage.mount(vfs, "/sd")
 
     # Start display
     def start(self):
