@@ -31,6 +31,10 @@
 #            Diaply waveshape.
 #            Filter LFO modulation is available.
 #
+#     0.0.4: 05/08/2025
+#            Independent filter for each voice.
+#            Filter ADSR (ADSlSr) is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -110,11 +114,13 @@ async def play_synthio():
 # MIDI IN in async task
 ##########################################
 async def midi_in():
-    notes = {}
-    notes_stack = []
+    notes = {}						# {note number: Note object}
+    filters = {}					# {note number: filter number=voice}
+    notes_stack = []				# [note1, note2,...]  contains only notes playing.
     synthesizer = SynthIO.synth()
     while True:
         SynthIO.generate_filter(True)
+        vca = SynthIO.synthio_parameter('VCA')
 
         midi_msg = MIDI_obj.midi_in()
         if midi_msg is not None:
@@ -135,11 +141,32 @@ async def midi_in():
                     stop_note = notes_stack.pop()
                     synthesizer.release(notes[stop_note])
                     del notes[stop_note]
+                    SynthIO.filter_release(filters[stop_note])
+                    del filters[stop_note]
+
+                # Generate a filter for the note, then store the filter number
+                filters[midi_msg.note] = SynthIO.filter()
+                init_filter = SynthIO.filter(filters[midi_msg.note])['FILTER']
+
+                # Note on velocity
+                attack_level = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
+                if attack_level > 1.0:
+                    attack_level = 1.0
+                    
+                # Generate an ADSR for note
+                note_env = synthio.Envelope(
+                                attack_time=vca['ATTACK'],
+                                decay_time=vca['DECAY'],
+                                release_time=vca['RELEASE'],
+                                attack_level=attack_level,
+                                sustain_level=vca['SUSTAIN']
+                            )
 
                 # Play the note
                 notes[midi_msg.note] = synthio.Note(
                     frequency=synthio.midi_to_hz(midi_msg.note),
-                    filter=SynthIO.filter(),
+                    filter=SynthIO.filter(filters[midi_msg.note])['FILTER'],
+                    envelope=note_env,
                     waveform=SynthIO.wave_shape()
                 )
                 
@@ -161,16 +188,19 @@ async def midi_in():
                         synthesizer.release(notes[midi_msg.note])
                         del notes[midi_msg.note]
                         notes_stack.remove(midi_msg.note)
+                        SynthIO.filter_release(filters[midi_msg.note])
+                        del filters[midi_msg.note]
 
 #            print('===NOTES :', notes)
 #            print('===VOICES:', notes_stack)
 
-        else:
-            # Filter LFO modulation
-            if SynthIO.filter() is not None and SynthIO.lfo_filter() is not None:
-                for note in notes.keys():
-                    notes[note].filter=SynthIO.filter()
-
+#        else:
+        # Filter LFO and ADSR (ADSlSr) modulation
+        if len(filters) > 0:
+            for note in notes.keys():
+#                    print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
+                notes[note].filter=SynthIO.filter(filters[note])['FILTER']
+                    
         # Gives away process time to the other tasks.
         # If there is no task, let give back process time to me.
         await asyncio.sleep(0.0)
@@ -356,8 +386,6 @@ class MIDI_class:
 
             except Exception as e:
                 print('CHANGE TO DEVICE MODE:', e)
-                Application_class.DISPLAY_TEXTS[0][4] = 'HOST' if MIDI_obj.as_host() else 'DEV'
-                Application_class.DISPLAY_LABELS[0][4].text = Application_class.DISPLAY_TEXTS[0][4]
 
                 self._usb_host_mode = False
                 midi_msg = self._usb_midi.receive()
@@ -940,7 +968,7 @@ class FM_Waveshape_class:
 class SynthIO_class:
     # Synthesize voices
     MAX_VOICES = 16
-    
+
     # Fileters
     FILTER_PASS = 0
     FILTER_LPF  = 1
@@ -1020,19 +1048,28 @@ class SynthIO_class:
             # Filter
             'FILTER': {
                 'TYPE': SynthIO_class.FILTER_PASS,
-                'FREQUENCY' : 2000,
-                'RESONANCE' : 1.0,
-                'MODULATION': 0,
-                'LFO_RATE'  : 1.20,
-                'LFO_FQMAX' : 1000
+                'FREQUENCY'      : 2000,
+                'RESONANCE'      : 1.0,
+                'MODULATION'     : 0,
+                'LFO_RATE'       : 1.20,
+                'LFO_FQMAX'      : 1000,
+                'ADSR_INTERVAL'  : 10,
+                'ADSR_FQMAX'     : 1000,
+                'START_LEVEL'    : 0.5,
+                'ATTACK_TIME'    : 10,
+                'DECAY_TIME'     : 30,
+                'SUSTAIN_LEVEL'  : 0.6,
+                'SUSTAIN_RELEASE': 50,
+                'END_LEVEL'      : 0.0
             },
             
             # VCA
             'VCA': {
-                'ATTACK' : 0.2,
-                'DECAY'  : 0.3,
-                'SUSTAIN': 0.5,
-                'RELEASE': 0.2
+                'ATTACK_LEVEL' : 1.5,
+                'ATTACK'       : 0.2,
+                'DECAY'        : 0.3,
+                'SUSTAIN'      : 0.5,
+                'RELEASE'      : 0.2
             }
         }
         
@@ -1068,21 +1105,30 @@ class SynthIO_class:
             },
 
             'FILTER': {
-                'TYPE'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
-                'FREQUENCY' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'RESONANCE' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'MODULATION': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
-                'LFO_FQMAX' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'CURSOR'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5_2}
+                'TYPE'           : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
+                'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
+                'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX':   100, 'VIEW': '{:5d}'},
+                'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
+                'DECAY_TIME'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
+                'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
+                'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5_2}
             },
 
             'VCA': {
-                'ATTACK' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
-                'DECAY'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
-                'SUSTAIN': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
-                'RELEASE': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
-                'CURSOR' : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4_2}
+                'ATTACK_LEVEL' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
+                'ATTACK'       : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'DECAY'        : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'SUSTAIN'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'RELEASE'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'CURSOR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4_2}
             }
         }
 
@@ -1091,7 +1137,9 @@ class SynthIO_class:
         self._lfo_sound_amp  = None
         self._lfo_sound_bend = None
         self._lfo_filter     = None
-        self._filter         = None
+        self.filter_storage  = [None] * SynthIO_class.MAX_VOICES
+#        self.filter_storage  = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+        self._filter_adsr    = []
         self._envelope_vca   = None
         
         # Set up the synthio with the current parameters
@@ -1233,9 +1281,49 @@ class SynthIO_class:
 
     # Generate the Filter
     def generate_filter(self, update=False):
+        
+        # Update the filte LFO value
+        def update_filter_lfo():
+            fqmax = self._synth_params['FILTER']['LFO_FQMAX']
+            return 0.0 if self._lfo_filter is None else self._lfo_filter.value / 1000.0 * fqmax
+            
+        # Get an offset value by filter voice's adsr
+        def get_offset_by_adsr(v):
+            offset = 0
+            
+            # Starting filters
+            if   self.filter_storage[v]['DURATION'] == -1:
+                if len(self._filter_adsr) > 0:
+                    monotonic = int(time.monotonic() * 1000) % 10000
+                    self.filter_storage[v]['TIME'] = 0
+#                    print('ADD INTERVAL0:', v, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'], monotonic)
+                    self.filter_storage[v]['DURATION'] = monotonic
+                    offset = self.get_filter_adsr(0)
+#                    print('  OFFSET TIM0:', offset, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'])
+            
+            # Working filters
+            elif self.filter_storage[v]['TIME'] >= 0:
+                adsr_interval = self._synth_params['FILTER']['ADSR_INTERVAL']
+                interval = self.filter_storage[v]['DURATION']
+                if interval >= 0 and len(self._filter_adsr) > 0:
+                    monotonic = int(time.monotonic() * 1000) % 10000
+                    delta_mono = (monotonic - interval) % 10000
+                    if delta_mono >= adsr_interval:
+                        offset = self.get_filter_adsr(self.filter_storage[v]['TIME'])
+                        self.filter_storage[v]['TIME'] += int(delta_mono / adsr_interval)
+#                        print('ADD INTERVALW:', v, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'], monotonic, adsr_interval)
+                        self.filter_storage[v]['DURATION'] = monotonic
+                        offset = self.get_filter_adsr(self.filter_storage[v]['TIME'])
+#                        print('  OFFSET TIMW:', v, offset, self.filter_storage[v]['TIME'], delta_mono, adsr_interval, int(delta_mono / adsr_interval))
+
+            return offset
+
+        # Generate or update filters
         ftype = self._synth_params['FILTER']['TYPE']
         freq  = self._synth_params['FILTER']['FREQUENCY']
         reso  = self._synth_params['FILTER']['RESONANCE']
+        
+        # Generate new LFO
         if update == False:
             # Remove the LFO from the global LFO
             if self._lfo_filter is not None:
@@ -1257,68 +1345,169 @@ class SynthIO_class:
                 self._synth.blocks.append(self._lfo_filter)  # add lfo to global LFO runner to get it to tick
         
         # Generate a filter
-        if    ftype == SynthIO_class.FILTER_PASS:
-            self._filter = None
-            
-        elif  ftype == SynthIO_class.FILTER_LPF:
-            if self._lfo_filter is None:
-                if update == False:
-                    self._filter = self._synth.low_pass_filter(freq, reso)
-            else:
-                fqmax = self._synth_params['FILTER']['LFO_FQMAX']
-                delta = self._lfo_filter.value / 1000.0 * fqmax
-                self._filter = self._synth.low_pass_filter(freq + delta, reso)
-#                print('FILTER FREQ:', freq, self._lfo_filter.value, fqmax, delta, freq + delta)
+        for v in list(range(len(self.filter_storage))):
+            if   ftype == SynthIO_class.FILTER_PASS:
+                self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'DURATION': 0}
+                
+            elif ftype == SynthIO_class.FILTER_LPF:
 
-        elif  ftype == SynthIO_class.FILTER_HPF:
-            if self._lfo_filter is None:
-                if update == False:
-                    self._filter = self._synth.high_pass_filter(freq, reso)
-            else:
-                fqmax = self._synth_params['FILTER']['LFO_FQMAX']
-                delta = self._lfo_filter.value / 1000.0 * fqmax
-                self._filter = self._synth.high_pass_filter(freq + delta, reso)
-#                print('FILTER FREQ:', freq, self._lfo_filter.value, fqmax, delta, freq + delta)
-            
-        elif  ftype == SynthIO_class.FILTER_BPF:
-            if self._lfo_filter is None:
-                if update == False:
-                    self._filter = self._synth.band_pass_filter(freq, reso)
-            else:
-                fqmax = self._synth_params['FILTER']['LFO_FQMAX']
-                delta = self._lfo_filter.value / 1000.0 * fqmax
-                self._filter = self._synth.band_pass_filter(freq + delta, reso)
-#                print('FILTER FREQ:', freq, self._lfo_filter.value, fqmax, delta, freq + delta)
+                # Make new filter
+                if self.filter_storage[v]['FILTER'] is None:
+                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                    delta = update_filter_lfo()
+                    offset = get_offset_by_adsr(v)
+                    self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset, reso)
+                    print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset, reso)
+
+                # Re-use or update the filters
+                else:
+                    # Update filter LFO
+                    delta = update_filter_lfo()
+
+                    # Update filter ADSR
+                    offset = get_offset_by_adsr(v)
+
+                    # Update a filter for a voice
+                    if delta + offset != 0:
+#                        if v == 0:
+#                            print('FILTER LPF FREQ-->:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
+                        self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset, reso)
+#                        if v == 0:
+#                            print('FILTER LPF FREQ<--:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
+
+#                    else:
+#                        if v == 0:
+#                            print('===DELTA + OFFSET IS ZERO===', v, delta, offset, get_offset_by_adsr(v))
+
+            elif ftype == SynthIO_class.FILTER_HPF:
+                if self.filter_storage[v] is None:
+                    if update == False:
+                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                else:
+                    # Update filter LFO
+                    delta = update_filter_lfo()
+
+                    # Update filter ADSR
+                    offset = get_offset_by_adsr(v)
+
+                    self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset, reso)
+#                    print('FILTER HPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
+                
+            elif ftype == SynthIO_class.FILTER_BPF:
+                if self.filter_storage[v] is None:
+                    if update == False:
+                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                else:
+                    # Update filter LFO
+                    delta = update_filter_lfo()
+
+                    # Update filter ADSR
+                    offset = get_offset_by_adsr(v)
+
+                    self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset, reso)
+#                    print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
 
     # Get the filter
-    def filter(self):
-        return self._filter
+    def filter(self, voice=None):
+        # Get a vacant filter number
+        if voice is None:
+            for flt in list(range(len(self.filter_storage))):
+                if self.filter_storage[flt] is not None:
+                    if self.filter_storage[flt]['TIME'] < 0:
+                        self.filter_storage[flt]['TIME'] = 0
+                        self.filter_storage[flt]['DURATION'] = -1
+#                        self.filter_storage[flt]['DURATION'] = int(time.monotonic() * 1000) % 10000
+                        return flt
+                    
+            return -1
+        
+        # Return the filter for the voice
+        return self.filter_storage[voice]
+
+    def filter_release(self, voice):
+        self.filter_storage[voice]['TIME'] = -1
+        self.filter_storage[voice]['DURATION'] = -1
+        self.filter_storage[voice]['FILTER'] = None
+        print('RELEASE FILTER:', voice, self.filter_storage[voice])
 
     # Get the filter LFO
     def lfo_filter(self):
         return self._lfo_filter
 
-    # Generate the VCA
-    def generate_vca(self):
-        self._envelope_vca = synthio.Envelope(
-            attack_time   = self._synth_params['VCA']['ATTACK'],
-            decay_time    = self._synth_params['VCA']['DECAY'],
-            sustain_level = self._synth_params['VCA']['SUSTAIN'],
-            release_time  = self._synth_params['VCA']['RELEASE']
-        )
+    # Generate the filter ADSR (ADSlSr)
+    def generate_filter_adsr(self):
 
-        self.synth().envelope = self.vca_envelope()
+        # Calculate a linear equation {y=(end-start)/duration*x+start, tm-->x|0..duration}
+        def calc_linear(tm, duration, start, end):
+            adsr = (end - start) / duration * tm + start
+            if adsr > 1.0:
+                adsr = 1.0
+            elif adsr < 0.0:
+                adsr = 0.0
+                
+            return adsr
+            
+        # Generate filter ADSR
+        self._filter_adsr = []
+        filter_params = self.synthio_parameter('FILTER')
+        print('FILTER PARAMS:', filter_params.keys())
+        
+        # Attack
+        start = filter_params['START_LEVEL']
+        self._filter_adsr.append(start)
+        duration = filter_params['ATTACK_TIME']
+        if duration > 0:
+            for tm in list(range(1, duration + 1)):
+                adsr = calc_linear(tm, duration, start, 1.0)
+                self._filter_adsr.append(adsr)
+                
+            start = adsr
+                
+        # Decay to Sustain
+        duration = filter_params['DECAY_TIME'] - 1
+        sustain  = filter_params['SUSTAIN_LEVEL']
+        if duration > 0:
+            for tm in list(range(1, duration + 1)):
+                adsr = calc_linear(tm, duration, start, sustain)
+                self._filter_adsr.append(adsr)
+                
+            start = adsr
 
-    # Get the VCA envelope
-    def vca_envelope(self):
-        return self._envelope_vca
+        # No decay
+        else:
+            self._filter_adsr.append(sustain)
+            start = sustain
+
+        # Sustain Release
+        duration = filter_params['SUSTAIN_RELEASE']
+        end_level = filter_params['END_LEVEL']
+        if duration > 0:
+            for tm in list(range(0, duration)):
+                adsr = calc_linear(tm, duration, start, end_level)
+                self._filter_adsr.append(adsr)
+
+        self._filter_adsr.append(end_level)
+        print('FILTER ADSR:', len(self._filter_adsr), self._filter_adsr)
+
+    # Get filter ADSR (ADSlSr)
+    def get_filter_adsr(self, interval=None):
+        if interval is None:
+            return self._filter_adsr
+        
+        if 0 <= interval and interval < len(self._filter_adsr):
+            return int(self._filter_adsr[interval] * self.synthio_parameter('FILTER')['ADSR_FQMAX'])
+        
+        if interval >= len(self._filter_adsr):
+            return int(self._filter_adsr[-1] * self.synthio_parameter('FILTER')['ADSR_FQMAX'])
+        
+        return 0
 
     # Set up the synthio
     def setup_synthio(self):
         self.generate_sound()
         self.generate_wave_shape()
+        self.generate_filter_adsr()
         self.generate_filter()
-        self.generate_vca()
         self._synth.envelope = self._envelope_vca
 
         # CODES FOR TEST
@@ -1683,26 +1872,35 @@ class SynthIO_class:
         # Customise filter
         self.synthio_parameter('FILTER', {
             'TYPE': SynthIO_class.FILTER_PASS,
-            'FREQUENCY' : 2100,
-            'RESONANCE' : 1.1,
-            'MODULATION': 1,			# HAVING SOME PROBLEMS
-            'LFO_RATE'  : 0.1,
-            'LFO_FQMAX' : 1000
+            'FREQUENCY'      : 2100,
+            'RESONANCE'      : 1.1,
+            'MODULATION'     : 0,
+            'LFO_RATE'       : 0.1,
+            'LFO_FQMAX'      : 800,
+            'ADSR_INTERVAL'  : 100,
+            'ADSR_FQMAX'     : 1000,
+            'START_LEVEL'    : 0.5,
+            'ATTACK_TIME'    : 10,
+            'DECAY_TIME'     : 30,
+            'SUSTAIN_LEVEL'  : 0.6,
+            'SUSTAIN_RELEASE': 50,
+            'END_LEVEL'      : 0.0
         })
 
         # Customise VCA
         self.synthio_parameter('VCA', {
+            'ATTACK_LEVEL' : 1.5,
 #            'ATTACK' : 0.2,
-            'ATTACK' : 0.0,
-            'DECAY'  : 0.6,
-            'SUSTAIN': 0.4,
-            'RELEASE': 0.3
+            'ATTACK'       : 0.0,
+            'DECAY'        : 0.6,
+            'SUSTAIN'      : 0.4,
+            'RELEASE'      : 0.3
 #            'RELEASE': 1.6
         })
 
         test_pattern = len(self.test_waves) - 1
         test_count = -1
-        play_waves = [0,1,2,3,4,5]
+        play_waves = [3]
         #play_waves = [test_pattern]
         for fm_params in self.test_waves:
             test_count += 1
@@ -1721,7 +1919,7 @@ class SynthIO_class:
 #                self.save_parameter_file(0, test_count)
                 
                 print('====================')
-                print('ALGO=', algo, self.filter())
+                print('ALGO=', algo)
                 print('--------------------')
 #                for amp in self.wave_shape():
 #                    print(amp)
@@ -1729,8 +1927,10 @@ class SynthIO_class:
                 print('====================')
 
                 # A note
-                note1 = synthio.Note(frequency=330, filter=self.filter(), waveform=self.wave_shape())
-                note2 = synthio.Note(frequency=440, filter=self.filter(), waveform=self.wave_shape())
+                filter1 = self.filter()
+                filter2 = self.filter()
+                note1 = synthio.Note(frequency=330, filter=self.filter(filter1)['FILTER'], waveform=self.wave_shape())
+                note2 = synthio.Note(frequency=440, filter=self.filter(filter2)['FILTER'], waveform=self.wave_shape())
                 if SynthIO.lfo_sound_amplitude() is not None:
                     note1.amplitude=SynthIO.lfo_sound_amplitude()
                     note2.amplitude=SynthIO.lfo_sound_amplitude()
@@ -1746,36 +1946,60 @@ class SynthIO_class:
                 self._synth.release(note1)
                 time.sleep(1.0)
                 self._synth.release(note2)
+                
+                self.filter_release(filter1)
+                self.filter_release(filter2)
 
         # Load default
-        self.load_parameter_file(0,1)
+        self.load_parameter_file(0,3)
 
         # Customise filter
         self.synthio_parameter('FILTER', {
             'TYPE': SynthIO_class.FILTER_LPF,
-            'FREQUENCY' : 1200,
-            'RESONANCE' : 1.2,
-            'MODULATION': 1,
-            'LFO_RATE'  : 5.00,
-            'LFO_FQMAX' : 800
+            'FREQUENCY'      : 500,
+            'RESONANCE'      : 1.7,
+            'MODULATION'     : 0,
+            'LFO_RATE'       : 200,
+            'LFO_FQMAX'      : 5,
+            'ADSR_INTERVAL'  : 10,
+            'ADSR_FQMAX'     : 5000,
+            'START_LEVEL'    : 1.0,
+            'ATTACK_TIME'    : 0,
+            'DECAY_TIME'     : 15,
+            'SUSTAIN_LEVEL'  : 0.3,
+            'SUSTAIN_RELEASE': 70,
+            'END_LEVEL'      : 0.0
+        })
+        
+        self.synthio_parameter('SOUND', {
+            'AMPLITUDE'  : 1,
+            'LFO_RATE_A' : 3.0,
+            'LFO_SCALE_A': 0.2,
+            'BEND'       : 0,
+            'LFO_RATE_B' : 16.0,
+            'LFO_SCALE_B': 0.025
         })
 
         self.synthio_parameter('VCA', {
-            'ATTACK': 0.2,
-            'DECAY' : 0.6,
-            'SUSTAIN' : 0.4,
-            'RELEASE' : 0.4
+            'ATTACK_LEVEL' : 2.0,
+            'ATTACK'       : 0.1,
+            'DECAY'        : 0.6,
+            'SUSTAIN'      : 0.6,
+            'RELEASE'      : 0.4
         })
 
         self.setup_synthio()
-        
-        for page in list(range(12)):
-            Application.show_OLED_page(page)
-            time.sleep(1.0)
+
+#        for page in list(range(12)):
+#            Application.show_OLED_page(page)
+#            time.sleep(1.0)
+
 #        
 #        # A note
-#        note1 = synthio.Note(frequency=330, filter=self.filter(), waveform=self.wave_shape())
-#        note2 = synthio.Note(frequency=440, filter=self.filter(), waveform=self.wave_shape())
+#        filter1 = self.filter()
+#        filter2 = self.filter()
+#        note1 = synthio.Note(frequency=330, filter=self.filter(filter1)['FILTER'], waveform=self.wave_shape())
+#        note2 = synthio.Note(frequency=440, filter=self.filter(filter2)['FILTER'], waveform=self.wave_shape())
 #        if SynthIO.lfo_sound_amplitude() is not None:
 #            note2.amplitude=SynthIO.lfo_sound_amplitude()
 #
@@ -1789,6 +2013,9 @@ class SynthIO_class:
 #        self._synth.release(note1)
 #        time.sleep(1.0)
 #        self._synth.release(note2)
+#                
+#        self.filter_release(filter1)
+#        self.filter_release(filter2)
         
 #        print('SOUND FILES=', self.find_sound_files(0,'NAME'))
 
