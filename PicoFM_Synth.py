@@ -35,6 +35,10 @@
 #            Independent filter for each voice.
 #            Filter ADSR (ADSlSr) is available.
 #
+#     0.0.5: 05/09/2025
+#            8Encoder is available.
+#            Show parameter pages and edit the parameters.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -45,8 +49,8 @@
 #   SCL: GP1( 2) 
 #
 # I2C Unit-0:: 8Encoder (I2C Address = 0x41)
-#   SDA: GP0( 1)  - Pull up is needed.
-#   SCL: GP1( 2)  - Pull up is needed.
+#   SDA: GP0( 1)  - Pull up is needed, but SSD1306 has it.
+#   SCL: GP1( 2)  - Pull up is needed, but SSD1306 has it.
 #
 # USB:: USB MIDI HOST
 #   D+ : GP26(31)
@@ -207,13 +211,51 @@ async def midi_in():
 
 
 ##########################################
+# Get 8encoder status in async task
+##########################################
+async def get_8encoder():
+    while True:
+        Encoder_obj.i2c_lock()
+        on_change = False
+        
+        try:
+            enc_switch  = Encoder_obj.get_switch()
+            change = (M5Stack_8Encoder_class.status['switch'] != enc_switch)
+            on_change = on_change or change
+            M5Stack_8Encoder_class.status['on_change']['switch'] = change
+            M5Stack_8Encoder_class.status['switch'] = enc_switch
+            await asyncio.sleep(0.02)
+            
+            for rt in list(range(8)):
+                enc_rotary = Encoder_obj.get_rotary_increment(rt)
+                change = (enc_rotary != 0)
+                on_change = on_change or change
+                M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
+                M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
+                await asyncio.sleep(0.02)
+    
+            Encoder_obj.i2c_unlock()
+
+            if on_change:
+                Application.task_8encoder()
+        
+        finally:
+            Encoder_obj.i2c_unlock()
+
+        # Gives away process time to the other tasks.
+        # If there is no task, let give back process time to me.
+        await asyncio.sleep(0.02)
+
+
+##########################################
 # Asyncronous functions
 ##########################################
 async def main():
     interrupt_play_synthio = asyncio.create_task(play_synthio())
     interrupt_midi_in = asyncio.create_task(midi_in())
+    interrupt_get_8encoder = asyncio.create_task(get_8encoder())
   
-    await asyncio.gather(interrupt_play_synthio, interrupt_midi_in)
+    await asyncio.gather(interrupt_play_synthio, interrupt_midi_in, interrupt_get_8encoder)
 
 
 ########################
@@ -285,6 +327,104 @@ class OLED_SSD1306_class:
 
 
 ###################################
+# CLASS: 8Encoder Unit for M5Stack
+###################################
+class M5Stack_8Encoder_class:
+    status = {'switch': None, 'rotary_inc': [None]*8, 'on_change':{'switch': False, 'rotary_inc': [False]*8}}
+    
+    def __init__(self, i2c, scl=board.GP2, sda=board.GP1, i2c_address=0x41):
+        self._i2c_address = i2c_address
+#        self._i2c = busio.I2C(scl, sda)			# board.I2C does NOT work for PICO, use busio.I2C
+        self._i2c = i2c
+        self.i2c_lock()
+        dev_hex = hex(i2c_address)
+        devices = []
+        while dev_hex not in devices:
+            devices = [hex(device_address) for device_address in self._i2c.scan()]
+            print('I2C addresses found:', devices)
+            time.sleep(0.5)
+
+        print('Found 8Encoder.')
+        self.reset_rotary_value()
+        for led in list(range(9)):
+            self.led(8, [0x00, 0x00, 0x00])
+
+        self.i2c_unlock()
+    
+    @staticmethod
+    def __bits_to_int(val, bits):
+        sign = 0x1 << (bits - 1)
+        if val & sign != 0:
+            exc = 2**bits - 1
+            val = (val ^ exc) + 1
+            return -val
+            
+        else:
+            return int(val)
+
+
+    def i2c_lock(self):
+        while not self._i2c.try_lock():
+            pass
+    
+    def i2c_unlock(self):
+        self._i2c.unlock()
+
+    def get_switch(self):
+        bytes_read = bytearray(1)
+        self._i2c.writeto(self._i2c_address, bytearray([0x60]))
+        self._i2c.readfrom_into(self._i2c_address, bytes_read)
+        time.sleep(0.01)
+        return int(bytes_read[0])
+
+    def reset_rotary_value(self, rotary=None):
+        if rotary is None:
+            for rt in list(range(8)):
+                self._i2c.writeto(self._i2c_address, bytearray([0x40 + rt, 0x01]))
+                time.sleep(0.01)
+
+        else:
+            self._i2c.writeto(self._i2c_address, bytearray([0x40 + rotary, 0x01]))
+
+    def get_rotary_value(self, rotary):
+        v = 0
+        bytes_read = bytearray(1)
+        base = 0x00 + rotary * 4
+        for bs in list(range(3, -1, -1)):
+            self._i2c.writeto(self._i2c_address, bytearray([base + bs]))
+            self._i2c.readfrom_into(self._i2c_address, bytes_read)
+            if rotary == 7:
+                print('RET BYTES_READ:', bytes_read)
+            v = (v << 8) | bytes_read[0]
+            time.sleep(0.01)
+
+        return M5Stack_8Encoder_class.__bits_to_int(v, 32)
+    
+    def get_rotary_increment(self, rotary):
+        v = 0
+        bytes_read = bytearray(4)
+        base = 0x20 + rotary * 4
+        shift = 0
+#        for bs in list(range(3, -1, -1)):
+        for bs in list(range(4)):
+            self._i2c.writeto(self._i2c_address, bytearray([base + bs]))
+            self._i2c.readfrom_into(self._i2c_address, bytes_read)
+            v = v | (bytes_read[0] << shift)
+            shift += 8
+            time.sleep(0.01)
+
+        return M5Stack_8Encoder_class.__bits_to_int(v, 32)
+
+    # Turn on a LED in colro(R,G,B)
+    def led(self, led_num, color=[0x00, 0x00, 0x00]):
+        base = [0x70 + led_num * 3]
+        self._i2c.writeto(self._i2c_address, bytearray(base + color))
+        time.sleep(0.01)
+
+################# End of 8Encoder Class Definition #################
+
+
+###################################
 # CLASS: USB MIDI
 ###################################
 class MIDI_class:
@@ -323,8 +463,9 @@ class MIDI_class:
             print('Looking for midi device')
 
         try_count = 5000
-#        while self._raw_midi_host is None and Encoder_obj.get_switch() == 0:
-        while self._raw_midi_host is None and try_count > 0:
+        Encoder_obj.i2c_lock()
+        while self._raw_midi_host is None and Encoder_obj.get_switch() == 0:
+#        while self._raw_midi_host is None and try_count > 0:
 
             try_count = try_count - 1
             devices_found = usb.core.find(find_all=True)
@@ -350,6 +491,8 @@ class MIDI_class:
                     self._raw_midi_host = None
                     print('EXCEPTION')
                     continue
+
+        Encoder_obj.i2c_unlock()
 
         # Turn on the 8th LED for USB HOST mode or DEVICE mode
         if self._init:
@@ -393,6 +536,8 @@ class MIDI_class:
             return midi_msg
 
         return None
+        
+################# End of MIDI Class Definition #################
 
 
 ################################################
@@ -475,9 +620,8 @@ class FM_Waveshape_class:
         if duration > 0:
             for tm in list(range(1, duration)):
                 adsr = calc_linear(tm, duration, start, 1.0)
-                osc['adsr'].append(adsr)
-                
-            start = adsr
+                osc['adsr'].append(adsr)  
+                start = adsr
                 
         # Decay to Sustain
         duration = osc['decay_time'] - 1
@@ -486,8 +630,7 @@ class FM_Waveshape_class:
             for tm in list(range(1, duration)):
                 adsr = calc_linear(tm, duration, start, sustain)
                 osc['adsr'].append(adsr)
-                
-            start = adsr
+                start = adsr
 
         # No decay
         else:
@@ -960,6 +1103,8 @@ class FM_Waveshape_class:
         # Default wave shape is sine
         wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)) * FM_Waveshape_class.SAMPLE_VOLUME, dtype=np.int16)
         return wave
+        
+################# End of FM Waveshape Class Definition #################
 
 
 ################################################
@@ -983,12 +1128,18 @@ class SynthIO_class:
     
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
-    VIEW_ALGORITHM = [' 0:<1>*2', ' 1:<1>+2', ' 2:<1>+2+<3>+4', ' 3:(<1>+2*3)*4', ' 4:<1>*2*3*4', ' 5:<1>*2+<3>*4', ' 6:<1>+2*3*4', ' 7:<1>+2*3+4']
-    VIEW_WAVE = [' 0:Sine', ' 1:Saw', ' 2:Triangle', ' 3:Square50%', ' 4:ABS(Sine)', ' 5:PLUS(Sine)', ' 6:Noise']
-    VIEW_FILTER = [' 0:PASS', ' 1:LPF', ' 2:HPF', ' 3:BPF']
-    VIEW_CURSOR_f4_1 = ['^    ', ' ^   ', '    ^']
-    VIEW_CURSOR_f4_2 = ['^    ', '  ^  ', '    ^']
-    VIEW_CURSOR_f5_2 = ['^     ', ' ^    ', '    ^ ', '     ^']
+    VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+2*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+2*3*4', '7:<1>+2*3+4']
+#    VIEW_WAVE = [' 0:Sine', ' 1:Saw', ' 2:Triangle', ' 3:Square50%', ' 4:ABS(Sine)', ' 5:PLUS(Sine)', ' 6:Noise']
+    VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi']
+    VIEW_FILTER = ['0:PASS', '1:LPF', '2:HPF', '3:BPF']
+    VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?']
+    VIEW_LOAD_SOUND = ['----', 'Load?', 'LOAD', 'Load?', 'SEARCH', 'Search?']
+    VIEW_CURSOR_f4 = ['^   ', ' ^  ', '  ^ ', '   ^']
+    VIEW_CURSOR_f5 = ['^    ', ' ^   ', '  ^  ', '   ^ ', '    ^']
+    VIEW_CURSOR_s12  = [
+        '^           ', ' ^          ', '  ^         ', '   ^        ', '    ^       ', '     ^      ',
+        '      ^     ', '       ^    ', '        ^   ', '         ^  ', '          ^ ', '           ^'
+    ]
 
     def __init__(self):
         # I2S on Audio
@@ -1017,7 +1168,8 @@ class SynthIO_class:
                 'LFO_SCALE_A': 1.8,
                 'BEND'       : 0,
                 'LFO_RATE_B' : 4.0,
-                'LFO_SCALE_B': 1.8
+                'LFO_SCALE_B': 1.8,
+                'CURSOR'     : 0
             },
             
             # OSCILLATORS
@@ -1060,16 +1212,36 @@ class SynthIO_class:
                 'DECAY_TIME'     : 30,
                 'SUSTAIN_LEVEL'  : 0.6,
                 'SUSTAIN_RELEASE': 50,
-                'END_LEVEL'      : 0.0
+                'END_LEVEL'      : 0.0,
+                'CURSOR'         : 0
             },
             
             # VCA
             'VCA': {
-                'ATTACK_LEVEL' : 1.5,
-                'ATTACK'       : 0.2,
-                'DECAY'        : 0.3,
-                'SUSTAIN'      : 0.5,
-                'RELEASE'      : 0.2
+                'ATTACK_LEVEL': 1.5,
+                'ATTACK'      : 0.2,
+                'DECAY'       : 0.3,
+                'SUSTAIN'     : 0.5,
+                'RELEASE'     : 0.2,
+                'CURSOR'      : 0
+            },
+            
+            # SAVE
+            'SAVE': {
+                'BANK'      : 0,
+                'SOUND'     : 0,
+                'SOUND_NAME': 'A',
+                'CURSOR'    : 0,
+                'SAVE_SOUND': 0
+            },
+            
+            # LOAD
+            'LOAD': {
+                'BANK'      : 0,
+                'SOUND'     : 0,
+                'SOUND_NAME': '',
+                'CURSOR'    : 0,
+                'LOAD_SOUND': 0
             }
         }
         
@@ -1085,15 +1257,15 @@ class SynthIO_class:
                 'BEND'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
                 'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
-                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4_1) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4_1}
+                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
             },
             
             'OSCILLATORS': {
                 'algorithm'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_ALGORITHM) - 1, 'VIEW': SynthIO_class.VIEW_ALGORITHM},
                 'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 3, 'VIEW': '{:3d}'},
                 'waveshape'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_WAVE) - 1, 'VIEW': SynthIO_class.VIEW_WAVE},
-                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:2d}'},
-                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:2d}'},
+                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:3d}'},
+                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:3d}'},
                 'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
                 'feedback'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
                 'start_level'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
@@ -1119,7 +1291,7 @@ class SynthIO_class:
                 'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
                 'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5_2}
+                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5}
             },
 
             'VCA': {
@@ -1128,7 +1300,23 @@ class SynthIO_class:
                 'DECAY'        : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
                 'SUSTAIN'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
                 'RELEASE'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
-                'CURSOR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4_2) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4_2}
+                'CURSOR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
+            },
+        
+            'SAVE': {
+                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
+                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'SOUND_NAME': {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'CURSOR'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s12) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s12},
+                'SAVE_SOUND': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_SAVE_SOUND) - 1, 'VIEW': SynthIO_class.VIEW_SAVE_SOUND}
+            },
+            
+            'LOAD': {
+                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
+                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'SOUND_NAME': {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'CURSOR'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s12) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s12},
+                'LOAD_SOUND': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_LOAD_SOUND) - 1, 'VIEW': SynthIO_class.VIEW_LOAD_SOUND}
             }
         }
 
@@ -1210,7 +1398,7 @@ class SynthIO_class:
 
     # Get parameter in its format
     def get_formatted_parameter(self, category, parameter, oscillator=None):
-        print('FORMAT:', category, parameter, oscillator)
+#        print('FORMAT:', category, parameter, oscillator)
         if oscillator is None:
             params = self.synthio_parameter(category)
             if parameter in params:
@@ -1244,7 +1432,7 @@ class SynthIO_class:
         if algo >= 0:
             self._wave_shape = FM_Waveshape.fm_algorithm(algo)
 
-        Application.show_OLED_waveshape()
+#        Application.show_OLED_waveshape()
         return self._wave_shape
 
     # GET waveshape
@@ -1281,7 +1469,7 @@ class SynthIO_class:
 
     # Generate the Filter
     def generate_filter(self, update=False):
-        
+
         # Update the filte LFO value
         def update_filter_lfo():
             fqmax = self._synth_params['FILTER']['LFO_FQMAX']
@@ -2048,11 +2236,11 @@ class SynthIO_class:
     def increment_value(self, delta, category, parameter, oscillator=None):
         # Oscillator category parameter
         if category == 'OSCILLATORS' and oscillator is not None:
-            data_set = wave_parameter(oscillator)
+            data_set = self.wave_parameter(oscillator)
 
         # Other category parameter
         else:
-            data_set = synthio_parameter(category)
+            data_set = self.synthio_parameter(category)
 
         # Parameter attributes
         data_value = data_set[parameter]
@@ -2066,26 +2254,33 @@ class SynthIO_class:
             elif data_value > data_attr['MAX']:
                 data_value = data_attr['MIN']
         
-        # Increment a Float digit on the cursor in float numeric (cursor: 3210.-1-2, inc value)
+        # Increment a Float digit on the cursor in float numeric ([0]cursor: 3210.-1-2, [1]inc value)
         elif data_attr['TYPE'] == SynthIO_class.TYPE_FLOAT:
-            data_value = data_value + delta[1] * (10 ** delta[0])
+            if category == 'OSCILLATORS':
+                data_value = data_value + delta / 10.0
+                
+            else:
+                data_value = data_value + delta[1] * (10 ** delta[0])
+                
             if data_value < data_attr['MIN']:
                 data_value = data_attr['MAX']
             elif data_value > data_attr['MAX']:
                 data_value = data_attr['MIN']
                 
-        # Increment a Charactor on the cursor in string (cursor: 0123..., inc value)
+        # Increment a Charactor on the cursor in string ([0]cursor: 0123..., [1]inc value)
         elif data_attr['TYPE'] == SynthIO_class.TYPE_STRING:
+            print('STRING DELTA:', delta, data_attr, data_value, len(data_value))
             cur = delta[0]
             inc = delta[1]
             if cur < data_attr['MAX']:
-                if len(data_value) < data_attr['MAX']:
+                if len(data_value) <= data_attr['MAX']:
                     for i in list(range(data_attr['MAX'] - len(data_value))):
                         data_value += ' '
                     
                     ch = data_value[cur]
-                    ch = chr(ord(ch) + delta)
+                    ch = chr(ord(ch) + inc)
                     data_value = data_value[:cur] + ch + data_value[cur+1:]
+                    print('INCED:', parameter, data_value)
 
         data_set[parameter] = data_value
 
@@ -2186,6 +2381,8 @@ class SynthIO_class:
                             f.close()
 
         return sound_files
+        
+################# End of SynthIO Class Definition #################
 
 
 ###################################
@@ -2193,95 +2390,352 @@ class SynthIO_class:
 ###################################
 class Application_class:
     # Paramete pages
-    PAGE_SOUND_MAIN = 0
-    PAGE_SOUND_MODULATION = 1
-    PAGE_OSCILLTOR_WAVE1 = 2
-    PAGE_OSCILLTOR_WAVE2 = 3
-    PAGE_OSCILLTOR_WAVE3 = 4
-    PAGE_OSCILLTOR_WAVE4 = 5
-    PAGE_OSCILLTOR_ADSR1 = 6
-    PAGE_OSCILLTOR_ADSR2 = 7
-    PAGE_OSCILLTOR_ADSR3 = 8
-    PAGE_OSCILLTOR_ADSR4 = 9
-    PAGE_FILTER = 10
-    PAGE_VCA = 11
-    PAGE_LOAD = 12
-    PAGE_SAVE = 13
-    PAGES = [PAGE_SOUND_MAIN, PAGE_SOUND_MODULATION, PAGE_OSCILLTOR_WAVE1, PAGE_OSCILLTOR_WAVE2, PAGE_OSCILLTOR_WAVE3, PAGE_OSCILLTOR_WAVE4, PAGE_OSCILLTOR_ADSR1, PAGE_OSCILLTOR_ADSR2, PAGE_OSCILLTOR_ADSR3, PAGE_OSCILLTOR_ADSR4, PAGE_FILTER, PAGE_VCA, PAGE_LOAD, PAGE_SAVE]
-    
+    PAGE_SOUND_MAIN       = 0
+    PAGE_ALGORITHM        = 1
+    PAGE_SOUND_MODULATION = 2
+    PAGE_OSCILLTOR_WAVE1  = 3
+    PAGE_OSCILLTOR_WAVE2  = 4
+    PAGE_OSCILLTOR_WAVE3  = 5
+    PAGE_OSCILLTOR_WAVE4  = 6
+    PAGE_WAVE_SHAPE       = 7
+    PAGE_OSCILLTOR_ADSR1  = 8
+    PAGE_OSCILLTOR_ADSR2  = 9
+    PAGE_OSCILLTOR_ADSR3  = 10
+    PAGE_OSCILLTOR_ADSR4  = 11
+    PAGE_FILTER           = 12
+    PAGE_VCA              = 13
+    PAGE_SAVE             = 14
+    PAGE_LOAD             = 15
+    PAGES = [
+        {'PAGE': PAGE_SOUND_MAIN, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_ALGORITHM, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_SOUND_MODULATION, 'EDITOR': [
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'AMPLITUDE', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_RATE_A', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_SCALE_A', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'BEND', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_RATE_B', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_SCALE_B', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_WAVE1, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'amplitude',    'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'feedback',     'OSCILLATOR': 0}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_WAVE2, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'amplitude',    'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'feedback',     'OSCILLATOR': 1}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_WAVE3, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'amplitude',    'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'feedback',     'OSCILLATOR': 2}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_WAVE4, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'amplitude',    'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'feedback',     'OSCILLATOR': 3}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_ADSR1, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'start_level',   'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'attack_time',   'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'decay_time',    'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'sustain_level', 'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'release_time',  'OSCILLATOR': 0},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'end_level',     'OSCILLATOR': 0}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_ADSR2, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'start_level',   'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'attack_time',   'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'decay_time',    'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'sustain_level', 'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'release_time',  'OSCILLATOR': 1},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'end_level',     'OSCILLATOR': 1}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_ADSR3, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'start_level',   'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'attack_time',   'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'decay_time',    'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'sustain_level', 'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'release_time',  'OSCILLATOR': 2},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'end_level',     'OSCILLATOR': 2}
+        ]},
+
+        {'PAGE': PAGE_OSCILLTOR_ADSR4, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'start_level',   'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'attack_time',   'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'decay_time',    'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'sustain_level', 'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'release_time',  'OSCILLATOR': 3},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'end_level',     'OSCILLATOR': 3}
+        ]},
+
+        {'PAGE': PAGE_FILTER, 'EDITOR': [
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'TYPE',       'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'FREQUENCY',  'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'RESONANCE',  'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'MODULATION', 'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'LFO_RATE',   'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'LFO_FQMAX',  'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_VCA, 'EDITOR': [
+            {'CATEGORY': None,  'PARAMETER': 'ATTACK',  'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'DECAY',   'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'SUSTAIN', 'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'RELEASE', 'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'CURSOR',  'OSCILLATOR': None},
+            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None},
+            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_SAVE, 'EDITOR': [
+            {'CATEGORY': None,   'PARAMETER': None,         'OSCILLATOR': None},
+            {'CATEGORY': 'SAVE', 'PARAMETER': 'BANK',       'OSCILLATOR': None},
+            {'CATEGORY': 'SAVE', 'PARAMETER': 'SOUND',      'OSCILLATOR': None},
+            {'CATEGORY': 'SAVE', 'PARAMETER': 'SOUND_NAME', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAVE', 'PARAMETER': 'CURSOR',     'OSCILLATOR': None},
+            {'CATEGORY': 'SAVE', 'PARAMETER': 'SAVE_SOUND', 'OSCILLATOR': None},
+            {'CATEGORY': None,   'PARAMETER': None,         'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_LOAD, 'EDITOR': [
+            {'CATEGORY': None,   'PARAMETER': None,         'OSCILLATOR': None},
+            {'CATEGORY': 'LOAD', 'PARAMETER': 'BANK',       'OSCILLATOR': None},
+            {'CATEGORY': 'LOAD', 'PARAMETER': 'SOUND',      'OSCILLATOR': None},
+            {'CATEGORY': 'LOAD', 'PARAMETER': 'SOUND_NAME', 'OSCILLATOR': None},
+            {'CATEGORY': 'LOAD', 'PARAMETER': 'CURSOR',     'OSCILLATOR': None},
+            {'CATEGORY': 'LOAD', 'PARAMETER': 'LOAD_SOUND', 'OSCILLATOR': None},
+            {'CATEGORY': None,   'PARAMETER': None,         'OSCILLATOR': None}
+        ]}
+    ]
+
+    DISPLAY_PAGE = 0
+
     # Page labels
     PAGE_LABELS = {
         PAGE_SOUND_MAIN      : 'SOUND MAIN           ',
-        PAGE_SOUND_MODULATION: 'SOUND MODULATION     ',
+        PAGE_ALGORITHM       : '',
+        PAGE_SOUND_MODULATION: '',
         PAGE_OSCILLTOR_WAVE1 : 'OSCW:[1]| 2 | 3 | 4  ',
         PAGE_OSCILLTOR_WAVE2 : 'OSCW: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_WAVE3 : 'OSCW: 1 | 2 |[3]| 4  ',
         PAGE_OSCILLTOR_WAVE4 : 'OSCW: 1 | 2 | 3 |[4] ',
+        PAGE_WAVE_SHAPE      : '',
         PAGE_OSCILLTOR_ADSR1 : 'OSCA:[1]| 2 | 3 | 4  ',
         PAGE_OSCILLTOR_ADSR2 : 'OSCA: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_ADSR3 : 'OSCA: 1 | 2 |[3]| 4  ',
         PAGE_OSCILLTOR_ADSR4 : 'OSCA: 1 | 2 | 3 |[4] ',
         PAGE_FILTER          : '',
         PAGE_VCA             : 'VCA                  ',
-        PAGE_LOAD            : 'LOAD                 ',
-        PAGE_SAVE            : 'SAVE                 '
+        PAGE_SAVE            : 'SAVE                 ',
+        PAGE_LOAD            : 'LOAD                 '
     }
     
     # Parameter attributes
-    DISP_PARAMTERS = {
+    DISP_PARAMETERS = {
         'SOUND': {
-            'BANK'       : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  36, 'y': 10, 'w': 98}},
-            'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  36, 'y': 19, 'w': 18}},
+            'BANK'       : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
+            'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
             'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
-            'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  36, 'y': 10, 'w': 98}},
-            'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  36, 'y': 10, 'w': 98}},
-            'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  36, 'y': 19, 'w': 98}},
-            'BEND'       : {PAGE_SOUND_MODULATION: {'label': 'BEND:', 'x':  36, 'y': 28, 'w': 98}},
-            'LFO_RATE_B' : {PAGE_SOUND_MODULATION: {'label': 'BdRT:', 'x':  36, 'y': 37, 'w': 98}},
-            'LFO_SCALE_B': {PAGE_SOUND_MODULATION: {'label': 'BdSC:', 'x':  36, 'y': 46, 'w': 98}},
-            'CURSOR'     : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  36, 'y': 55, 'w': 98}}
+            'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 98}},
+            'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
+            'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
+            'BEND'       : {PAGE_SOUND_MODULATION: {'label': 'BEND:', 'x':  30, 'y': 28, 'w': 98}},
+            'LFO_RATE_B' : {PAGE_SOUND_MODULATION: {'label': 'BdRT:', 'x':  30, 'y': 37, 'w': 98}},
+            'LFO_SCALE_B': {PAGE_SOUND_MODULATION: {'label': 'BdSC:', 'x':  30, 'y': 46, 'w': 98}},
+            'CURSOR'     : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
         
         'OSCILLATORS': {
             'algorithm'    : {
-                PAGE_SOUND_MAIN: {'label': 'ALGO:', 'x':  36, 'y': 28, 'w': 98},
-                PAGE_OSCILLTOR_WAVE1: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98},
-                PAGE_OSCILLTOR_ADSR1: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'ALGO:', 'x':  36, 'y': 10, 'w': 98}
+                PAGE_SOUND_MAIN: {'label': 'ALGO:', 'x':  30, 'y': 28, 'w': 98},
+                PAGE_OSCILLTOR_WAVE1: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}
             },
             'oscillator'   : {},
-            'waveshape'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'BANK:', 'x':  36, 'y': 19, 'w': 98}},
-            'frequency'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'BANK:', 'x':  36, 'y': 28, 'w': 98}},
-            'freq_decimal' : {PAGE_OSCILLTOR_WAVE1: {'label': 'BANK:', 'x':  36, 'y': 37, 'w': 98}},
-            'amplitude'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'BANK:', 'x':  36, 'y': 46, 'w': 98}},
-            'feedback'     : {PAGE_OSCILLTOR_WAVE1: {'label': 'BANK:', 'x':  36, 'y': 55, 'w': 98}},
+            'waveshape'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'WAVE:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'WAVE:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'WAVE:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'WAVE:', 'x':  30, 'y': 19, 'w': 98}},
+            'frequency'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'FREQ:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'FREQ:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'FREQ:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'FREQ:', 'x':  30, 'y': 28, 'w': 98}},
+            'freq_decimal' : {PAGE_OSCILLTOR_WAVE1: {'label': 'DETU:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'DETU:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'DETU:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'DETU:', 'x':  30, 'y': 37, 'w': 98}},
+            'amplitude'    : {PAGE_OSCILLTOR_WAVE1: {'label': 'LEVL:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'LEVL:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'LEVL:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'LEVL:', 'x':  30, 'y': 46, 'w': 98}},
+            'feedback'     : {PAGE_OSCILLTOR_WAVE1: {'label': 'FDBK:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'FDBK:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'FDBK:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'FDBK:', 'x':  30, 'y': 55, 'w': 98}},
 
-            'start_level'  : {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 19, 'w': 98}},
-            'attack_time'  : {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 28, 'w': 98}},
-            'decay_time'   : {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 37, 'w': 98}},
-            'sustain_level': {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 46, 'w': 98}},
-            'release_time' : {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 55, 'w': 98}},
-            'end_level'    : {PAGE_OSCILLTOR_ADSR1: {'label': 'BANK:', 'x':  36, 'y': 64, 'w': 98}}
+            'start_level'  : {PAGE_OSCILLTOR_ADSR1: {'label': 'StLv:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'StLv:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'StLv:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'StLv:', 'x':  30, 'y': 10, 'w': 98}},
+            'attack_time'  : {PAGE_OSCILLTOR_ADSR1: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}},
+            'decay_time'   : {PAGE_OSCILLTOR_ADSR1: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}},
+            'sustain_level': {PAGE_OSCILLTOR_ADSR1: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}},
+            'release_time' : {PAGE_OSCILLTOR_ADSR1: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}},
+            'end_level'    : {PAGE_OSCILLTOR_ADSR1: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}}
         },
 
         'FILTER': {
-            'TYPE'      : {PAGE_FILTER: {'label': 'FILT:', 'x':  36, 'y':  1, 'w': 98}},
-            'FREQUENCY' : {PAGE_FILTER: {'label': 'BANK:', 'x':  36, 'y': 10, 'w': 98}},
-            'RESONANCE' : {PAGE_FILTER: {'label': 'BANK:', 'x':  36, 'y': 19, 'w': 98}},
-            'MODULATION': {PAGE_FILTER: {'label': 'BANK:', 'x':  36, 'y': 28, 'w': 98}},
-            'LFO_RATE'  : {PAGE_FILTER: {'label': 'BANK:', 'x':  36, 'y': 37, 'w': 98}},
-            'LFO_FQMAX' : {PAGE_FILTER: {'label': 'BANK:', 'x':  36, 'y': 46, 'w': 98}},
-            'CURSOR'    : {PAGE_FILTER: {'label': 'CURS:', 'x':  36, 'y': 55, 'w': 98}}
+            'TYPE'      : {PAGE_FILTER: {'label': 'FILT:', 'x':  30, 'y':  1, 'w': 98}},
+            'FREQUENCY' : {PAGE_FILTER: {'label': 'FREQ:', 'x':  30, 'y': 10, 'w': 98}},
+            'RESONANCE' : {PAGE_FILTER: {'label': 'RESO:', 'x':  30, 'y': 19, 'w': 98}},
+            'MODULATION': {PAGE_FILTER: {'label': 'MODU:', 'x':  30, 'y': 28, 'w': 98}},
+            'LFO_RATE'  : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
+            'LFO_FQMAX' : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
+            'CURSOR'    : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
 
         'VCA': {
-            'ATTACK' : {PAGE_VCA: {'label': 'BANK:', 'x':  36, 'y': 10, 'w': 98}},
-            'DECAY'  : {PAGE_VCA: {'label': 'BANK:', 'x':  36, 'y': 19, 'w': 98}},
-            'SUSTAIN': {PAGE_VCA: {'label': 'BANK:', 'x':  36, 'y': 28, 'w': 98}},
-            'RELEASE': {PAGE_VCA: {'label': 'BANK:', 'x':  36, 'y': 37, 'w': 98}},
-            'CURSOR' : {PAGE_VCA: {'label': 'CURS:', 'x':  36, 'y': 46, 'w': 98}}
+            'ATTACK' : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
+            'DECAY'  : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
+            'SUSTAIN': {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
+            'RELEASE': {PAGE_VCA: {'label': 'SuRs:', 'x':  30, 'y': 37, 'w': 98}},
+            'CURSOR' : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}}
+        },
+        
+        'SAVE': {
+            'BANK'      : {PAGE_SAVE: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
+            'SOUND'     : {PAGE_SAVE: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 98}},
+            'SOUND_NAME': {PAGE_SAVE: {'label': 'NAME:', 'x':  30, 'y': 28, 'w': 98}},
+            'CURSOR'    : {PAGE_SAVE: {'label': 'CURS:', 'x':  30, 'y': 37, 'w': 98}},
+            'SAVE_SOUND': {PAGE_SAVE: {'label': 'TASK:', 'x':  30, 'y': 46, 'w': 98}}
+        },
+        
+        'LOAD': {
+            'BANK'      : {PAGE_LOAD: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
+            'SOUND'     : {PAGE_LOAD: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 98}},
+            'SOUND_NAME': {PAGE_LOAD: {'label': 'NAME:', 'x':  30, 'y': 28, 'w': 98}},
+            'CURSOR'    : {PAGE_LOAD: {'label': 'CURS:', 'x':  30, 'y': 37, 'w': 98}},
+            'LOAD_SOUND': {PAGE_LOAD: {'label': 'TASK:', 'x':  30, 'y': 46, 'w': 98}}
         }
     }
-    
+
+    # Algorithm chart
+    ALGOLITHM = [
+        [	# 0|<1>*2
+            '',
+            '',
+            '',
+            '<1>-->2-->',
+            '',
+            '',
+            ''
+        ],
+        [	# 1|<1>+2
+            '',
+            '',
+            '<1>--',
+            '     +-->',
+            ' 2---',
+            '',
+            ''
+        ],
+        [	# 2|<1>+2+<3>+4
+            '<1>--',
+            '     +',
+            ' 2---',
+            '     +-->',
+            '<3>--',
+            '     +',
+            ' 4---'
+        ],
+        [	# 3|(<1>+2*3)*4
+            '',
+            '',
+            '<1>-----',
+            '        +-->4',
+            ' 2-->3--',
+            '',
+            ''
+        ],
+        [	# 4|<1>*2*3*4
+            '',
+            '',
+            '',
+            '<1>-->2-->3-->4',
+            '',
+            '',
+            ''
+        ],
+        [	# 5|<1>*2+<3>*4
+            '',
+            '',
+            '<1>-->2--',
+            '         +-->',
+            '<3>-->4--',
+            '',
+            ''
+        ],
+        [	# 6|<1>+2*3*4
+            '',
+            '<1>---------',
+            '            +-->',
+            ' 2-->3-->4--',
+            '',
+            '',
+            ''
+        ],
+        [	# 7|<1>+2*3+4']
+            '',
+            '<1>-----',
+            '        +',
+            ' 2-->3--+-->',
+            '        +',
+            ' 4------',
+            ''
+        ]
+    ]
+
     def __init__(self):
         self.init_sdcard()
 
@@ -2300,40 +2754,91 @@ class Application_class:
 
     # Start display
     def start(self):
-        pass
+        self.splush_screen()
+
+    # Splush screen
+    def splush_screen(self):
+        display.fill(1)
+        display.text('PicoFM Synth', 0, 15, 0, 2)
+        display.text('(C) 2025 S.Ohira', 15, 35, 0)
+        display.show()
 
     # Display a page
-    def show_OLED_page(self, page_no):
+    def show_OLED_page(self, page_no=None):
+        # Show the current page
+        if page_no is None:
+            page_no = Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE']
+        
+        # Show the page
         page_no = page_no % len(Application_class.PAGES)
         display.fill(0)
         label = Application_class.PAGE_LABELS[page_no]
-        display.text(label, 0, 1, 1)
-        for category in Application_class.DISP_PARAMTERS.keys():
+        if len(label) > 0:
+            display.text(label, 0, 1, 1)
+        
+        # ALGORITHM custom page
+        if   page_no == Application_class.PAGE_ALGORITHM:
+            algorithm = SynthIO.wave_parameter(-1)['algorithm']
+#            print('DISP ALGORITHM CHART:', algorithm)
+            chart = Application_class.ALGOLITHM[algorithm]
+            y = 0
+            for data in chart:
+                display.show_message(data, 0, y, 128, 9, 1)
+#                print('  y:', y, data)
+                y += 9
+                
+            display.show()
+            return
+        
+        # WAVE SHAPE custom page
+        elif page_no == Application_class.PAGE_WAVE_SHAPE:
+#            print('DISPWAVE SHAPE')
+            self.show_OLED_waveshape()
+            return
+
+        # Show normal pages
+        for category in Application_class.DISP_PARAMETERS.keys():
             # Oscillators
             if category == 'OSCILLATORS':
-                for parm in Application_class.DISP_PARAMTERS[category].keys():
-                    for page in Application_class.DISP_PARAMTERS[category][parm].keys():
+                for parm in Application_class.DISP_PARAMETERS[category].keys():
+                    for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                        # The page to show
                         if page == page_no:
-                            disp = Application_class.DISP_PARAMTERS[category][parm][page]
+                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
                             display.show_message(disp['label'], 0, disp['y'], 40, 9, 1)
+                            
+                            # Algorithm
                             if parm == 'algorithm':
                                 data = SynthIO.get_formatted_parameter(category, parm, -1)
-                                display.show_message(disp['label'], disp['x'], disp['y'], disp['w'], 9, 1)
-                                
+                                display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
+#                                print('===DISP algorithm:', data)
+                            
+                            # Other parameters
                             else:
                                 for oscillator in list(range(4)):
                                     data = SynthIO.get_formatted_parameter(category, parm, oscillator)
-                                    display.show_message(disp['label'], disp['x'] + oscillator * 24, disp['y'], disp['w'], 9, 1)
-                
+                                    if oscillator < 3:
+                                        data = data + '|'
+                                    display.show_message(data, disp['x'] + oscillator * 24, disp['y'], disp['w'], 9, 1)
+#                                    print('DISP OSC:', oscillator, data)
+
             # Others
             else:
-                for parm in Application_class.DISP_PARAMTERS[category].keys():
-                   for page in Application_class.DISP_PARAMTERS[category][parm].keys():
-                        if page == page_no:
-                            disp = Application_class.DISP_PARAMTERS[category][parm][page]
-                            display.show_message(disp['label'], 0, disp['y'], 30, 9, 1)
+                for parm in Application_class.DISP_PARAMETERS[category].keys():
+                   for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                        if page == page_no:                            
+                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
+                            
+                            # Show label
+                            if len(disp['label']) > 0:
+                                display.show_message(disp['label'], 0, disp['y'], 30, 9, 1)
+                            
+                            # Show data
                             data = SynthIO.get_formatted_parameter(category, parm)
                             display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
+                            
+                            if category == 'SAVE':
+                                print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
 
         display.show()
 
@@ -2362,26 +2867,122 @@ class Application_class:
 
             display.show()
 
+    def find_cursor_on_page(self, page_no):
+        for page in Application_class.PAGES:
+            if page['PAGE'] == page_no:
+                editor = page['EDITOR']
+                for parameter in editor:
+                    if parameter['PARAMETER'] == 'CURSOR':
+                        return parameter['CATEGORY']
+                
+        return None
+
+    # Treat 8encoder events
+    def task_8encoder(self):
+        # Change the editor page
+        for rot in list(range(8)):
+            # Slide switch
+            if M5Stack_8Encoder_class.status['on_change']['switch']:
+                print('SSW:', M5Stack_8Encoder_class.status['switch'])
+            
+            # Rotary encoders
+            if M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rot]:
+                inc = 1 if M5Stack_8Encoder_class.status['rotary_inc'][rot] <= 127 else -1
+                print('ROT:', rot, M5Stack_8Encoder_class.status['rotary_inc'][rot], inc)
+                
+                # Change the current page
+                if rot == 7:
+                    Application_class.DISPLAY_PAGE = (Application_class.DISPLAY_PAGE + inc) % len(Application_class.PAGES)
+                    self.show_OLED_page()
+                    
+                # Increment a value
+                else:
+                    editor = Application_class.PAGES[Application_class.DISPLAY_PAGE]['EDITOR'][rot]
+                    category = editor['CATEGORY']
+                    parameter = editor['PARAMETER']
+                    oscillator = editor['OSCILLATOR']
+                    if category is not None and parameter is not None and inc != 0:
+
+                        # Find a cursor data on the page
+                        if oscillator is None:
+                            data_attr = SynthIO._params_attr[category][parameter]
+                            data_type = data_attr['TYPE']
+                            print('DATAATR:', data_attr, category, parameter)
+                            if data_type != SynthIO_class.TYPE_INDEX:
+                                dataset = SynthIO.synthio_parameter(category)
+                                print('DATASET:', dataset, parameter)
+                                if parameter in dataset and 'CURSOR' in dataset:
+                                    cursor_pos = dataset['CURSOR']
+
+                                    data_view = data_attr['VIEW']
+                                    data_view = data_view[:-1]
+                                    data_view = data_view[data_view.find(':')+1:]
+                                    
+                                    # Floating point
+                                    if data_view[-1] == 'f':
+                                        data_view = data_view[:-1]
+                                        data_form = data_view.split('.')
+                                        total_len = int(data_form[0])
+                                        decimal_len = int(data_form[1])
+                                        decimal_point = total_len - decimal_len - 1
+                                        if cursor_pos < total_len and cursor_pos != decimal_point:
+                                            if cursor_pos < decimal_point:
+                                                inc = (decimal_point - cursor_pos - 1, inc)
+                                            else:
+                                                inc = (decimal_point - cursor_pos, inc)
+                                        else:
+                                            inc = None
+
+                                    # Integer
+                                    elif data_view[-1] == 'd':
+                                        data_view = data_view[:-1]
+                                        total_len = int(data_view)
+                                        inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc
+
+                                    # String
+                                    elif data_view[-1] == 's':
+                                        data_view = data_view[:-1]
+                                        total_len = int(data_view)
+                                        inc = None if cursor_pos >= total_len else (cursor_pos, inc)
+                                    
+                                    # Unknown
+                                    else:
+                                        inc = None                            
+
+                        # Update the parameter
+                        if inc is not None:
+                            print('INCREMENT:', inc, parameter, oscillator)
+                            SynthIO.increment_value(inc, category, parameter, oscillator)
+
+                            if category != 'SAVE' and category != 'LOAD':
+                                SynthIO.setup_synthio()
+                            
+                            self.show_OLED_page()
+
+################# End of Applicatio  Class Definition #################
+
+
 #########################
 ######### MAIN ##########
 #########################
 if __name__=='__main__':
 
+    # I2C0: SSD1306 and 8Encoder are on the lines
     i2c0 = busio.I2C(board.GP1, board.GP0)		# I2C-0 (SCL, SDA)
+    
+    # OLED SSD1306
     display = OLED_SSD1306_class(i2c0, 0x3C, 128, 64)
     device_oled = adafruit_ssd1306.SSD1306_I2C(display.width(), display.height(), display.i2c())
     display.init_device(device_oled)
-    display.fill(1)
-    display.text('PicoFM Synth', 0, 15, 0, 2)
-    display.text('(C) 2025 S.Ohira', 15, 35, 0)
-    display.text('01234567890123456789012345', 0, 0, 0)
-    display.show()
+
+    # 8Encoder
+    Encoder_obj = M5Stack_8Encoder_class(i2c0)
 
     SynthIO = None
 
     # Create an Application object
     Application = Application_class()
-
+ 
     # Create a FM waveshape generator object
     FM_Waveshape = FM_Waveshape_class()
 
@@ -2396,6 +2997,7 @@ if __name__=='__main__':
     
     # Seach a USB MIDI device to connect
     MIDI_obj.look_for_usb_midi_device()
+    Application.show_OLED_page()
 
     #####################################################
     # Start application
