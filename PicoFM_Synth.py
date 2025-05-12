@@ -39,6 +39,10 @@
 #            8Encoder is available.
 #            Show parameter pages and edit the parameters.
 #
+#     0.0.6: 05/12/2025
+#            Pause the audio during refresh the OLED (show()) to avoid loud noise.
+#            Change value depends on the slide switch (SW=0-->1, SW=1-->5)
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -316,7 +320,9 @@ class OLED_SSD1306_class:
 
     def show(self):
         if self.is_available():
+            SynthIO.audio_pause()
             self._display.show()
+            SynthIO.audio_pause(False)
 
 #    def clear(self, color=0, refresh=True):
 #        self.fill(color)
@@ -1140,6 +1146,9 @@ class SynthIO_class:
         '^           ', ' ^          ', '  ^         ', '   ^        ', '    ^       ', '     ^      ',
         '      ^     ', '       ^    ', '        ^   ', '         ^  ', '          ^ ', '           ^'
     ]
+    VIEW_CHARACTER = [ord(' ')]
+    VIEW_CHARACTER = VIEW_CHARACTER + list(range(ord('0'), ord('9') + 1)) + list(range(ord('A'), ord('Z') + 1)) + list(range(ord('a'), ord('z') + 1))
+    VIEW_SOUND_FILES = []
 
     def __init__(self):
         # I2S on Audio
@@ -1248,8 +1257,8 @@ class SynthIO_class:
         # Parameter attributes
         self._params_attr = {
             'SOUND': {
-                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
-                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
                 'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
@@ -1304,16 +1313,16 @@ class SynthIO_class:
             },
         
             'SAVE': {
-                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
-                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME': {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
                 'CURSOR'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s12) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s12},
                 'SAVE_SOUND': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_SAVE_SOUND) - 1, 'VIEW': SynthIO_class.VIEW_SAVE_SOUND}
             },
             
             'LOAD': {
-                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:3d}'},
-                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'BANK'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME': {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
                 'CURSOR'    : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s12) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s12},
                 'LOAD_SOUND': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_LOAD_SOUND) - 1, 'VIEW': SynthIO_class.VIEW_LOAD_SOUND}
@@ -1333,6 +1342,15 @@ class SynthIO_class:
         # Set up the synthio with the current parameters
         self.setup_synthio()
 
+    def audio_pause(self, set_pause=True):
+        if set_pause:
+            self.audio.pause()
+        else:
+            self.audio.resume()
+
+    def mixer_voice_level(self, volume):
+        self.mixer.voice[0].level = volume
+        
     # Get synthio.Synthesizer object
     def synth(self):
         return self._synth
@@ -1404,6 +1422,16 @@ class SynthIO_class:
             if parameter in params:
                 value = params[parameter]
                 attr  = self._params_attr[category][parameter]
+                
+                if category == 'LOAD' and parameter == 'SOUND':
+                    if value < 0:
+                        return '<NO FILE>'
+                    
+                    return SynthIO_class.VIEW_SOUND_FILES[value]
+                
+                if category == 'SAVE' and parameter == 'SOUND':
+                    sound_name = self.get_sound_name_of_file(params['BANK'], params[parameter])
+                    disp = attr['VIEW'].format(value) + ':' + sound_name
             
             else:
                 return '?'
@@ -2104,7 +2132,7 @@ class SynthIO_class:
 
                 self.load_parameter_file(0, test_count)
                 self.setup_synthio()
-#                self.save_parameter_file(0, test_count)
+                self.save_parameter_file(1, 0)
                 
                 print('====================')
                 print('ALGO=', algo)
@@ -2234,6 +2262,7 @@ class SynthIO_class:
     #     TYPE_FLOAT: (cursor >=0:INT, <=-1:DECIMAL, increment value for a digit)
     #     TYPE_STRING: (cursor, increment value for chr)
     def increment_value(self, delta, category, parameter, oscillator=None):
+        print('INC DELTA=', delta)
         # Oscillator category parameter
         if category == 'OSCILLATORS' and oscillator is not None:
             data_set = self.wave_parameter(oscillator)
@@ -2245,9 +2274,20 @@ class SynthIO_class:
         # Parameter attributes
         data_value = data_set[parameter]
         data_attr  = self._params_attr[category][parameter]
-        
+
+        # LOAD-SOUND:
+        if   category == 'LOAD' and parameter == 'SOUND':
+            if data_value >= 0:
+                direction = 1 if delta > 0 else -1
+                max_files = len(SynthIO_class.VIEW_SOUND_FILES)
+                next_value = (data_value + direction) % max_files
+                while next_value != data_value and len(SynthIO_class.VIEW_SOUND_FILES[next_value]) < 5:
+                    next_value = (next_value + direction) % max_files
+                        
+                data_value = next_value if len(SynthIO_class.VIEW_SOUND_FILES[next_value]) >= 5 else -1
+
         # Increment Integer
-        if   data_attr['TYPE'] == SynthIO_class.TYPE_INT or data_attr['TYPE'] == SynthIO_class.TYPE_INDEX:
+        elif data_attr['TYPE'] == SynthIO_class.TYPE_INT or data_attr['TYPE'] == SynthIO_class.TYPE_INDEX:
             data_value = data_value + delta
             if data_value < data_attr['MIN']:
                 data_value = data_attr['MAX']
@@ -2277,10 +2317,14 @@ class SynthIO_class:
                     for i in list(range(data_attr['MAX'] - len(data_value))):
                         data_value += ' '
                     
-                    ch = data_value[cur]
-                    ch = chr(ord(ch) + inc)
-                    data_value = data_value[:cur] + ch + data_value[cur+1:]
-                    print('INCED:', parameter, data_value)
+                    ch = ord(data_value[cur])
+                    if ch in SynthIO_class.VIEW_CHARACTER:
+                        ch_index = SynthIO_class.VIEW_CHARACTER.index(ch)
+                        ch_index = (ch_index + inc) % len(SynthIO_class.VIEW_CHARACTER)
+                        ch = chr(SynthIO_class.VIEW_CHARACTER[ch_index])
+                        data_value = data_value[:cur] + ch + data_value[cur+1:]
+                        print('VCHAR:', SynthIO_class.VIEW_CHARACTER)
+                        print('INCED:', parameter, ch_index, SynthIO_class.VIEW_CHARACTER[ch_index], ch, data_value)
 
         data_set[parameter] = data_value
 
@@ -2324,8 +2368,10 @@ class SynthIO_class:
     # Save parameter file
     def save_parameter_file(self, bank, sound):
         try:
-            with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json', 'w') as f:
+            file_name = '/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json'
+            with open(file_name, 'w') as f:
                 json.dump(self.synthio_parameter(), f)
+                print('SAVED:', file_name)
                 f.close()
 
         except Exception as e:
@@ -2336,7 +2382,8 @@ class SynthIO_class:
     def get_sound_name_of_file(self, bank, sound):
         sound_name = '<NEW FILE>  '
         try:
-            with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(number) + '.json', 'r') as f:
+            file_name = '/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json'
+            with open(file_name, 'r') as f:
                 file_data = json.load(f)
                 f.close()
 
@@ -2356,11 +2403,12 @@ class SynthIO_class:
 #        print('SEARCH:', bank, name)
         
         # List all file numbers
-        sound_files = []
+        SynthIO_class.VIEW_SOUND_FILES = []
         for filenum in list(range(1000)):
-            sound_files.append('{:03d}:'.format(filenum))
+            SynthIO_class.VIEW_SOUND_FILES.append('{:03d}:'.format(filenum))
 
         # Search files
+        finds = 0
         path_files = os.listdir('/sd/SYNTH/SOUND/BANK' + str(bank))
 #        print('FILES:', path_files)
         for pf in path_files:
@@ -2376,11 +2424,12 @@ class SynthIO_class:
                                 if 'SOUND_NAME' in file_data['SOUND'].keys():
                                     sound_name = file_data['SOUND']['SOUND_NAME']
                                     if len(name) <= 3 or sound_name.find(name) >= 0:
-                                        sound_files[filenum] = sound_files[filenum] + sound_name
+                                        finds += 1
+                                        SynthIO_class.VIEW_SOUND_FILES[filenum] = SynthIO_class.VIEW_SOUND_FILES[filenum] + sound_name
                                         
                             f.close()
 
-        return sound_files
+        return finds
         
 ################# End of SynthIO Class Definition #################
 
@@ -2410,8 +2459,8 @@ class Application_class:
         {'PAGE': PAGE_SOUND_MAIN, 'EDITOR': [
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
@@ -2756,6 +2805,12 @@ class Application_class:
     def start(self):
         self.splush_screen()
 
+        # Sound file search
+        dataset = SynthIO.synthio_parameter('LOAD')
+        finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
+        print('SOUND FILES:', finds, SynthIO_class.VIEW_SOUND_FILES)
+        SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
+
     # Splush screen
     def splush_screen(self):
         display.fill(1)
@@ -2765,6 +2820,8 @@ class Application_class:
 
     # Display a page
     def show_OLED_page(self, page_no=None):
+#        SynthIO.mixer_voice_level(0.0)
+        
         # Show the current page
         if page_no is None:
             page_no = Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE']
@@ -2788,12 +2845,14 @@ class Application_class:
                 y += 9
                 
             display.show()
+#            SynthIO.mixer_voice_level(0.4)
             return
         
         # WAVE SHAPE custom page
         elif page_no == Application_class.PAGE_WAVE_SHAPE:
 #            print('DISPWAVE SHAPE')
             self.show_OLED_waveshape()
+#            SynthIO.mixer_voice_level(0.4)
             return
 
         # Show normal pages
@@ -2841,6 +2900,7 @@ class Application_class:
                                 print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
 
         display.show()
+#        SynthIO.mixer_voice_level(0.4)
 
 
     # Display the current wave shape on the OLED
@@ -2879,11 +2939,17 @@ class Application_class:
 
     # Treat 8encoder events
     def task_8encoder(self):
+        # Increment magnification
+        Encoder_obj.i2c_lock()
+        inc_magni = 1 if Encoder_obj.get_switch() == 0 else 5
+        Encoder_obj.i2c_unlock()
+        
         # Change the editor page
         for rot in list(range(8)):
             # Slide switch
             if M5Stack_8Encoder_class.status['on_change']['switch']:
-                print('SSW:', M5Stack_8Encoder_class.status['switch'])
+                inc_magni = 1 if M5Stack_8Encoder_class.status['switch'] == 0 else 5
+                print('SSW:', M5Stack_8Encoder_class.status['switch'], inc_magni)
             
             # Rotary encoders
             if M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rot]:
@@ -2904,9 +2970,9 @@ class Application_class:
                     if category is not None and parameter is not None and inc != 0:
 
                         # Find a cursor data on the page
+                        data_attr = SynthIO._params_attr[category][parameter]
+                        data_type = data_attr['TYPE']
                         if oscillator is None:
-                            data_attr = SynthIO._params_attr[category][parameter]
-                            data_type = data_attr['TYPE']
                             print('DATAATR:', data_attr, category, parameter)
                             if data_type != SynthIO_class.TYPE_INDEX:
                                 dataset = SynthIO.synthio_parameter(category)
@@ -2927,9 +2993,9 @@ class Application_class:
                                         decimal_point = total_len - decimal_len - 1
                                         if cursor_pos < total_len and cursor_pos != decimal_point:
                                             if cursor_pos < decimal_point:
-                                                inc = (decimal_point - cursor_pos - 1, inc)
+                                                inc = (decimal_point - cursor_pos - 1, inc * inc_magni)
                                             else:
-                                                inc = (decimal_point - cursor_pos, inc)
+                                                inc = (decimal_point - cursor_pos, inc * inc_magni)
                                         else:
                                             inc = None
 
@@ -2937,24 +3003,58 @@ class Application_class:
                                     elif data_view[-1] == 'd':
                                         data_view = data_view[:-1]
                                         total_len = int(data_view)
-                                        inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc
+                                        inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
 
                                     # String
                                     elif data_view[-1] == 's':
                                         data_view = data_view[:-1]
                                         total_len = int(data_view)
-                                        inc = None if cursor_pos >= total_len else (cursor_pos, inc)
+                                        inc = None if cursor_pos >= total_len else (cursor_pos, inc * inc_magni)
                                     
                                     # Unknown
                                     else:
-                                        inc = None                            
+                                        inc = None
+                        
+                        # Oscillators
+                        else:
+                            if data_type == SynthIO_class.TYPE_INT:
+                                inc = inc * inc_magni
 
                         # Update the parameter
                         if inc is not None:
                             print('INCREMENT:', inc, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
 
-                            if category != 'SAVE' and category != 'LOAD':
+                            # Tasks after updated a parameter
+                            dataset = SynthIO.synthio_parameter(category)
+                            
+                            # Save a sound file page
+                            if   category == 'SAVE':
+                                save_sound = SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE_SOUND']]
+                                print('TASK CATEGORY SAVE:', save_sound)
+                                if save_sound == 'SAVE':
+                                    SynthIO.synthio_parameter('SOUND', {'BANK': dataset['BANK'], 'SOUND': dataset['SOUND'], 'SOUND_NAME': dataset['SOUND_NAME']})
+                                    SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
+                                    SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
+                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
+
+                            # Load a sound file page
+                            elif category == 'LOAD':
+                                load_sound = SynthIO_class.VIEW_LOAD_SOUND[dataset['LOAD_SOUND']]
+                                if   load_sound == 'LOAD':
+                                    SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
+                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
+                                    finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
+                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
+                                    
+                                elif load_sound == 'SEARCH' or parameter == 'BANK':
+                                    finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
+                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
+                                    
+                            # Sound parameter pages
+                            else:
                                 SynthIO.setup_synthio()
                             
                             self.show_OLED_page()
