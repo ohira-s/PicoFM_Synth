@@ -42,6 +42,10 @@
 #     0.0.6: 05/12/2025
 #            Pause the audio during refresh the OLED (show()) to avoid loud noise.
 #            Change value depends on the slide switch (SW=0-->1, SW=1-->5)
+#            SAVE/LOAD parameters into a SD card.
+#
+#     0.0.7: 05/12/2025
+#            Delete the sound play for debug.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -101,21 +105,6 @@ import supervisor
 i2s_bclk = board.GP9  # BCK on PCM5102 (connect PCM5102 SCK pin to Gnd)
 i2s_wsel = board.GP10 # LCK on PCM5102	I2C SDA
 i2s_data = board.GP11 # DIN on PCM5102	I2C SCL
-
-
-##########################################
-# synthio in async task
-##########################################
-async def play_synthio():
-    start = True
-    while True:
-        if start:
-            SynthIO.play_test_waves()
-            start = False
-            
-        # Gives away process time to the other tasks.
-        # If there is no task, let give back process time to me.
-        await asyncio.sleep(0.0)
 
 
 ##########################################
@@ -255,11 +244,10 @@ async def get_8encoder():
 # Asyncronous functions
 ##########################################
 async def main():
-    interrupt_play_synthio = asyncio.create_task(play_synthio())
     interrupt_midi_in = asyncio.create_task(midi_in())
     interrupt_get_8encoder = asyncio.create_task(get_8encoder())
   
-    await asyncio.gather(interrupt_play_synthio, interrupt_midi_in, interrupt_get_8encoder)
+    await asyncio.gather(interrupt_midi_in, interrupt_get_8encoder)
 
 
 ########################
@@ -1162,6 +1150,7 @@ class SynthIO_class:
         #   Smaller buffer is better due to avoid delay playing sounds.
         self.mixer = audiomixer.Mixer(channel_count=1, sample_rate=FM_Waveshape_class.SAMPLE_RATE, buffer_size=2048)
         self.audio.play(self.mixer)
+        self.audio_pause()
         self.mixer.voice[0].play(self._synth)
         self.mixer.voice[0].level = 0.4
 
@@ -1341,6 +1330,7 @@ class SynthIO_class:
         
         # Set up the synthio with the current parameters
         self.setup_synthio()
+        self.audio_pause(False)
 
     def audio_pause(self, set_pause=True):
         if set_pause:
@@ -1726,515 +1716,6 @@ class SynthIO_class:
         self.generate_filter()
         self._synth.envelope = self._envelope_vca
 
-        # CODES FOR TEST
-        self.test_waves = [
-            [ {'algorithm': 0},		# 0: Recorder
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  0, 'feedback': 0,
-                    'start_level': 0.2, 'attack_time': 0, 'decay_time': 200,
-                    'sustain_level': 0.3, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 0, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 100, 'decay_time': 50,
-                    'sustain_level': 0.7, 'release_time': 100, 'end_level': 0.4
-                }
-            ],
-            
-            [ {'algorithm': 0},		# 1: Harmonica
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  3, 'freq_decimal':  5, 'amplitude':  28, 'feedback': 1,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  0, 'feedback': 0,
-                    'start_level': 0.2, 'attack_time': 0, 'decay_time': 200,
-                    'sustain_level': 0.3, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 0, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 100, 'decay_time': 50,
-                    'sustain_level': 0.7, 'release_time': 100, 'end_level': 0.4
-                }
-            ],
-            
-            [ {'algorithm': 2},		# 2: Organ
-                {
-                    'oscillator': 0, 'waveshape': 2, 'frequency': 7, 'freq_decimal':  1, 'amplitude':  80, 'feedback': 2,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency': 5, 'freq_decimal':  0, 'amplitude':  20, 'feedback': 0,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency': 3, 'freq_decimal': 12, 'amplitude':  35, 'feedback': 1,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency': 1, 'freq_decimal':  0, 'amplitude': 120, 'feedback': 0,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                }
-            ],
-            
-            [ {'algorithm': 5},		# 3: Church Organ
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  4, 'freq_decimal':  2, 'amplitude':  40, 'feedback': 1,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  85, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  3, 'freq_decimal':  2, 'amplitude':  12, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 170, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-            
-            [ {'algorithm': 1},		# 4: Electone
-                {
-                    'oscillator': 0, 'waveshape': 5, 'frequency':  4, 'freq_decimal':  2, 'amplitude': 128, 'feedback': 2,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 128, 'feedback': 0,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  3, 'freq_decimal':  0, 'amplitude': 0, 'feedback': 2,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 0, 'feedback': 0,
-                    'start_level': 0.3, 'attack_time': 50, 'decay_time': 100,
-                    'sustain_level': 0.5, 'release_time': 100, 'end_level': 0.0
-                }
-            ],
-
-            [ {'algorithm': 4},		# 5: Lead
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency': 3, 'freq_decimal': 18, 'amplitude': 22, 'feedback': 6,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency': 2, 'freq_decimal': 10, 'amplitude': 10, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 1, 'frequency': 2, 'freq_decimal': 20, 'amplitude': 29, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 1, 'frequency': 1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 3},		# 6: Brass
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  3, 'freq_decimal':  5, 'amplitude':  80, 'feedback': 6,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 3, 'frequency':  2, 'freq_decimal': 10, 'amplitude':  30, 'feedback': 8,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 2, 'frequency':  4, 'freq_decimal':  5, 'amplitude':  60, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 3, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 6},		# 7
-                {
-                    'oscillator': 0, 'waveshape': 2, 'frequency':  8, 'freq_decimal': 55, 'amplitude':  70, 'feedback':  8,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  3, 'freq_decimal':  0, 'amplitude':  62, 'feedback': 28,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal': 10, 'amplitude':   8, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 2, 'frequency':  1, 'freq_decimal':  5, 'amplitude': 185, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 7},		# 8
-                {
-                    'oscillator': 0, 'waveshape': 4, 'frequency':  9, 'freq_decimal': 50, 'amplitude': 100, 'feedback': 2,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 2, 'frequency':  7, 'freq_decimal':  0, 'amplitude':   4, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 4, 'frequency':  2, 'freq_decimal': 10, 'amplitude':  55, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 5, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 100, 'feedback': 2,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 3},		# 9
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency': 5, 'freq_decimal':  0, 'amplitude':  70, 'feedback': 5,
-                    'start_level': 0.0, 'attack_time': 100, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time':  50, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 1, 'frequency': 3, 'freq_decimal':  5, 'amplitude':  20, 'feedback': 0,
-                    'start_level': 0.0, 'attack_time': 100, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 250, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 1, 'frequency': 2, 'freq_decimal':  0, 'amplitude':  75, 'feedback': 0,
-                    'start_level': 0.0, 'attack_time': 100, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 250, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 1, 'frequency': 1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 5,
-                    'start_level': 0.0, 'attack_time': 100, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 250, 'end_level': 0.0
-                }
-            ],
-
-            [ {'algorithm': 6},		# 10
-                {
-                    'oscillator': 0, 'waveshape': 3, 'frequency': 8, 'freq_decimal':  0, 'amplitude':  15, 'feedback': 40,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 2, 'frequency': 4, 'freq_decimal':  0, 'amplitude':  60, 'feedback': 5,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 1, 'frequency': 1, 'freq_decimal': 10, 'amplitude':   8, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 2, 'frequency': 2, 'freq_decimal':  0, 'amplitude': 240, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 6},		# 11
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency': 3, 'freq_decimal': 38, 'amplitude':  90, 'feedback': 10,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 2, 'frequency': 3, 'freq_decimal': 20, 'amplitude':  64, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 3, 'frequency': 7, 'freq_decimal': 20, 'amplitude':  80, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency': 1, 'freq_decimal':  0, 'amplitude': 165, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 5},		# 12 Cymbal
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  7, 'freq_decimal': 50, 'amplitude': 150, 'feedback':  9,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 250,
-                    'sustain_level': 0.5, 'release_time': 0, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 6, 'frequency': 10, 'freq_decimal':  0, 'amplitude': 128, 'feedback':  0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 3, 'frequency':  7, 'freq_decimal': 30, 'amplitude':  50, 'feedback': 10,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 250,
-                    'sustain_level': 0.5, 'release_time': 0, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 6, 'frequency':  3, 'freq_decimal':  0, 'amplitude': 128, 'feedback':  0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 5},		# 13 Gun Shot 3
-                {
-                    'oscillator': 0, 'waveshape': 5, 'frequency': 3, 'freq_decimal': 30, 'amplitude':  20, 'feedback': 25,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 150,
-                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 5, 'frequency': 8, 'freq_decimal':  0, 'amplitude':  55, 'feedback':  0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 150,
-                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 6, 'frequency': 9, 'freq_decimal': 70, 'amplitude': 180, 'feedback':  8,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 5, 'frequency': 5, 'freq_decimal':  0, 'amplitude': 200, 'feedback':  0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ],
-
-            [ {'algorithm': 5},		# 14
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency': 3, 'freq_decimal': 50, 'amplitude': 150, 'feedback': 60,
-                    'start_level': 0.0, 'attack_time': 300, 'decay_time': 150,
-                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 6, 'frequency': 9, 'freq_decimal':  0, 'amplitude':  10, 'feedback':  0,
-                    'start_level': 0.0, 'attack_time': 300, 'decay_time': 150,
-                    'sustain_level': 0.4, 'release_time': 60, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 3, 'frequency': 9, 'freq_decimal': 60, 'amplitude':  50, 'feedback':  1,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 4, 'frequency': 3, 'freq_decimal': 10, 'amplitude': 245, 'feedback':  0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                }
-            ]
-        ]
-
-    def play_test_waves(self):
-        # Customise sound
-        self.synthio_parameter('SOUND', {
-            'AMPLITUDE'  : 0,
-            'LFO_RATE_A' : 23.0,
-            'LFO_SCALE_A': 0.7,
-            'BEND'       : 0,
-            'LFO_RATE_B' : 16.0,
-            'LFO_SCALE_B': 0.025
-        })
-
-        # Customise filter
-        self.synthio_parameter('FILTER', {
-            'TYPE': SynthIO_class.FILTER_PASS,
-            'FREQUENCY'      : 2100,
-            'RESONANCE'      : 1.1,
-            'MODULATION'     : 0,
-            'LFO_RATE'       : 0.1,
-            'LFO_FQMAX'      : 800,
-            'ADSR_INTERVAL'  : 100,
-            'ADSR_FQMAX'     : 1000,
-            'START_LEVEL'    : 0.5,
-            'ATTACK_TIME'    : 10,
-            'DECAY_TIME'     : 30,
-            'SUSTAIN_LEVEL'  : 0.6,
-            'SUSTAIN_RELEASE': 50,
-            'END_LEVEL'      : 0.0
-        })
-
-        # Customise VCA
-        self.synthio_parameter('VCA', {
-            'ATTACK_LEVEL' : 1.5,
-#            'ATTACK' : 0.2,
-            'ATTACK'       : 0.0,
-            'DECAY'        : 0.6,
-            'SUSTAIN'      : 0.4,
-            'RELEASE'      : 0.3
-#            'RELEASE': 1.6
-        })
-
-        test_pattern = len(self.test_waves) - 1
-        test_count = -1
-        play_waves = [3]
-        #play_waves = [test_pattern]
-        for fm_params in self.test_waves:
-            test_count += 1
-            if len(play_waves) == 0 or test_count in play_waves:
-                algo = -1
-                for parm in fm_params:
-                    if 'algorithm' in parm:
-                        algo = parm['algorithm']
-                        self.wave_parameter(-1, parm)
-                        
-                    else:
-                        self.wave_parameter(parm['oscillator'], parm)
-
-                self.load_parameter_file(0, test_count)
-                self.setup_synthio()
-                self.save_parameter_file(1, 0)
-                
-                print('====================')
-                print('ALGO=', algo)
-                print('--------------------')
-#                for amp in self.wave_shape():
-#                    print(amp)
-                
-                print('====================')
-
-                # A note
-                filter1 = self.filter()
-                filter2 = self.filter()
-                note1 = synthio.Note(frequency=330, filter=self.filter(filter1)['FILTER'], waveform=self.wave_shape())
-                note2 = synthio.Note(frequency=440, filter=self.filter(filter2)['FILTER'], waveform=self.wave_shape())
-                if SynthIO.lfo_sound_amplitude() is not None:
-                    note1.amplitude=SynthIO.lfo_sound_amplitude()
-                    note2.amplitude=SynthIO.lfo_sound_amplitude()
-
-                if SynthIO.lfo_sound_bend() is not None:
-                    note1.bend=SynthIO.lfo_sound_bend()
-                    note2.bend=SynthIO.lfo_sound_bend()
-
-                self._synth.press(note1)
-                time.sleep(1.0)
-                self._synth.press(note2)
-                time.sleep(1.0)
-                self._synth.release(note1)
-                time.sleep(1.0)
-                self._synth.release(note2)
-                
-                self.filter_release(filter1)
-                self.filter_release(filter2)
-
-        # Load default
-        self.load_parameter_file(0,3)
-
-        # Customise filter
-        self.synthio_parameter('FILTER', {
-            'TYPE': SynthIO_class.FILTER_LPF,
-            'FREQUENCY'      : 500,
-            'RESONANCE'      : 1.7,
-            'MODULATION'     : 0,
-            'LFO_RATE'       : 200,
-            'LFO_FQMAX'      : 5,
-            'ADSR_INTERVAL'  : 10,
-            'ADSR_FQMAX'     : 5000,
-            'START_LEVEL'    : 1.0,
-            'ATTACK_TIME'    : 0,
-            'DECAY_TIME'     : 15,
-            'SUSTAIN_LEVEL'  : 0.3,
-            'SUSTAIN_RELEASE': 70,
-            'END_LEVEL'      : 0.0
-        })
-        
-        self.synthio_parameter('SOUND', {
-            'AMPLITUDE'  : 1,
-            'LFO_RATE_A' : 3.0,
-            'LFO_SCALE_A': 0.2,
-            'BEND'       : 0,
-            'LFO_RATE_B' : 16.0,
-            'LFO_SCALE_B': 0.025
-        })
-
-        self.synthio_parameter('VCA', {
-            'ATTACK_LEVEL' : 2.0,
-            'ATTACK'       : 0.1,
-            'DECAY'        : 0.6,
-            'SUSTAIN'      : 0.6,
-            'RELEASE'      : 0.4
-        })
-
-        self.setup_synthio()
-
-#        for page in list(range(12)):
-#            Application.show_OLED_page(page)
-#            time.sleep(1.0)
-
-#        
-#        # A note
-#        filter1 = self.filter()
-#        filter2 = self.filter()
-#        note1 = synthio.Note(frequency=330, filter=self.filter(filter1)['FILTER'], waveform=self.wave_shape())
-#        note2 = synthio.Note(frequency=440, filter=self.filter(filter2)['FILTER'], waveform=self.wave_shape())
-#        if SynthIO.lfo_sound_amplitude() is not None:
-#            note2.amplitude=SynthIO.lfo_sound_amplitude()
-#
-#        if SynthIO.lfo_sound_bend() is not None:
-#            note2.bend=SynthIO.lfo_sound_bend()
-#
-#        self._synth.press(note1)
-#        time.sleep(1.0)
-#        self._synth.press(note2)
-#        time.sleep(1.0)
-#        self._synth.release(note1)
-#        time.sleep(1.0)
-#        self._synth.release(note2)
-#                
-#        self.filter_release(filter1)
-#        self.filter_release(filter2)
-        
-#        print('SOUND FILES=', self.find_sound_files(0,'NAME'))
-
     def view_value(self, category, parameter, oscillator=None):
         # Oscillator category parameter
         if category == 'OSCILLATORS' and oscillator is not None:
@@ -2262,7 +1743,7 @@ class SynthIO_class:
     #     TYPE_FLOAT: (cursor >=0:INT, <=-1:DECIMAL, increment value for a digit)
     #     TYPE_STRING: (cursor, increment value for chr)
     def increment_value(self, delta, category, parameter, oscillator=None):
-        print('INC DELTA=', delta)
+#        print('INC DELTA=', delta)
         # Oscillator category parameter
         if category == 'OSCILLATORS' and oscillator is not None:
             data_set = self.wave_parameter(oscillator)
@@ -2415,19 +1896,17 @@ class SynthIO_class:
 #            print('FILE=', pf)
             if pf[-5:] == '.json':
                 if pf[0:4] == 'PFMS':
-                    bk = int(pf[4])
-                    if bk == bank:
-                        filenum = int(pf[5:7])
-                        with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/' + pf, 'r') as f:
-                            file_data = json.load(f)
-                            if 'SOUND' in file_data.keys():
-                                if 'SOUND_NAME' in file_data['SOUND'].keys():
-                                    sound_name = file_data['SOUND']['SOUND_NAME']
-                                    if len(name) <= 3 or sound_name.find(name) >= 0:
-                                        finds += 1
-                                        SynthIO_class.VIEW_SOUND_FILES[filenum] = SynthIO_class.VIEW_SOUND_FILES[filenum] + sound_name
-                                        
-                            f.close()
+                    filenum = int(pf[4:7])
+                    with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/' + pf, 'r') as f:
+                        file_data = json.load(f)
+                        if 'SOUND' in file_data.keys():
+                            if 'SOUND_NAME' in file_data['SOUND'].keys():
+                                sound_name = file_data['SOUND']['SOUND_NAME']
+                                if len(name) <= 3 or sound_name.find(name) >= 0:
+                                    finds += 1
+                                    SynthIO_class.VIEW_SOUND_FILES[filenum] = SynthIO_class.VIEW_SOUND_FILES[filenum] + sound_name
+                                    
+                        f.close()
 
         return finds
         
@@ -2805,10 +2284,13 @@ class Application_class:
     def start(self):
         self.splush_screen()
 
+        # Load default parameter file
+        SynthIO.load_parameter_file(0, 0)
+
         # Sound file search
         dataset = SynthIO.synthio_parameter('LOAD')
         finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
-        print('SOUND FILES:', finds, SynthIO_class.VIEW_SOUND_FILES)
+#        print('SOUND FILES:', finds, SynthIO_class.VIEW_SOUND_FILES)
         SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
 
     # Splush screen
@@ -2816,6 +2298,7 @@ class Application_class:
         display.fill(1)
         display.text('PicoFM Synth', 0, 15, 0, 2)
         display.text('(C) 2025 S.Ohira', 15, 35, 0)
+        display.text('SW=0:usbHOST/1:DEVICE', 0, 55, 0)
         display.show()
 
     # Display a page
@@ -2949,12 +2432,12 @@ class Application_class:
             # Slide switch
             if M5Stack_8Encoder_class.status['on_change']['switch']:
                 inc_magni = 1 if M5Stack_8Encoder_class.status['switch'] == 0 else 5
-                print('SSW:', M5Stack_8Encoder_class.status['switch'], inc_magni)
+#                print('SSW:', M5Stack_8Encoder_class.status['switch'], inc_magni)
             
             # Rotary encoders
             if M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rot]:
                 inc = 1 if M5Stack_8Encoder_class.status['rotary_inc'][rot] <= 127 else -1
-                print('ROT:', rot, M5Stack_8Encoder_class.status['rotary_inc'][rot], inc)
+#                print('ROT:', rot, M5Stack_8Encoder_class.status['rotary_inc'][rot], inc)
                 
                 # Change the current page
                 if rot == 7:
@@ -2973,10 +2456,10 @@ class Application_class:
                         data_attr = SynthIO._params_attr[category][parameter]
                         data_type = data_attr['TYPE']
                         if oscillator is None:
-                            print('DATAATR:', data_attr, category, parameter)
+#                            print('DATAATR:', data_attr, category, parameter)
                             if data_type != SynthIO_class.TYPE_INDEX:
                                 dataset = SynthIO.synthio_parameter(category)
-                                print('DATASET:', dataset, parameter)
+#                                print('DATASET:', dataset, parameter)
                                 if parameter in dataset and 'CURSOR' in dataset:
                                     cursor_pos = dataset['CURSOR']
 
@@ -3022,7 +2505,7 @@ class Application_class:
 
                         # Update the parameter
                         if inc is not None:
-                            print('INCREMENT:', inc, parameter, oscillator)
+#                            print('INCREMENT:', inc, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
 
                             # Tasks after updated a parameter
@@ -3045,7 +2528,7 @@ class Application_class:
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
-                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+#                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
                                     
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
