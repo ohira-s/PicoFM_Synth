@@ -50,6 +50,10 @@
 #     0.0.8: 05/13/2025
 #            Starting developping sampler function.
 #
+#     0.0.9: 05/14/2025
+#            Improve the sampler quality.
+#            Modulation is available for sampled wave.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -347,7 +351,7 @@ class ADC_MIC_class:
         voltage = int(self._adc.value / 65535.0 * 64000 - 32000)
         return voltage
 
-    def sampling(self, duration=1.0, samples=512):
+    def sampling(self, duration=1.0, cut_min=100, samples=512):
         samples2 = samples + samples
         sleep_sec = duration / samples2
         ADC_MIC_class.SAMPLED_WAVE = []
@@ -358,7 +362,7 @@ class ADC_MIC_class:
             time.sleep(sleep_sec)
             v1 = self.get_voltage()
             time.sleep(sleep_sec)
-            v = int((v1 + v0)/2)
+            v = int(((v1 + v0)/2) / cut_min) * cut_min
             vmin = min(vmin, v)
             vmax = max(vmax, v)
             ADC_MIC_class.SAMPLED_WAVE.append(v)
@@ -891,18 +895,36 @@ class FM_Waveshape_class:
         if len(sample_wave) != FM_Waveshape_class.SAMPLE_SIZE:
             return wave_white_noise(adsr, an, fn, modulator)
         
-        print('SAMPLE SIZE=', FM_Waveshape_class.SAMPLE_SIZE, len(sample_wave))
-        return sample_wave
+#        print('SAMPLE SIZE=', FM_Waveshape_class.SAMPLE_SIZE, len(sample_wave))
+#        return sample_wave
     
         ansv = an / FM_Waveshape_class.SAMPLE_VOLUME_f
 
         wave = []
         print('SAMPLE SIZE=', FM_Waveshape_class.SAMPLE_SIZE, len(sample_wave))
-        for tm in list(range(FM_Waveshape_class.SAMPLE_SIZE)):
-            print('TIME:', tm, sample_wave[tm])
-            wave.append(sample_wave[tm] * adsr * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
+        
+        # No modulation
+        if modulator is None:
+            for tm in list(range(FM_Waveshape_class.SAMPLE_SIZE)):
+                print('TIMEn:', tm, sample_wave[tm])
+                wave.append(sample_wave[tm] * adsr[tm] * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
 
-        wave = np.array(wave) * ansv
+        # With modulation
+        else:
+            comp = np.array(modulator, dtype=np.int16)
+            for tm in list(range(FM_Waveshape_class.SAMPLE_SIZE)):
+                print('TIMEm:', tm, sample_wave[tm])
+                wave.append(sample_wave[tm] * adsr[tm] * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
+
+            tm = 0
+            mod_wave = []
+            for idx in comp:
+                mod_wave.append(wave[(tm + idx) % FM_Waveshape_class.SAMPLE_SIZE])
+                tm += 1
+                
+            wave = mod_wave
+
+        wave = np.array(wave)
         print('SAMPLING:', an, ansv, len(wave), wave)
         return wave
 
@@ -921,7 +943,14 @@ class FM_Waveshape_class:
     # Make an waveshape with a carrier and a modulator
     def waveshape(self, shape, adsr, an, fn, modulator=None):
         print('WAVESHAPE:', shape, an ,fn)
-        return self._waveshape[shape](adsr, an, fn / FM_Waveshape_class.OSC_FREQ_RESOLUTION, modulator)
+        wave = self._waveshape[shape](adsr, an, fn / FM_Waveshape_class.OSC_FREQ_RESOLUTION, modulator)
+        for w in list(range(len(wave))):
+            if wave[w] > 32000:
+                wave[w] = 32000
+            elif wave[w] < -32000:
+                wave[w] = -32000
+                
+        return wave
 
     # Calculate an operator output level
     def operator_level(self, level, audio_operator = False):
@@ -1344,6 +1373,7 @@ class SynthIO_class:
             'SAMPLING': {
                 'TIME'  : 1,
                 'WAIT'  : 1.0,
+                'CUT'   : 100,
                 'CURSOR': 0,
                 'SAMPLE': 0
             }
@@ -1399,11 +1429,11 @@ class SynthIO_class:
             },
 
             'VCA': {
-                'ATTACK_LEVEL' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
-                'ATTACK'       : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
-                'DECAY'        : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'ATTACK_LEVEL' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'ATTACK'       : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
+                'DECAY'        : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
                 'SUSTAIN'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
-                'RELEASE'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
+                'RELEASE'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
                 'CURSOR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
             },
         
@@ -1424,10 +1454,11 @@ class SynthIO_class:
             },
             
             'SAMPLING': {
-                'TIME'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':    0, 'MAX': 999, 'VIEW': '{:3d}'},
-                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.0, 'VIEW': '{:3.1f}'},
-                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f3) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f3},
-                'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE}
+                'TIME'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':    0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.00, 'MAX': 5.0,  'VIEW': '{:3.1f}'},
+                'CUT'   : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':    0, 'MAX': 9999, 'VIEW': '{:4d}'},
+                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4},
+                'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE}
             }
         }
 
@@ -2213,9 +2244,9 @@ class Application_class:
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'TIME',   'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'WAIT',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CUT',    'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAMPLE', 'OSCILLATOR': None},
-            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
         ]}
     ]
@@ -2315,8 +2346,9 @@ class Application_class:
         'SAMPLING': {
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
-            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}},
-            'SAMPLE': {PAGE_SAMPLING: {'label': 'SMPL:', 'x':  30, 'y': 37, 'w': 98}}
+            'CUT'   : {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}},
+            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 37, 'w': 98}},
+            'SAMPLE': {PAGE_SAMPLING: {'label': 'SMPL:', 'x':  30, 'y': 46, 'w': 98}}
         }
     }
 
@@ -2685,7 +2717,7 @@ class Application_class:
                                         Encoder_obj.led(4, [0x00, 0xff, 0x80])
                                         Encoder_obj.i2c_unlock()
                                         
-                                        ADC_Mic.sampling(dataset['TIME'] / 100000)
+                                        ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
                                         print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
                                         self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
                                         time.sleep(2.0)
@@ -2733,6 +2765,7 @@ if __name__=='__main__':
 
     # Create a Synthio object
     SynthIO = SynthIO_class()
+    SynthIO.audio_pause()
 
     # Create a MIDI object
     MIDI_obj = MIDI_class()
@@ -2742,6 +2775,7 @@ if __name__=='__main__':
     
     # Seach a USB MIDI device to connect
     MIDI_obj.look_for_usb_midi_device()
+    SynthIO.audio_pause(False)
     Application.show_OLED_page()
 
     #####################################################
