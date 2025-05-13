@@ -367,10 +367,18 @@ class ADC_MIC_class:
             adjust = 32000.0 / vmax
         else:
             adjust = 32000.0 / -vmin
-        
+
         for s in list(range(len(ADC_MIC_class.SAMPLED_WAVE))):
             ADC_MIC_class.SAMPLED_WAVE[s] = int(ADC_MIC_class.SAMPLED_WAVE[s] * adjust)
-            
+
+        for s in list(range(int(samples / 2), 0, -1)):
+            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
+            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
+
+        for i in list(range(4)):
+            for s in list(range(0, samples - 4)):
+                ADC_MIC_class.SAMPLED_WAVE[s] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s + 1] + ADC_MIC_class.SAMPLED_WAVE[s + 2] + ADC_MIC_class.SAMPLED_WAVE[s + 3]) / 4)
+
         ADC_MIC_class.SAMPLED_WAVE = np.array(ADC_MIC_class.SAMPLED_WAVE)
 
 ################# End of ADC MIC Class Definition #################
@@ -1217,6 +1225,7 @@ class SynthIO_class:
     VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?']
     VIEW_LOAD_SOUND = ['----', 'Load?', 'LOAD', 'Load?', 'SEARCH', 'Search?']
     VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Sample?']
+    VIEW_CURSOR_f3 = ['^  ', ' ^ ', '  ^']
     VIEW_CURSOR_f4 = ['^   ', ' ^  ', '  ^ ', '   ^']
     VIEW_CURSOR_f5 = ['^    ', ' ^   ', '  ^  ', '   ^ ', '    ^']
     VIEW_CURSOR_s12  = [
@@ -1333,7 +1342,7 @@ class SynthIO_class:
             
             # SAMPLING
             'SAMPLING': {
-                'TIME'  : 1.0,
+                'TIME'  : 1,
                 'WAIT'  : 1.0,
                 'CURSOR': 0,
                 'SAMPLE': 0
@@ -1415,9 +1424,9 @@ class SynthIO_class:
             },
             
             'SAMPLING': {
-                'TIME'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.00, 'VIEW': '{:4.2f}'},
-                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.00, 'VIEW': '{:4.2f}'},
-                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4},
+                'TIME'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':    0, 'MAX': 999, 'VIEW': '{:3d}'},
+                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.0, 'VIEW': '{:3.1f}'},
+                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f3) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f3},
                 'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE}
             }
         }
@@ -2676,7 +2685,7 @@ class Application_class:
                                         Encoder_obj.led(4, [0x00, 0xff, 0x80])
                                         Encoder_obj.i2c_unlock()
                                         
-                                        ADC_Mic.sampling(dataset['TIME'])
+                                        ADC_Mic.sampling(dataset['TIME'] / 100000)
                                         print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
                                         self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
                                         time.sleep(2.0)
