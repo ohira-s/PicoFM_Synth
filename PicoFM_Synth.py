@@ -185,6 +185,7 @@ async def midi_in():
 
                 # Generate a filter for the note, then store the filter number
                 filters[midi_msg.note] = SynthIO.filter()
+#                print('NOTE FILTER:', filters[midi_msg.note], SynthIO.filter(filters[midi_msg.note]))
                 init_filter = SynthIO.filter(filters[midi_msg.note])['FILTER']
 
                 # Note on velocity
@@ -237,7 +238,7 @@ async def midi_in():
         # Filter LFO and ADSR (ADSlSr) modulation
         if len(filters) > 0:
             for note in notes.keys():
-#                    print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
+#                print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
                 notes[note].filter=SynthIO.filter(filters[note])['FILTER']
                     
         # Gives away process time to the other tasks.
@@ -1761,10 +1762,11 @@ class SynthIO_class:
             
         # Get an offset value by filter voice's adsr
         def get_offset_by_adsr(v):
+#            print('get_offset_by_adsr:', v, len(self._filter_adsr), self.filter_storage[v])
             offset = 0
             
             # Starting filters
-            if   self.filter_storage[v]['DURATION'] == -1:
+            if   self.filter_storage[v]['DURATION'] == 0:
                 if len(self._filter_adsr) > 0:
                     monotonic = int(time.monotonic() * 1000) % 10000
                     self.filter_storage[v]['TIME'] = 0
@@ -1780,6 +1782,7 @@ class SynthIO_class:
                 if interval >= 0 and len(self._filter_adsr) > 0:
                     monotonic = int(time.monotonic() * 1000) % 10000
                     delta_mono = (monotonic - interval) % 10000
+#                    print('TIME:', monotonic, interval, delta_mono, adsr_interval)
                     if delta_mono >= adsr_interval:
                         offset = self.get_filter_adsr(self.filter_storage[v]['TIME'])
                         self.filter_storage[v]['TIME'] += int(delta_mono / adsr_interval)
@@ -1788,6 +1791,7 @@ class SynthIO_class:
                         offset = self.get_filter_adsr(self.filter_storage[v]['TIME'])
 #                        print('  OFFSET TIMW:', v, offset, self.filter_storage[v]['TIME'], delta_mono, adsr_interval, int(delta_mono / adsr_interval))
 
+#            print('RET get_offset_by_adsr:', offset)
             return offset
 
         # Generate or update filters
@@ -1825,7 +1829,7 @@ class SynthIO_class:
 
                 # Make new filter
                 if self.filter_storage[v]['FILTER'] is None:
-                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1}
                     delta = update_filter_lfo()
                     offset = get_offset_by_adsr(v)
                     self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset, reso)
@@ -1854,7 +1858,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_HPF:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -1868,7 +1872,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_BPF:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'DURATION': 0}
+                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -1882,7 +1886,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_NOTCH:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'DURATION': 0}
+                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'DURATION': -1}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -1901,7 +1905,7 @@ class SynthIO_class:
                 if self.filter_storage[flt] is not None:
                     if self.filter_storage[flt]['TIME'] < 0:
                         self.filter_storage[flt]['TIME'] = 0
-                        self.filter_storage[flt]['DURATION'] = -1
+                        self.filter_storage[flt]['DURATION'] = 0
 #                        self.filter_storage[flt]['DURATION'] = int(time.monotonic() * 1000) % 10000
                         return flt
                     
@@ -1911,10 +1915,10 @@ class SynthIO_class:
         return self.filter_storage[voice]
 
     def filter_release(self, voice):
+#        print('RELEASE FILTER:', voice, self.filter_storage[voice])
         self.filter_storage[voice]['TIME'] = -1
         self.filter_storage[voice]['DURATION'] = -1
         self.filter_storage[voice]['FILTER'] = None
-        print('RELEASE FILTER:', voice, self.filter_storage[voice])
 
     # Get the filter LFO
     def lfo_filter(self):
