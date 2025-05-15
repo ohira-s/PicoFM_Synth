@@ -3,50 +3,62 @@
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)  
 ## 1. 機能
 　Pico FM SynthesizerはUSB MIDIデバイスとして動作するシンセサイザーです。  
+　Pico FM Synthesizerを以降、「本機」または「PiFMS」と略す場合があります。  
 
 ## 2. 外観
-![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_Block_Diagram.png)  
+![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
 
-1) スイッチS1〜S8  
+1) ロータリーエンコーダー  
 
-	8個の押しボタンスイッチ（S1〜S8）でコードを選んだり、各種設定を行います。  
+	8個のロータリーエンコーダー（RT1〜RT8）で各種設定を行います。
+	また、右端にあるスライドスイッチもいくつかの機能を持ちます。ロータリーエンコーダーに対応したLEDで操作をサポートすることもあります。  
 	
-2) 感圧パッドP1〜P6  
-
-	ギターの1弦〜6弦を演奏します。
-	ドラム演奏モードでは別途設定された6個のドラム系楽器を演奏します。  
-	
-3) 感圧パッドStrumming  
-
-	ギターのコードをストローク奏法で演奏します。  
-	
-4) 感圧パッドPitch Bend  
-
-	発音中のギターの全ての音をピッチベンドします。  
-	ドラムには適用されません。  
-	
-5) OLEDディスプレイ  
+2) OLEDディスプレイ  
 
 	各種情報を表示します。  
 	
-6) USBケーブル  
+3) USBコネクタ（外付け）  
 
-	USB MIDIホストデバイスへ接続します。  
+	本機をUSBホストとして使用するとき、ここにUSB OTGケーブルを接続します。電源はOTGケーブルから供給します。  
+	
+4) USBコネクタ（PICO2オンボード）  
+
+	本機のメンテナンス時と、本機をUSBデバイスとして使用するときに通常のUSBケーブルを接続します。  
+	
+5) マイク  
+
+	音をサンプリングするときに使用します。  
+	
+6) SDカード  
+
+	作成した音色やサンプリングした波形を保存できます。  
 
 ## 3. 注意事項
-　Pico GuitarのほかにUSBホストデバイスになるUSB MIDI音源が必要です。本機への電源もUSBホスト側から供給される必要があります。MacOSとWindows11の音源への接続も可能です。
+　USB OTGケーブルと通常のUSBケーブルの両方を同時に接続している状態では、OTGケーブル側から電源を供給しないで下さい。  
 
 ## 4. 接続〜起動
-![picogd_splash](https://github.com/ohira-s/PicoGuitarDrum2Web/blob/master/Docs/picogd_splash.jpg)  
+![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)   
 
-1) Pico Guitar & Drum（本機）を用意します。  
-2) USBホストとなるUSB MIDI音源を用意します。  
-3) Pico Guitar & DrumとMIDI音源を接続するUSBケーブルを用意します。Pico Guitar & Drum側はRapsberry Pi PICO2WのMicro USB-Bオスです。  
-4) Pico GuitarのRapsberry Pi PICOのUSBコネクタとMIDI音源をUSBケーブルで接続します。  
-5) MIDI音源の電源を入れます。MIDI音源からUSBケーブルで電源が供給されると、Pico Guitar & Drumが起動してOLED画面に「**PicoGuitar & Drum**」と表示されます。  
-6) OLED画面が「**---GUITAR PLAY---**」という演奏用画面になると演奏できます。  
-　この画像は、Unit-SYNTH/Unit-MIDIというGM音源シンセモジュールをPICO2で制御している自作のUSB MIDIホスト音源と接続したものです。  
-![picogd_connection](https://github.com/ohira-s/PicoGuitarDrum2Web/blob/master/Docs/picogd_connections.jpg)
+### 4-1. USBデバイスモード
+1) PiFMS（本機）を用意します。  
+2) USBホストとなるパソコンなどを用意します。  
+3) PiFMSとパソコンを接続するUSBケーブルを用意します。PiFMS側はRapsberry Pi PICO2WのMicro USB-Bオスです。  
+4) PiFMSのUSBコネクタとパソコンをUSBケーブルで接続します。  
+5) MIDI音源の電源を入れます。パソコンからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
+6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
+　この画像は、Macと接続したものです。  
+![Connect to Mac]()
+
+### 4-2. USBホストモード
+1) PiFMS（本機）を用意します。  
+2) USBデバイスとなるUSB MIDIキーボードなどを用意します。  
+3) PiFMSとUSB MIDIキーボードを接続するUSBケーブルを用意します。  
+4) PiFMSのOTGケーブルのUSBコネクタとUSB MIDIキーボードをUSBケーブルで接続します。  
+5) OTGケーブルの電源供給用USBケーブルを5VのACアダプターに接続します。OTGケーブルからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
+6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
+　この画像は、KORG nanoKEY2と接続したものです。  
+![Connect to OTG]()
+
 
 ## 5. ギターコード演奏モード
 　起動直後はコード演奏画面になっています。このモードではギターのコード演奏ができます。  
