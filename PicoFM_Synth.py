@@ -13,8 +13,8 @@
 #   INPUT      : 8 rotary encoders for M5Stack (8Encoder)
 #
 # PROGRAM: circuitpython (V9.2.1)
-#   PicoFM_Synth.py (USB host mode)
-#     Copyright (c) Shunsuke Ohira
+#   PicoFM_Synth.py (USB MIDI host/device mode)
+# 
 #     0.0.1: 05/03/2025
 #            FM waveshape generator.
 #            FM WAVE-->VOICE-->FILTER-->VCA with synthio.
@@ -57,6 +57,9 @@
 #     0.1.0: 05/14/2025
 #            Sampling function is available.
 #
+#     0.1.1: 05/15/2025
+#            Show the sampled wave shape on the sampling screen.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -73,6 +76,29 @@
 # USB:: USB MIDI HOST
 #   D+ : GP26(31)
 #   D- : GP27(32)
+#
+#------------------------------------------------------------------------------
+# MIT License
+#
+# Copyright (c) 2025 Shunsuke Ohira
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 ############################################################################
 
 import asyncio
@@ -230,7 +256,7 @@ async def get_8encoder():
             on_change = on_change or change
             M5Stack_8Encoder_class.status['on_change']['switch'] = change
             M5Stack_8Encoder_class.status['switch'] = enc_switch
-            await asyncio.sleep(0.02)
+            await asyncio.sleep(0.01)
             
             for rt in list(range(8)):
                 enc_rotary = Encoder_obj.get_rotary_increment(rt)
@@ -238,7 +264,7 @@ async def get_8encoder():
                 on_change = on_change or change
                 M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
                 M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
-                await asyncio.sleep(0.02)
+                await asyncio.sleep(0.01)
     
             Encoder_obj.i2c_unlock()
 
@@ -250,7 +276,7 @@ async def get_8encoder():
 
         # Gives away process time to the other tasks.
         # If there is no task, let give back process time to me.
-        await asyncio.sleep(0.02)
+        await asyncio.sleep(0.01)
 
 
 ##########################################
@@ -1305,11 +1331,15 @@ class SynthIO_class:
     MAX_VOICES = 12
 
     # Fileters
-    FILTER_PASS = 0
-    FILTER_LPF  = 1
-    FILTER_HPF  = 2
-    FILTER_BPF  = 3
-    
+    FILTER_PASS       = 0
+    FILTER_LPF        = 1
+    FILTER_HPF        = 2
+    FILTER_BPF        = 3
+    FILTER_NOTCH      = 4
+#    FILTER_LOW_SHELF  = 5
+#    FILTER_HIGH_SHELF = 6
+#    FILTER_PEAKING_EQ = 7
+
     # Parameter data types
     TYPE_INT    = 0
     TYPE_INDEX  = 1
@@ -1320,9 +1350,9 @@ class SynthIO_class:
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
     VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+2*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+2*3*4', '7:<1>+2*3+4']
-#    VIEW_WAVE = [' 0:Sine', ' 1:Saw', ' 2:Triangle', ' 3:Square50%', ' 4:ABS(Sine)', ' 5:PLUS(Sine)', ' 6:Noise']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
-    VIEW_FILTER = ['0:PASS', '1:LPF', '2:HPF', '3:BPF']
+#    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
+    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
     VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?']
     VIEW_LOAD_SOUND = ['----', 'Load?', 'LOAD', 'Load?', 'SEARCH', 'Search?']
     VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Save?', 'SAVE', 'Save?']
@@ -1449,8 +1479,8 @@ class SynthIO_class:
             # SAMPLING
             'SAMPLING': {
                 'TIME'  : 1,
-                'WAIT'  : 1.0,
-                'CUT'   : 100,
+                'WAIT'  : 3.0,
+                'CUT'   : 500,
                 'NAME'  : '',
                 'CURSOR': 0,
                 'SAMPLE': 0,
@@ -1495,8 +1525,8 @@ class SynthIO_class:
             'FILTER': {
                 'TYPE'           : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
                 'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX':   5.0, 'VIEW': '{:3.1f}'},
+                'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX':   100, 'VIEW': '{:5d}'},
@@ -1845,6 +1875,20 @@ class SynthIO_class:
 
                     self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset, reso)
 #                    print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
+    
+            elif ftype == SynthIO_class.FILTER_NOTCH:
+                if self.filter_storage[v] is None:
+                    if update == False:
+                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'DURATION': 0}
+                else:
+                    # Update filter LFO
+                    delta = update_filter_lfo()
+
+                    # Update filter ADSR
+                    offset = get_offset_by_adsr(v)
+
+                    self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset, reso)
+#                    print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
 
     # Get the filter
     def filter(self, voice=None):
@@ -1889,7 +1933,7 @@ class SynthIO_class:
         # Generate filter ADSR
         self._filter_adsr = []
         filter_params = self.synthio_parameter('FILTER')
-        print('FILTER PARAMS:', filter_params.keys())
+#        print('FILTER PARAMS:', filter_params.keys())
         
         # Attack
         start = filter_params['START_LEVEL']
@@ -1926,7 +1970,7 @@ class SynthIO_class:
                 self._filter_adsr.append(adsr)
 
         self._filter_adsr.append(end_level)
-        print('FILTER ADSR:', len(self._filter_adsr), self._filter_adsr)
+#        print('FILTER ADSR:', len(self._filter_adsr), self._filter_adsr)
 
     # Get filter ADSR (ADSlSr)
     def get_filter_adsr(self, interval=None):
@@ -2385,7 +2429,7 @@ class Application_class:
         PAGE_VCA             : 'VCA                  ',
         PAGE_SAVE            : 'SAVE                 ',
         PAGE_LOAD            : 'LOAD                 ',
-        PAGE_SAMPLING        : 'SMPL                 '
+        PAGE_SAMPLING        : 'SAMPLING             '
     }
     
     # Parameter attributes
@@ -2460,7 +2504,7 @@ class Application_class:
         'SAMPLING': {
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
-            'CUT'   : {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}},
+            'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
             'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}},
             'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}},
             'SAMPLE': {PAGE_SAMPLING: {'label': 'SMPL:', 'x':  30, 'y': 55, 'w': 98}},
@@ -2579,7 +2623,7 @@ class Application_class:
     # Splush screen
     def splush_screen(self):
         display.fill(1)
-        display.text('PicoFM Synth', 0, 15, 0, 2)
+        display.text('PiFM Synth', 5, 15, 0, 2)
         display.text('(C) 2025 S.Ohira', 15, 35, 0)
         display.text('SW=0:usbHOST/1:DEVICE', 0, 55, 0)
         display.show()
@@ -2668,19 +2712,25 @@ class Application_class:
         display.show()
 #        SynthIO.mixer_voice_level(0.4)
 
+        # The current wave shape sampled
+        if page_no == Application_class.PAGE_SAMPLING:
+            self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE, 57, 32, 80, 31, False)
+
 
     # Display the current wave shape on the OLED
-    def show_OLED_waveshape(self, wave_table=None):
+    def show_OLED_waveshape(self, wave_table=None, w=128, h=64, offset_x=0, offset_y=0, clear_screen=True):
         max_amp = FM_Waveshape_class.SAMPLE_VOLUME + FM_Waveshape_class.SAMPLE_VOLUME
-        cy = int(display.height() / 2)
-        display.fill(0)
+        cy = int(h / 2)
+        if clear_screen:
+            display.fill(0)
+            
         if SynthIO is not None:
             waveshape = SynthIO.wave_shape() if wave_table is None else wave_table
             tm = -1
             for amp in waveshape:
                 tm += 1
-                x = int(tm * display.width() / FM_Waveshape_class.SAMPLE_SIZE)
-                y = int(amp * display.height() / max_amp) + cy
+                x = int(tm * w / FM_Waveshape_class.SAMPLE_SIZE)
+                y = int(amp * h / max_amp) + cy
                 if tm == 0:
                     x0 = x
                     y0 = y
@@ -2689,7 +2739,7 @@ class Application_class:
                     y1 = y0
                     x0 = x
                     y0 = y
-                    display.line(x0, y0, x1, y1, 1)
+                    display.line(x0 + offset_x, y0 + offset_y, x1 + offset_x, y1 + offset_y, 1)
 
             display.show()
 
@@ -2727,7 +2777,7 @@ class Application_class:
                     Application_class.DISPLAY_PAGE = (Application_class.DISPLAY_PAGE + inc) % len(Application_class.PAGES)
                     
                     # Select sampling waves page
-                    print('CHANGE PAGE:', Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'])
+#                    print('CHANGE PAGE:', Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'])
                     if Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_SAMPLING_WAVES:
                         # Update the sampling files list
                         ADC_Mic.find_sampling_files()
@@ -2867,16 +2917,24 @@ class Application_class:
                                 # Sampling sound
                                 if   sampling == 'SAMPLING':
                                     Encoder_obj.i2c_lock()
-                                    Encoder_obj.led(5, [0xff, 0xff, 0x00])
-                                    Encoder_obj.i2c_unlock()
                                     
-                                    wait = dataset['WAIT']
+                                    wait = dataset['WAIT'] / 6
                                     if wait > 0.0:
-                                        time.sleep(wait)
+                                        for i in list(range(2)):
+                                            Encoder_obj.led(6, [0xff, 0x00, 0x00])
+                                            time.sleep(wait)
+                                            Encoder_obj.led(6, [0x00, 0x00, 0x00])
+                                            time.sleep(wait)
+
+                                    Encoder_obj.i2c_unlock()
                                     
                                     if dataset['TIME'] > 0.0:
                                         Encoder_obj.i2c_lock()
-                                        Encoder_obj.led(5, [0x00, 0xff, 0x80])
+                                        Encoder_obj.led(6, [0x00, 0xff, 0x00])
+                                        time.sleep(wait)
+                                        Encoder_obj.led(6, [0x00, 0x00, 0x00])
+                                        time.sleep(wait)
+                                        Encoder_obj.led(6, [0x00, 0x00, 0xff])
                                         Encoder_obj.i2c_unlock()
                                         
                                         ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
@@ -2885,7 +2943,7 @@ class Application_class:
                                         time.sleep(2.0)
 
                                     Encoder_obj.i2c_lock()
-                                    Encoder_obj.led(5, [0x00, 0x00, 0x00])
+                                    Encoder_obj.led(6, [0x00, 0x00, 0x00])
                                     Encoder_obj.i2c_unlock()
                                     SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
 
