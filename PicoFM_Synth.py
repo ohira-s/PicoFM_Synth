@@ -60,6 +60,9 @@
 #     0.1.1: 05/15/2025
 #            Show the sampled wave shape on the sampling screen.
 #
+#     0.1.2: 05/15/2025
+#            Filter envelope editor is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -1529,7 +1532,7 @@ class SynthIO_class:
                 'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX':   100, 'VIEW': '{:5d}'},
+                'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX':  1000, 'VIEW': '{:5d}'},
                 'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
@@ -2208,24 +2211,26 @@ class SynthIO_class:
 ###################################
 class Application_class:
     # Paramete pages
-    PAGE_SOUND_MAIN       = 0
-    PAGE_ALGORITHM        = 1
-    PAGE_SOUND_MODULATION = 2
-    PAGE_OSCILLTOR_WAVE1  = 3
-    PAGE_OSCILLTOR_WAVE2  = 4
-    PAGE_OSCILLTOR_WAVE3  = 5
-    PAGE_OSCILLTOR_WAVE4  = 6
-    PAGE_WAVE_SHAPE       = 7
-    PAGE_OSCILLTOR_ADSR1  = 8
-    PAGE_OSCILLTOR_ADSR2  = 9
-    PAGE_OSCILLTOR_ADSR3  = 10
-    PAGE_OSCILLTOR_ADSR4  = 11
-    PAGE_FILTER           = 12
-    PAGE_VCA              = 13
-    PAGE_SAVE             = 14
-    PAGE_LOAD             = 15
-    PAGE_SAMPLING         = 16
-    PAGE_SAMPLING_WAVES   = 17
+    PAGE_SOUND_MAIN        = 0
+    PAGE_ALGORITHM         = 1
+    PAGE_SOUND_MODULATION  = 2
+    PAGE_OSCILLTOR_WAVE1   = 3
+    PAGE_OSCILLTOR_WAVE2   = 4
+    PAGE_OSCILLTOR_WAVE3   = 5
+    PAGE_OSCILLTOR_WAVE4   = 6
+    PAGE_WAVE_SHAPE        = 7
+    PAGE_OSCILLTOR_ADSR1   = 8
+    PAGE_OSCILLTOR_ADSR2   = 9
+    PAGE_OSCILLTOR_ADSR3   = 10
+    PAGE_OSCILLTOR_ADSR4   = 11
+    PAGE_FILTER            = 12
+    PAGE_FILTER_ADSR_RANGE = 13
+    PAGE_FILTER_ADSR       = 14
+    PAGE_VCA               = 15
+    PAGE_SAVE              = 16
+    PAGE_LOAD              = 17
+    PAGE_SAMPLING          = 18
+    PAGE_SAMPLING_WAVES    = 19
     PAGES = [
         {'PAGE': PAGE_SOUND_MAIN, 'EDITOR': [
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
@@ -2367,13 +2372,33 @@ class Application_class:
             {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',     'OSCILLATOR': None}
         ]},
 
+        {'PAGE': PAGE_FILTER_ADSR_RANGE, 'EDITOR': [
+            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_INTERVAL', 'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQMAX',    'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',        'OSCILLATOR': None},
+            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
+            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
+            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_FILTER_ADSR, 'EDITOR': [
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'START_LEVEL',     'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ATTACK_TIME',     'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'DECAY_TIME',      'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'SUSTAIN_LEVEL',   'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'SUSTAIN_RELEASE', 'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'END_LEVEL',       'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',          'OSCILLATOR': None}
+        ]},
+
         {'PAGE': PAGE_VCA, 'EDITOR': [
-            {'CATEGORY': None,  'PARAMETER': 'ATTACK',  'OSCILLATOR': None},
+            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'ATTACK',  'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'DECAY',   'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'SUSTAIN', 'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'RELEASE', 'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'CURSOR',  'OSCILLATOR': None},
-            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None},
             {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None}
         ]},
 
@@ -2412,24 +2437,26 @@ class Application_class:
 
     # Page labels
     PAGE_LABELS = {
-        PAGE_SOUND_MAIN      : 'SOUND MAIN           ',
-        PAGE_ALGORITHM       : '',
-        PAGE_SAMPLING_WAVES  : 'SAMPLING WAVES',
-        PAGE_SOUND_MODULATION: '',
-        PAGE_OSCILLTOR_WAVE1 : 'OSCW:[1]| 2 | 3 | 4  ',
-        PAGE_OSCILLTOR_WAVE2 : 'OSCW: 1 |[2]| 3 | 4  ',
-        PAGE_OSCILLTOR_WAVE3 : 'OSCW: 1 | 2 |[3]| 4  ',
-        PAGE_OSCILLTOR_WAVE4 : 'OSCW: 1 | 2 | 3 |[4] ',
-        PAGE_WAVE_SHAPE      : '',
-        PAGE_OSCILLTOR_ADSR1 : 'OSCA:[1]| 2 | 3 | 4  ',
-        PAGE_OSCILLTOR_ADSR2 : 'OSCA: 1 |[2]| 3 | 4  ',
-        PAGE_OSCILLTOR_ADSR3 : 'OSCA: 1 | 2 |[3]| 4  ',
-        PAGE_OSCILLTOR_ADSR4 : 'OSCA: 1 | 2 | 3 |[4] ',
-        PAGE_FILTER          : '',
-        PAGE_VCA             : 'VCA                  ',
-        PAGE_SAVE            : 'SAVE                 ',
-        PAGE_LOAD            : 'LOAD                 ',
-        PAGE_SAMPLING        : 'SAMPLING             '
+        PAGE_SOUND_MAIN       : 'SOUND MAIN',
+        PAGE_ALGORITHM        : '',
+        PAGE_SAMPLING_WAVES   : 'SAMPLING WAVES',
+        PAGE_SOUND_MODULATION : '',
+        PAGE_OSCILLTOR_WAVE1  : 'OSCW:[1]| 2 | 3 | 4  ',
+        PAGE_OSCILLTOR_WAVE2  : 'OSCW: 1 |[2]| 3 | 4  ',
+        PAGE_OSCILLTOR_WAVE3  : 'OSCW: 1 | 2 |[3]| 4  ',
+        PAGE_OSCILLTOR_WAVE4  : 'OSCW: 1 | 2 | 3 |[4] ',
+        PAGE_WAVE_SHAPE       : '',
+        PAGE_OSCILLTOR_ADSR1  : 'OSCA:[1]| 2 | 3 | 4  ',
+        PAGE_OSCILLTOR_ADSR2  : 'OSCA: 1 |[2]| 3 | 4  ',
+        PAGE_OSCILLTOR_ADSR3  : 'OSCA: 1 | 2 |[3]| 4  ',
+        PAGE_OSCILLTOR_ADSR4  : 'OSCA: 1 | 2 | 3 |[4] ',
+        PAGE_FILTER           : '',
+        PAGE_FILTER_ADSR_RANGE: 'FILTER ENVELOPE',
+        PAGE_FILTER_ADSR      : '',
+        PAGE_VCA              : 'VCA',
+        PAGE_SAVE             : 'SAVE',
+        PAGE_LOAD             : 'LOAD',
+        PAGE_SAMPLING         : 'SAMPLING'
     }
     
     # Parameter attributes
@@ -2468,13 +2495,21 @@ class Application_class:
         },
 
         'FILTER': {
-            'TYPE'      : {PAGE_FILTER: {'label': 'FILT:', 'x':  30, 'y':  1, 'w': 98}},
-            'FREQUENCY' : {PAGE_FILTER: {'label': 'FREQ:', 'x':  30, 'y': 10, 'w': 98}},
-            'RESONANCE' : {PAGE_FILTER: {'label': 'RESO:', 'x':  30, 'y': 19, 'w': 98}},
-            'MODULATION': {PAGE_FILTER: {'label': 'MODU:', 'x':  30, 'y': 28, 'w': 98}},
-            'LFO_RATE'  : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
-            'LFO_FQMAX' : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'    : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
+            'TYPE'           : {PAGE_FILTER: {'label': 'FILT:', 'x':  30, 'y':  1, 'w': 98}},
+            'FREQUENCY'      : {PAGE_FILTER: {'label': 'FREQ:', 'x':  30, 'y': 10, 'w': 98}},
+            'RESONANCE'      : {PAGE_FILTER: {'label': 'RESO:', 'x':  30, 'y': 19, 'w': 98}},
+            'MODULATION'     : {PAGE_FILTER: {'label': 'MODU:', 'x':  30, 'y': 28, 'w': 98}},
+            'LFO_RATE'       : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
+            'LFO_FQMAX'      : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
+            'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
+            'ADSR_INTERVAL'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'INTV:', 'x':  30, 'y': 10, 'w': 98}},
+            'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y': 19, 'w': 98}},
+            'START_LEVEL'    : {PAGE_FILTER_ADSR: {'label': 'StLv:', 'x':  30, 'y':  1, 'w': 98}},
+            'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
+            'DECAY_TIME'     : {PAGE_FILTER_ADSR: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
+            'SUSTAIN_LEVEL'  : {PAGE_FILTER_ADSR: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
+            'SUSTAIN_RELEASE': {PAGE_FILTER_ADSR: {'label': 'SuRs:', 'x':  30, 'y': 37, 'w': 98}},
+            'END_LEVEL'      : {PAGE_FILTER_ADSR: {'label': 'EdLv:', 'x':  30, 'y': 46, 'w': 98}}
         },
 
         'VCA': {
