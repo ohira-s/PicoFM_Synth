@@ -1,7 +1,7 @@
 # Pico FM Synthesizer with DAC
 USB MIDI Synthesizer with Raspberry Pi PICO2.  This device works as a USB device and host.  A USB MIDI controller is needed.  
 This synthesizer works with FM wave generator, synthio and I2C DAC.  Block diagram is as below.  
-
+![Block Diagram]()
 |MODULE||MODULE||MODULE|
 |---|---|---|---|---|
 |         |   |[FM Wave Generator]|||
