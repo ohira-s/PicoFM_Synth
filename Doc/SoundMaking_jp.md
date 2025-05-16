@@ -31,6 +31,9 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 
 
 　サイン波は丸い音、鋸歯状波は文字通りギザギザした音を出します。作りたい音色をイメージしてオペレーターに波形を設定しましょう。Noiseは音程を持たないので、楽器には使いにくいですが、効果音などに使えます。    
+　オペレーターの波形はWAVE欄で設定します。  
+
+![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_00.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_01.jpg)
 　
 ### 1-2. アルゴリズム
 　1つのオペレーターは基本波形やサンプリング波形しか音を出せません。これでは作れる音色は限られてしまいます。そこで登場するのがアルゴリズムです。オペレーターを並べたり、積み上げたりして様々な音色を作り出します。  
@@ -53,31 +56,48 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 
 |オペレーター設定|出力波形|やっていること|波形の変化|
 |---|---|---|---|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_00.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_01.jpg)|サイン波のオペレータ1の出力を小さくしています。|オペレーター2の波形は三角波ですが、あまり変わっていません。|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_10.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_11.jpg)|オペレーター1の出力を少し大きくしてみました。|三角波が少しだけ歪みました。|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_20.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_21.jpg)|オペレーター1の出力を中位いにしてみました。|三角波がさらに歪みました。|  
+|![LEVL=10](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_00.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_01.jpg)|サイン波のオペレータ1の出力を小さくしています。|オペレーター2の波形は三角波ですが、あまり変わっていません。|
+|![LEVL=85](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_10.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_11.jpg)|オペレーター1の出力を少し大きくしてみました。|三角波が少しだけ歪みました。|
+|![LEVL=120](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_20.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_21.jpg)|オペレーター1の出力を中位いにしてみました。|三角波がさらに歪みました。|  
 
 　オペレーターの波の数はFREQという欄で設定します。FREQが1のときはオペレーターに設定された波形がそのまま出力されます。2にすると波形が2回出力されます。  
 
 |オペレーター設定|出力波形|やっていること|波形の変化|
 |---|---|---|---|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_30.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_31.jpg)|オペレーター1の波の数を3に増やしてみました。|三角波がまた違った形に変化しました。|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_40.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_41.jpg)|オペレーター1の波の数を5にしてみました。|三角波が大きく変化しました。もはや三角波だったかもわかりません。|  
+|![FREQ=3](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_30.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_31.jpg)|オペレーター1の波の数を3に増やしてみました。|三角波がまた違った形に変化しました。|
+|![FREQ=5](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_40.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_41.jpg)|オペレーター1の波の数を5にしてみました。|三角波が大きく変化しました。もはや三角波だったかもわかりません。|  
 
 　FREQの下にあるDETUも波の数を変える設定です。FREQは整数倍で波の数を変えますが、DETUは小数点以下の値になって「1.3個分の波の数」といった指定ができます。1.3はFREQ=1, DETU=30です。  
 
 　もう一つ、波形を変化させる手段としてフィードバックという設定があります。FDBK欄で設定します。  
+　フィードバックはオペレーターの出力で自分自身のオペレーターを変調する機能です。FMサウンド特有の金属的な音が出たりしますが、フィードバックが大きすぎると音が歪んでしまって楽器には適さなくもなります。  
 
 |オペレーター設定|出力波形|やっていること|波形の変化|
 |---|---|---|---|
-|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_50.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_51.jpg)|オペレーター1のフィードバックを2に設定。|ずいぶんとグニャグニャした波形になりました。|  
+|![FDBK=2](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_50.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_51.jpg)|オペレーター1のフィードバックを2に設定。|ずいぶんとグニャグニャした波形になりました。|  
 
 　アルゴリズムの種類（8個あります）によってフィードバック機能を使えるオペレーターは決まっています。フィードバック機能が有効なオペレーターの数字は<>で囲って表します。この例だとこんな感じです。  
 
 `<1>-->2-->出力`
 
 　このように、2つのオペレーターだけでも設定次第で複雑な波形を作ることができます。単なるサイン波と三角波からでも様々に波形が変化しました。オペレーターにサンプリング波形を使うと、さらに面白い波形を作ることができるかもしれません。  
+　
+　
+### 1-3. 8種類のアルゴリズム
+　PiFMSには8種類のアルゴリズムがあります。音色の骨格が8種類用意されているわけです。音色を並べたいのか、重ねたいのか、重ねたもの同士を並べたいのかなど考えてアルゴリズムを選択します。  
+　ときにはパラメーター設定はそのままでアルゴリズムだけを切り替えると、思わぬ良い音色が出ることもあります。  
 
-	
+|Algorithm|Diagram|
+|---|---|
+|0|`<1>-->2-->`|
+|1|`<1>--`<br/>`　　　+-->`<br/>`2----`|
+|2|`<1>--`<br/>`　　　+`<br/>`2----`<br/>`　　　+-->`<br/>`<3>--`<br/>`　　　+`<br/>`4----`|
+|3|`<1>-------`<br/>`　　　　　　+-->4`<br/>`<2>-->3---`|
+|4|`<1>-->2-->3-->4`|
+|5|`<1>-->2---`<br/>`　　　　　　+-->`<br/>`<3>-->4---`|
+|6|`<1>----------`<br/>`　　　　　　　　+-->`<br/>`<2>-->3-->4--`|
+|7|`<1>------`<br/>`　　　　　+`<br/>`<2>-->3--+-->`<br/>`　　　　　+`<br/>`<4>------`|
+
+
 	
 　
