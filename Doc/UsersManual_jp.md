@@ -136,7 +136,8 @@
 
 
 ## 6. SOUND MAIN
-　現在の音色情報を表示します。この画面は表示のみで、操作はありません。    
+　現在の音色情報を表示します。    
+　BANKとSOUNDは現在の音色データを表示しています。ALGOではこの音色に使用するアルゴリズムを変更できます。  
 
 ### 6-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)  
