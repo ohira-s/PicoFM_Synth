@@ -63,6 +63,10 @@
 #     0.1.2: 05/15/2025
 #            Filter envelope editor is available.
 #
+#     0.1.3: 05/16/2025
+#            Filter Q-factor envelope is available.
+#            Filter envelope can be inversed.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -1353,7 +1357,7 @@ class SynthIO_class:
     
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
-    VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+2*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+2*3*4', '7:<1>+2*3+4']
+    VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+2*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+2*3+<4>']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
     VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
@@ -1443,6 +1447,9 @@ class SynthIO_class:
                 'LFO_FQMAX'      : 1000,
                 'ADSR_INTERVAL'  : 10,
                 'ADSR_FQMAX'     : 1000,
+                'ADSR_FQ_REVS'   : 0,
+                'ADSR_QfMAX'     : 0.0,
+                'ADSR_Qf_REVS'   : 0,
                 'START_LEVEL'    : 0.5,
                 'ATTACK_TIME'    : 10,
                 'DECAY_TIME'     : 30,
@@ -1535,6 +1542,9 @@ class SynthIO_class:
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX':  1000, 'VIEW': '{:5d}'},
                 'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'ADSR_FQ_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0, 'VIEW': '{:3.1f}'},
+                'ADSR_Qf_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
                 'DECAY_TIME'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
@@ -1686,7 +1696,9 @@ class SynthIO_class:
                 
                 if category == 'SAVE' and parameter == 'SOUND':
                     sound_name = self.get_sound_name_of_file(params['BANK'], params[parameter])
+#                    print('SAVE SOUND:', params['BANK'], params[parameter], sound_name)
                     disp = attr['VIEW'].format(value) + ':' + sound_name
+                    return disp
             
             else:
                 return '?'
@@ -1763,7 +1775,7 @@ class SynthIO_class:
         # Get an offset value by filter voice's adsr
         def get_offset_by_adsr(v):
 #            print('get_offset_by_adsr:', v, len(self._filter_adsr), self.filter_storage[v])
-            offset = 0
+            offset = (0, 0.0)
             
             # Starting filters
             if   self.filter_storage[v]['DURATION'] == 0:
@@ -1832,8 +1844,8 @@ class SynthIO_class:
                     self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1}
                     delta = update_filter_lfo()
                     offset = get_offset_by_adsr(v)
-                    self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset, reso)
-                    print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset, reso)
+                    self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
+#                    print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
                 # Re-use or update the filters
                 else:
@@ -1844,10 +1856,10 @@ class SynthIO_class:
                     offset = get_offset_by_adsr(v)
 
                     # Update a filter for a voice
-                    if delta + offset != 0:
+                    if delta + offset[0] != 0 or offset[1] != 0.0:
 #                        if v == 0:
 #                            print('FILTER LPF FREQ-->:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
-                        self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset, reso)
+                        self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
 #                        if v == 0:
 #                            print('FILTER LPF FREQ<--:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
 
@@ -1866,7 +1878,7 @@ class SynthIO_class:
                     # Update filter ADSR
                     offset = get_offset_by_adsr(v)
 
-                    self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset, reso)
+                    self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1])
 #                    print('FILTER HPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
                 
             elif ftype == SynthIO_class.FILTER_BPF:
@@ -1880,7 +1892,7 @@ class SynthIO_class:
                     # Update filter ADSR
                     offset = get_offset_by_adsr(v)
 
-                    self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset, reso)
+                    self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1])
 #                    print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
     
             elif ftype == SynthIO_class.FILTER_NOTCH:
@@ -1894,7 +1906,7 @@ class SynthIO_class:
                     # Update filter ADSR
                     offset = get_offset_by_adsr(v)
 
-                    self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset, reso)
+                    self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset[0], reso + offset[1])
 #                    print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
 
     # Get the filter
@@ -1985,12 +1997,16 @@ class SynthIO_class:
             return self._filter_adsr
         
         if 0 <= interval and interval < len(self._filter_adsr):
-            return int(self._filter_adsr[interval] * self.synthio_parameter('FILTER')['ADSR_FQMAX'])
-        
+            offset_freq = int(self._filter_adsr[interval] * self.synthio_parameter('FILTER')['ADSR_FQMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_FQ_REVS'] == 0 else -1))
+            offset_qfac = int(self._filter_adsr[interval] * self.synthio_parameter('FILTER')['ADSR_QfMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_Qf_REVS'] == 0 else -1))
+            return (offset_freq, offset_qfac)
+
         if interval >= len(self._filter_adsr):
-            return int(self._filter_adsr[-1] * self.synthio_parameter('FILTER')['ADSR_FQMAX'])
+            offset_freq = int(self._filter_adsr[-1] * self.synthio_parameter('FILTER')['ADSR_FQMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_FQ_REVS'] == 0 else -1))
+            offset_qfac = int(self._filter_adsr[-1] * self.synthio_parameter('FILTER')['ADSR_QfMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_Qf_REVS'] == 0 else -1))
+            return (offset_freq, offset_qfac)
         
-        return 0
+        return (0, 0.0)
 
     # Set up the synthio
     def setup_synthio(self):
@@ -2380,10 +2396,10 @@ class Application_class:
             {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_INTERVAL', 'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQMAX',    'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',        'OSCILLATOR': None},
-            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
-            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None},
-            {'CATEGORY': None,     'PARAMETER': None,            'OSCILLATOR': None}
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQ_REVS',  'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_QfMAX',    'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_Qf_REVS',  'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',        'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_FILTER_ADSR, 'EDITOR': [
@@ -2505,9 +2521,12 @@ class Application_class:
             'MODULATION'     : {PAGE_FILTER: {'label': 'MODU:', 'x':  30, 'y': 28, 'w': 98}},
             'LFO_RATE'       : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
             'LFO_FQMAX'      : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
+            'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
             'ADSR_INTERVAL'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'INTV:', 'x':  30, 'y': 10, 'w': 98}},
             'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y': 19, 'w': 98}},
+            'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 28, 'w': 98}},
+            'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 37, 'w': 98}},
+            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 46, 'w': 98}},
             'START_LEVEL'    : {PAGE_FILTER_ADSR: {'label': 'StLv:', 'x':  30, 'y':  1, 'w': 98}},
             'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
             'DECAY_TIME'     : {PAGE_FILTER_ADSR: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
@@ -2614,7 +2633,7 @@ class Application_class:
             '',
             '<1>---------',
             '            +-->',
-            ' 2-->3-->4--',
+            '<2>->3-->4--',
             '',
             '',
             ''
@@ -2625,7 +2644,7 @@ class Application_class:
             '        +',
             ' 2-->3--+-->',
             '        +',
-            ' 4------',
+            '<4>-----',
             ''
         ]
     ]
@@ -2745,8 +2764,8 @@ class Application_class:
                             data = SynthIO.get_formatted_parameter(category, parm)
                             display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
                             
-                            if category == 'SAVE':
-                                print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
+#                            if category == 'SAVE':
+#                                print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
 
         display.show()
 #        SynthIO.mixer_voice_level(0.4)
@@ -2890,12 +2909,13 @@ class Application_class:
                             if data_type == SynthIO_class.TYPE_INT:
                                 inc = inc * inc_magni
                             
-                        self.show_OLED_page()
+#                        self.show_OLED_page()
 
                         # Update the parameter
                         if inc is not None:
 #                            print('INCREMENT:', inc, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
+                            self.show_OLED_page()
 
                             # Tasks after updated a parameter
                             dataset = SynthIO.synthio_parameter(category)
@@ -2908,14 +2928,16 @@ class Application_class:
                                     SynthIO.synthio_parameter('SOUND', {'BANK': dataset['BANK'], 'SOUND': dataset['SOUND'], 'SOUND_NAME': dataset['SOUND_NAME']})
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
                                     SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
-                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
+                                    time.sleep(1.0)
+#                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
 
                             # Load a sound file page
                             elif category == 'LOAD':
                                 load_sound = SynthIO_class.VIEW_LOAD_SOUND[dataset['LOAD_SOUND']]
                                 if   load_sound == 'LOAD':
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
-                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
+                                    time.sleep(1.0)
+#                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
