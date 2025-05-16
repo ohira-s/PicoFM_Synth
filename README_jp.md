@@ -52,7 +52,7 @@ circuit pythonでプログラムしています。
 UNDER CONSTRUCTION...  
 
 # Circuit Schematics
-[回路図はこちら。](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/PiFMSynth_sch.png) 
+[回路図はこちら。](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_sch.png) 
 
 # Software Installation
 UNDER CONSTRUCTION...  
