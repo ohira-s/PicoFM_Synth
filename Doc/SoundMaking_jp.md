@@ -25,7 +25,10 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 
 　「ぼぉーーー」っと声を出したサンプリング波形はこんな感じになりました。　　
 　
-![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sample.jpg)　　
+|サンプリング波形の表示例|
+|---|
+|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sample.jpg)|  
+
 
 　サイン波は丸い音、鋸歯状波は文字通りギザギザした音を出します。作りたい音色をイメージしてオペレーターに波形を設定しましょう。Noiseは音程を持たないので、楽器には使いにくいですが、効果音などに使えます。    
 　
