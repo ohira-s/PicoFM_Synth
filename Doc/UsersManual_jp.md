@@ -2,11 +2,48 @@
 
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)  
 ## 1. 機能
-　Pico FM SynthesizerはUSB MIDIデバイスとして動作するシンセサイザーです。  
-　Pico FM Synthesizerを以降、「本機」または「PiFMS」と略す場合があります。  
+　Pico FM SynthesizerはUSB MIDIデバイスとして動作するシンセサイザーです。Pico FM Synthesizerを以降、「本機」または「PiFMS」と略す場合があります。  
+　以下の機能を持っています。  
+
+|分類|機能|説明|
+|---|---|---|
+|波形|基本波形|6種類の基本波形|
+||サンプリング波形|サンプラーで作成した波形（個数上限なし）|
+|波形変調|FM変調|4オペレーター、7アルゴリズム|
+|||波形変形エンベロープ|
+|フィルター|フィルター種別|LPF, HPF, BPF, NOTCH|
+||フィルター制御|LFOモジュレーション|
+|||エンベロープ|
+|VCA|VCA制御|LFOトレモロ|
+|||LFOビブラート|
+|||エンベロープ|
+|サンプラー|入力|マイク|
+||編集|波形丸め|
+|ファイル|音色|SAVE, LOAD|
+||サンプリング波形|SAVE|
+|出力|DAC|PCM5102Aによるオーディオ出力|
+
+　以下の仕組みでこれらの機能を実装しています。  
+![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_Block_Diagram.png)  
+
+|略号|説明|
+|---|---|
+|MIC|マイク|
+|SMP|サンプラー|
+|USB|USBケーブルおよびポート|
+|UMI|USB MIDI IN|
+|FMWG|FM変調アルゴリズム|
+|ADSR|エンベロープジェネレーター|
+|LFO|Low Frequency Oscillator|
+|FLT|フィルター|
+|AMP|VCA|
+|DAC|Digital Audio Convertor|
+|8Encoders|8個のロータリーエンコーダー|
+|OLED|ディスプレイ|
+
 
 ## 2. 外観
-![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
 
 1) ロータリーエンコーダー  
 
@@ -47,7 +84,7 @@
 5) MIDI音源の電源を入れます。パソコンからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
 6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
 　この画像は、Macと接続したものです。  
-![Connect to Mac]()
+![Connect to Mac](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_to_mac.jpg)
 
 ### 4-2. USBホストモード
 1) PiFMS（本機）を用意し、ロータリーエンコーダーのスライドスイッチを0にします。  
@@ -57,7 +94,7 @@
 5) OTGケーブルの電源供給用USBケーブルを5VのACアダプターに接続します。OTGケーブルからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
 6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
 　この画像は、KORG nanoKEY2と接続したものです。  
-![Connect to OTG]()
+![Connect to OTG](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_otg.jpg)
 
 
 ## 5. 操作の基本
@@ -132,14 +169,14 @@
 |m+n|オペレーターmとnの出力を加算合成することを表します。|
 
 	例えば、アルゴリズム7の数式は以下の表記になります。
-	<1>+2*3+4
+	<1>+2*3+<4>
 	
 	その図は以下の表示になります。
 	<1>-----
 	        +
 	 2-->3--+-->
 	        +
-	 4------
+	<4>-----
 
 |値|設定の意味|
 |----|----|
@@ -157,8 +194,8 @@
 |3|(<1>+2\*3)\*4|
 |4|<1>\*2\*3\*4|
 |5|<1>\*2+<3>\*4|
-|6|<1>+2\*3\*4|
-|7|<1>+2\*3+4|
+|6|<1>+<2>\*3\*4|
+|7|<1>+2\*3+<4>|
 
 
 ## 7. ALGORITHM
@@ -406,13 +443,24 @@
 ### 14-2. INTV (RT2)  
 
 	フィルターエンベロープの時間推移の間隔を指定します。通常の楽器では10〜50程度です。  
-
 	
 ### 14-3. FQmx (RT3)  
 
 	フィルターのカットオフ周波数の最大変動幅（周波数）を設定します。  
 
-### 14-4. CURS (RT4)  
+### 14-4. FQrv (RT3)  
+
+	フィルターのカットオフ周波数の変動幅を反転（減少）させるか否かの設定をします。OFFで増加、ONで減少します。  
+	
+### 14-5. Qfmx (RT3)  
+
+	フィルターのQファクター値の最大変動幅を設定します。  
+
+### 14-6. Qfrv (RT3)  
+
+	フィルターのQファクター値の変動幅を反転（減少）させるか否かの設定をします。OFFで増加、ONで減少します。  
+
+### 14-7. CURS (RT4)  
 
 	増減する実数値の桁位置を設定します。  
 
@@ -453,7 +501,7 @@
 	増減する実数値の桁位置を設定します。  
 
 
-## 16. FILTER
+## 16. VCA
 　「VCA」で始まる画面で、FM変調された波形に適用するVCAのエンベロープを設定します。
 　
 ### 16-1. OLED画面
@@ -492,7 +540,8 @@
 	
 ### 17-3. SOND (RT3)  
 
-	保存先のプログラム番号を設定します。  
+	保存先のプログラム番号を設定します。
+	保存済みのデータがあるとその音色名も表示されます。  
 	
 ### 17-4. NAME (RT4)  
 

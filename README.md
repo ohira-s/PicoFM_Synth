@@ -4,7 +4,7 @@ USB MIDI Synthesizer with Raspberry Pi PICO2.  This device works as a USB device
 This synthesizer works with FM wave generator, synthio, sound sampler and I2C DAC.  Block diagram is as below.  
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_Block_Diagram.png)  
 
-The FM wave generator is my original program.  It has 4 oscillators (operators), 7 algorithms and 6 basic wave shapes and sampling waves you did it.  
+The FM wave generator is my original program.  It has 4 oscillators (operators), 8 algorithms and 6 basic wave shapes and sampling waves you did it.  
 
 PICO is programmed with circuit python.
 
