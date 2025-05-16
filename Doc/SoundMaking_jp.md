@@ -12,15 +12,18 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 　PiFMSには4個のオペレーターが入っています。オペレーターが発信する波形には大きく分けて基本波形とサンプリング波形があります。基本波形は数学的に作り出された波形で6種類あり、Noise以外は見るからにシンプルな形をしています。  
 　サンプリング波形はPiFMSが持っているサンプリング機能を使って録音した音の一部を切り出して作り出す波形です。サンプリング波形は単純な数式では計算できないような波形にもなります。サンプリング波形はいくつでも用意できます。  
 　
-|基本波形||
+|基本波形|PiFMSの波形表示例|
 |---|---|
-|サイン波|![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sine.jpg)|
-|鋸歯状波||
-|三角波||
-|矩形波||
-|サイン波の絶対値||
-|サイン波のプラス側||
+|サイン波|![Sine](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sine.jpg)|
+|鋸歯状波|![Saw](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_saw.jpg)|
+|三角波|![Triangle](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_tri.jpg)|
+|矩形波|![Square](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sqr.jpg)|
+|サイン波の絶対値|![ABS Sine](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_waveabssine.jpg)|
+|サイン波のプラス側|![Plus Sine](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_plussine.jpg)|
+|ノイズ|![Noise](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_noise.jpg)|
 　
+　「ぼぉーーー」っと声を出したサンプリング波形はこんな感じになりました。　　
+![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_sample.jpg)　　
 
 ## 6. SOUND MAIN
 　現在の音色情報を表示します。    
