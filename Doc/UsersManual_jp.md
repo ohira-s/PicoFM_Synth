@@ -39,8 +39,8 @@
 |AMP|VCA|
 |DAC|Digital Audio Convertor|
 |8Encoders|8個のロータリーエンコーダー|
-|OLED|ディスプレイ|
-
+|OLED|ディスプレイ|　
+　
 
 ## 2. 外観
 ![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
