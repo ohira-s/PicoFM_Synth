@@ -99,6 +99,9 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 |6|`<1>----------`<br/>`　　　　　　　　+-->`<br/>`<2>-->3-->4--`|
 |7|`<1>------`<br/>`　　　　　+`<br/>`<2>-->3--+-->`<br/>`　　　　　+`<br/>`<4>------`|
 
+　アルゴリズムはSOUND MAIN画面のALGO欄で設定します。  
+　
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)
 
 	
 　
