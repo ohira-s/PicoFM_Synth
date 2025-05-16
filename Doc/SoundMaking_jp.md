@@ -33,7 +33,8 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 　サイン波は丸い音、鋸歯状波は文字通りギザギザした音を出します。作りたい音色をイメージしてオペレーターに波形を設定しましょう。Noiseは音程を持たないので、楽器には使いにくいですが、効果音などに使えます。    
 　オペレーターの波形はWAVE欄で設定します。  
 
-![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_00.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_01.jpg)
+![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_00.jpg)  
+
 　
 ### 1-2. アルゴリズム
 　1つのオペレーターは基本波形やサンプリング波形しか音を出せません。これでは作れる音色は限られてしまいます。そこで登場するのがアルゴリズムです。オペレーターを並べたり、積み上げたりして様々な音色を作り出します。  
