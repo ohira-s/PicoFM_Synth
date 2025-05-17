@@ -67,6 +67,10 @@
 #            Filter Q-factor envelope is available.
 #            Filter envelope can be inversed.
 #
+#     0.1.4: 05/14/2025
+#            Save wave shape you made as a sampling wave file
+#            to re-use it as a wave shape for oscillators.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -430,7 +434,7 @@ class ADC_MIC_class:
         ADC_MIC_class.SAMPLED_WAVE = np.array(ADC_MIC_class.SAMPLED_WAVE)
 
     # Save sampled wave file
-    def save_samplig_file(self, name):
+    def save_samplig_file(self, name, wave=None):
         name = name.strip()
         if len(name) == 0:
             return
@@ -438,14 +442,22 @@ class ADC_MIC_class:
         try:
             file_name = '/sd/SYNTH/WAVE/' + name + '.json'
             with open(file_name, 'w') as f:
-                wave = ADC_MIC_class.SAMPLED_WAVE.tolist()
+                if wave is None:
+                    wave = ADC_MIC_class.SAMPLED_WAVE.tolist()
+                else:
+                    wave = wave.tolist()
+                    
                 json.dump(wave, f)
                 print('SAVED:', file_name)
                 f.close()
+                self.find_sampling_files()
+                success = True
 
         except Exception as e:
             print('SD SAVE EXCEPTION:', e)
             success = False
+            
+        return success
 
     # Load sampled wave file
     def load_sampling_file(self, name):
@@ -453,7 +465,7 @@ class ADC_MIC_class:
         try:
             with open('/sd/SYNTH/WAVE/' + name + '.json', 'r') as f:
                 wave = json.load(f)
-                print('LOADED:', wave)
+#                print('LOADED:', wave)
                 ADC_MIC_class.SAMPLED_WAVE = wave
                 f.close()
 
@@ -478,6 +490,7 @@ class ADC_MIC_class:
             if pf[-5:] == '.json':
                 SynthIO_class.VIEW_SAMPLE_WAVES.append(pf[:-5])
 
+        SynthIO_class.VIEW_SAMPLE_WAVES.sort()
         return SynthIO_class.VIEW_SAMPLE_WAVES
 
 ################# End of ADC MIC Class Definition #################
@@ -998,7 +1011,7 @@ class FM_Waveshape_class:
 
     def wave_sampling(self, wave_num, adsr, an, fn, modulator=None):
         ADC_Mic.load_sampling_file(self.sampling_file(wave_num))
-        print('LOADED SAMPLE:', len(ADC_MIC_class.SAMPLED_WAVE), ADC_MIC_class.SAMPLED_WAVE)
+#        print('LOADED SAMPLE:', len(ADC_MIC_class.SAMPLED_WAVE), ADC_MIC_class.SAMPLED_WAVE)
         sample_wave = ADC_MIC_class.SAMPLED_WAVE
         
         if len(sample_wave) != FM_Waveshape_class.SAMPLE_SIZE:
@@ -1006,7 +1019,7 @@ class FM_Waveshape_class:
     
         ansv = an / FM_Waveshape_class.SAMPLE_VOLUME_f
         wave = []
-        print('SAMPLE SIZE:', wave_num, FM_Waveshape_class.SAMPLE_SIZE, len(sample_wave))
+#        print('SAMPLE SIZE:', wave_num, FM_Waveshape_class.SAMPLE_SIZE, len(sample_wave))
         
         # No modulation
         if modulator is None:
@@ -1030,7 +1043,7 @@ class FM_Waveshape_class:
             wave = mod_wave
 
         wave = np.array(wave)
-        print('SAMPLING:', an, ansv, len(wave), wave)
+#        print('SAMPLING:', an, ansv, len(wave), wave)
         return wave
 
     def wave_sampling1(self, adsr, an, fn, modulator=None):
@@ -1498,7 +1511,8 @@ class SynthIO_class:
                 'WAVE1' : '',
                 'WAVE2' : '',
                 'WAVE3' : '',
-                'WAVE4' : ''
+                'WAVE4' : '',
+                'SAVE'  : 0
             }
         }
         
@@ -1589,7 +1603,8 @@ class SynthIO_class:
                 'WAVE1' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
                 'WAVE2' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
                 'WAVE3' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
-                'WAVE4' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES}
+                'WAVE4' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
+                'SAVE'  : {'TYPE': SynthIO_class.TYPE_INDEX,          'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAVE_SOUND)   - 1, 'VIEW': SynthIO_class.VIEW_SAVE_SOUND}
             }
         }
 
@@ -2333,13 +2348,13 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_WAVE_SHAPE, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_ADSR1, 'EDITOR': [
@@ -2563,14 +2578,15 @@ class Application_class:
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
             'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
-            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}},
-            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}},
+            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 98}},
+            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
             'SAMPLE': {PAGE_SAMPLING: {'label': 'SMPL:', 'x':  30, 'y': 55, 'w': 98}},
             'WAVE1' : {PAGE_SAMPLING_WAVES: {'label': 'WAV1:', 'x':  30, 'y': 10, 'w': 98}},
             'WAVE2' : {PAGE_SAMPLING_WAVES: {'label': 'WAV2:', 'x':  30, 'y': 19, 'w': 98}},
             'WAVE3' : {PAGE_SAMPLING_WAVES: {'label': 'WAV3:', 'x':  30, 'y': 28, 'w': 98}},
-            'WAVE4' : {PAGE_SAMPLING_WAVES: {'label': 'WAV4:', 'x':  30, 'y': 37, 'w': 98}}
-        }
+            'WAVE4' : {PAGE_SAMPLING_WAVES: {'label': 'WAV4:', 'x':  30, 'y': 37, 'w': 98}},
+            'SAVE'  : {PAGE_WAVE_SHAPE: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 98}}
+        },
     }
 
     # Algorithm chart
@@ -2715,13 +2731,6 @@ class Application_class:
             display.show()
 #            SynthIO.mixer_voice_level(0.4)
             return
-        
-        # WAVE SHAPE custom page
-        elif page_no == Application_class.PAGE_WAVE_SHAPE:
-#            print('DISPWAVE SHAPE')
-            self.show_OLED_waveshape()
-#            SynthIO.mixer_voice_level(0.4)
-            return
 
         # Show normal pages
         for category in Application_class.DISP_PARAMETERS.keys():
@@ -2766,6 +2775,13 @@ class Application_class:
                             
 #                            if category == 'SAVE':
 #                                print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
+
+        # WAVE SHAPE custom page
+        if page_no == Application_class.PAGE_WAVE_SHAPE:
+#            print('DISPWAVE SHAPE')
+#            self.show_OLED_waveshape()
+            self.show_OLED_waveshape(None, 128, 32, 0, 31, False)
+#            SynthIO.mixer_voice_level(0.4)
 
         display.show()
 #        SynthIO.mixer_voice_level(0.4)
@@ -2846,12 +2862,26 @@ class Application_class:
                             SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['VIEW'] = SynthIO_class.VIEW_SAMPLE_WAVES
                             if dataset['WAVE' + str(w)] not in SynthIO_class.VIEW_SAMPLE_WAVES:
                                 SynthIO.synthio_parameter('SAMPLING', {'WAVE' + str(w): ''})
-                    
+
+                    # Search sound files just moving into the LOAD page
+                    elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_LOAD:
+                        dataset = SynthIO.synthio_parameter('LOAD')
+                        finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
+                        if finds > 0:
+                            sound_no = 0 if len(SynthIO_class.VIEW_SOUND_FILES[dataset['SOUND']]) <= 4 else dataset['SOUND']
+        
+                        else:
+                            sound_no = 0
+                            
+#                        print('SOUND FILESp:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+                        SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': sound_no if finds > 0 else -1})
+
                     # Show the page
                     self.show_OLED_page()
                     
                 # Increment a value
                 else:
+                    # Get the category and parameter to increment by the current page and the number of rotary encoder
                     editor = Application_class.PAGES[Application_class.DISPLAY_PAGE]['EDITOR'][rot]
                     category = editor['CATEGORY']
                     parameter = editor['PARAMETER']
@@ -2862,7 +2892,7 @@ class Application_class:
                         data_attr = SynthIO._params_attr[category][parameter]
                         data_type = data_attr['TYPE']
                         if oscillator is None:
-#                            print('DATAATR:', data_attr, category, parameter)
+                            print('DATAATR:', data_attr, category, parameter)
                             if data_type != SynthIO_class.TYPE_INDEX and data_type != SynthIO_class.TYPE_INDEXED_VALUE:
                                 dataset = SynthIO.synthio_parameter(category)
 #                                print('DATASET:', dataset, parameter)
@@ -2911,9 +2941,9 @@ class Application_class:
                             
 #                        self.show_OLED_page()
 
-                        # Update the parameter
+                        # Update the parameter to be incremented
                         if inc is not None:
-#                            print('INCREMENT:', inc, parameter, oscillator)
+#                            print('INCREMENT:', inc, category, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
                             self.show_OLED_page()
 
@@ -2923,7 +2953,7 @@ class Application_class:
                             # Save a sound file page
                             if   category == 'SAVE':
                                 save_sound = SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE_SOUND']]
-                                print('TASK CATEGORY SAVE:', save_sound)
+#                                print('TASK CATEGORY SAVE:', save_sound)
                                 if save_sound == 'SAVE':
                                     SynthIO.synthio_parameter('SOUND', {'BANK': dataset['BANK'], 'SOUND': dataset['SOUND'], 'SOUND_NAME': dataset['SOUND_NAME']})
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
@@ -2954,7 +2984,7 @@ class Application_class:
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
-                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+#                                    print('SOUND FILESl:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
 
                             # Sampling page
@@ -2962,56 +2992,71 @@ class Application_class:
                                 if   parameter == 'WAVE1':
                                     FM_Waveshape.sampling_file(0, dataset['WAVE1'])
                                     SynthIO.setup_synthio()
+                                    
                                 elif parameter == 'WAVE2':
                                     FM_Waveshape.sampling_file(1, dataset['WAVE2'])
                                     SynthIO.setup_synthio()
+                                    
                                 elif parameter == 'WAVE3':
                                     FM_Waveshape.sampling_file(2, dataset['WAVE3'])
                                     SynthIO.setup_synthio()
+                                    
                                 elif parameter == 'WAVE4':
                                     FM_Waveshape.sampling_file(3, dataset['WAVE4'])
                                     SynthIO.setup_synthio()
+
+                                # Save the current wave shape
+                                elif parameter == 'SAVE':
+                                    print('WAVE SHAPE SAVE:', SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']])
+                                    if SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']] == 'SAVE':
+#                                        print('SAVE THE CURRENT WAVE SHAPE:', dataset['NAME'])
+                                        ADC_Mic.save_samplig_file(dataset['NAME'], SynthIO.wave_shape())
+                                        time.sleep(0.5)
+                                        SynthIO.synthio_parameter('SAMPLING', {'SAVE': 0})
+
+                                # Sound sampler (sampling or save)
+                                elif parameter == 'SAMPLE':                                    
+                                    # Sampling tasks
+                                    sampling = SynthIO_class.VIEW_SAMPLE[dataset['SAMPLE']]
                                     
-                                # Sampling tasks
-                                sampling = SynthIO_class.VIEW_SAMPLE[dataset['SAMPLE']]
-                                
-                                # Sampling sound
-                                if   sampling == 'SAMPLING':
-                                    Encoder_obj.i2c_lock()
-                                    
-                                    wait = dataset['WAIT'] / 6
-                                    if wait > 0.0:
-                                        for i in list(range(2)):
-                                            Encoder_obj.led(6, [0xff, 0x00, 0x00])
+                                    # Sampling sound
+                                    if   sampling == 'SAMPLING':
+                                        Encoder_obj.i2c_lock()
+                                        
+                                        wait = dataset['WAIT'] / 6
+                                        if wait > 0.0:
+                                            for i in list(range(2)):
+                                                Encoder_obj.led(6, [0xff, 0x00, 0x00])
+                                                time.sleep(wait)
+                                                Encoder_obj.led(6, [0x00, 0x00, 0x00])
+                                                time.sleep(wait)
+
+                                        Encoder_obj.i2c_unlock()
+                                        
+                                        if dataset['TIME'] > 0.0:
+                                            Encoder_obj.i2c_lock()
+                                            Encoder_obj.led(6, [0x00, 0xff, 0x00])
                                             time.sleep(wait)
                                             Encoder_obj.led(6, [0x00, 0x00, 0x00])
                                             time.sleep(wait)
+                                            Encoder_obj.led(6, [0x00, 0x00, 0xff])
+                                            Encoder_obj.i2c_unlock()
+                                            
+                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
+                                            print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
+                                            self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
+                                            time.sleep(2.0)
 
-                                    Encoder_obj.i2c_unlock()
-                                    
-                                    if dataset['TIME'] > 0.0:
                                         Encoder_obj.i2c_lock()
-                                        Encoder_obj.led(6, [0x00, 0xff, 0x00])
-                                        time.sleep(wait)
                                         Encoder_obj.led(6, [0x00, 0x00, 0x00])
-                                        time.sleep(wait)
-                                        Encoder_obj.led(6, [0x00, 0x00, 0xff])
                                         Encoder_obj.i2c_unlock()
-                                        
-                                        ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
-                                        print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
-                                        self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
-                                        time.sleep(2.0)
+                                        SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
 
-                                    Encoder_obj.i2c_lock()
-                                    Encoder_obj.led(6, [0x00, 0x00, 0x00])
-                                    Encoder_obj.i2c_unlock()
-                                    SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
-
-                                # Save the current wave sampled
-                                elif sampling == 'SAVE':
-                                    ADC_Mic.save_samplig_file(dataset['NAME'])
-                                    SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
+                                    # Save the current wave sampled
+                                    elif sampling == 'SAVE':
+                                        ADC_Mic.save_samplig_file(dataset['NAME'])
+                                        time.sleep(0.5)
+                                        SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
 
                             # Sound parameter pages
                             else:

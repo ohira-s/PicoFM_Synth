@@ -29,18 +29,19 @@ Specifications are as below.
 ||Sampled waves|Waves you sampled.|
 |Waveshape Modulation|Frequency Modulation|4 operators and 7 algorithms|
 |||Envelope to form the waves.|
+|VCO|Voices|12 voices polyphonic|
+||Control|LFO vibrate|
+|||Envelope|
 |Filter|Type|LPF, HPF, BPF, NOTCH|
 ||Control|LFO modulation.|
 |||Envelope modulation.|
-|VCA|Control|LFO tremoro|
-|||LFO vibrate|
-|||Envelope|
+|VCA|Control| Envelope |
 |Sampler|Input|Mic|
 ||Editor|Noise reduction|
 |File|Sound|SAVE, LOAD|
+||FM sound waves|SAVE|
 ||Sampled waves|SAVE|
 |Output|DAC|Audio output via PCM5102A|
-
 
 PICO is programmed with circuit python.
 
