@@ -50,6 +50,10 @@ circuit pythonでプログラムしています。
 [日本語版はこちら。](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/UsersManual_jp.md)  
 [User's Manual in English is under contruction.]()
 
+# How to Make Sound
+[日本語版はこちら。](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/SoundMaking_jp.md)  
+[User's Manual in English is under contruction.]()
+
 # Configuration Manual
 UNDER CONSTRUCTION...  
 

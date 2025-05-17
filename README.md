@@ -49,6 +49,10 @@ PICO is programmed with circuit python.
 [User's Manual in Japanese is here.](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/UsersManual_jp.md)  
 [User's Manual in English is under contruction.]()
 
+# How to Make Sound
+[How to in Japanese is here.](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/SoundMaking_jp.md)  
+[How to in English is under contruction.]()
+
 # Configuration Manual
 UNDER CONSTRUCTION...  
 
