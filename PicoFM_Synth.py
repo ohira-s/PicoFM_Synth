@@ -70,6 +70,7 @@
 #     0.1.4: 05/14/2025
 #            Save wave shape you made as a sampling wave file
 #            to re-use it as a wave shape for oscillators.
+#            Bug fixed: oscillator adsr.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -448,7 +449,7 @@ class ADC_MIC_class:
                     wave = wave.tolist()
                     
                 json.dump(wave, f)
-                print('SAVED:', file_name)
+#                print('SAVED:', file_name)
                 f.close()
                 self.find_sampling_files()
                 success = True
@@ -484,7 +485,7 @@ class ADC_MIC_class:
         # Search files
         finds = 0
         path_files = os.listdir('/sd/SYNTH/WAVE')
-        print('FILES:', path_files)
+#        print('FILES:', path_files)
         for pf in path_files:
 #            print('FILE=', pf)
             if pf[-5:] == '.json':
@@ -795,21 +796,23 @@ class FM_Waveshape_class:
         osc['adsr'] = []
         
         # Attack
-        start = osc['start_level']
+        stlevel = osc['start_level']
+        start = stlevel
         osc['adsr'].append(start)
         duration = osc['attack_time']
         if duration > 0:
             for tm in list(range(1, duration)):
-                adsr = calc_linear(tm, duration, start, 1.0)
+                adsr = calc_linear(tm, duration, stlevel, 1.0)
                 osc['adsr'].append(adsr)  
                 start = adsr
                 
         # Decay to Sustain
+        stlevel = start
         duration = osc['decay_time'] - 1
         sustain  = osc['sustain_level']
         if duration > 0:
             for tm in list(range(1, duration)):
-                adsr = calc_linear(tm, duration, start, sustain)
+                adsr = calc_linear(tm, duration, stlevel, sustain)
                 osc['adsr'].append(adsr)
                 start = adsr
 
@@ -832,6 +835,9 @@ class FM_Waveshape_class:
                 adsr = calc_linear(tm, duration, start, end_level)
                 osc['adsr'].append(adsr)
 
+        if len(osc['adsr']) > FM_Waveshape_class.SAMPLE_SIZE:
+            osc['adsr'] = osc['adsr'][:FM_Waveshape_class.SAMPLE_SIZE]
+            
 #        print('ADSR:', osc_num, len(osc['adsr']), osc['adsr'])
 
     # Generate sine wave
@@ -840,6 +846,7 @@ class FM_Waveshape_class:
         
         # Without modulation
         if modulator is None:
+#            print('SIN no-mod:', an, ansv, fn, FM_Waveshape_class.SAMPLE_SIZE, len(adsr))
             wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * fn, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)) * adsr * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
 #            print('SIN no-mod:', an, ansv, len(wave), wave)
         
@@ -1060,7 +1067,7 @@ class FM_Waveshape_class:
 
     # Make an waveshape with a carrier and a modulator
     def waveshape(self, shape, adsr, an, fn, modulator=None):
-        print('WAVESHAPE:', shape, an ,fn)
+#        print('WAVESHAPE:', shape, an ,fn)
         wave = self._waveshape[shape](adsr, an, fn / FM_Waveshape_class.OSC_FREQ_RESOLUTION, modulator)
         for w in list(range(len(wave))):
             if wave[w] > FM_Waveshape_class.SAMPLE_VOLUME:
@@ -1540,10 +1547,10 @@ class SynthIO_class:
                 'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
                 'feedback'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'},
                 'start_level'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'attack_time'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
-                'decay_time'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
+                'attack_time'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': FM_Waveshape_class.SAMPLE_SIZE - 1, 'VIEW': '{:3d}'},
+                'decay_time'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': FM_Waveshape_class.SAMPLE_SIZE - 1, 'VIEW': '{:3d}'},
                 'sustain_level': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'release_time' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 512, 'VIEW': '{:3d}'},
+                'release_time' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': FM_Waveshape_class.SAMPLE_SIZE - 1, 'VIEW': '{:3d}'},
                 'end_level'    : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'}
             },
 
@@ -1594,12 +1601,12 @@ class SynthIO_class:
             },
             
             'SAMPLING': {
-                'TIME'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:3d}'},
-                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
-                'CUT'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX': 9999, 'VIEW': '{:4d}'},
-                'NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':    8, 'VIEW': '{:8s}'},
-                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s8) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s8},
-                'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE},
+                'TIME'  : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,          'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
+                'CUT'   : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    0, 'MAX': 9999, 'VIEW': '{:4d}'},
+                'NAME'  : {'TYPE': SynthIO_class.TYPE_STRING,         'MIN':    0, 'MAX':    8, 'VIEW': '{:8s}'},
+                'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,          'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s8) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s8},
+                'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX,          'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE},
                 'WAVE1' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
                 'WAVE2' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
                 'WAVE3' : {'TYPE': SynthIO_class.TYPE_INDEXED_VALUE,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE_WAVES},
@@ -2855,7 +2862,7 @@ class Application_class:
                     if Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_SAMPLING_WAVES:
                         # Update the sampling files list
                         ADC_Mic.find_sampling_files()
-                        print('SAMPLING FILES:', SynthIO_class.VIEW_SAMPLE_WAVES)
+#                        print('SAMPLING FILES:', SynthIO_class.VIEW_SAMPLE_WAVES)
                         dataset = SynthIO.synthio_parameter('SAMPLING')
                         for w in list(range(1,5)):
                             SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['MAX'] = len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1
@@ -2892,7 +2899,7 @@ class Application_class:
                         data_attr = SynthIO._params_attr[category][parameter]
                         data_type = data_attr['TYPE']
                         if oscillator is None:
-                            print('DATAATR:', data_attr, category, parameter)
+#                            print('DATAATR:', data_attr, category, parameter)
                             if data_type != SynthIO_class.TYPE_INDEX and data_type != SynthIO_class.TYPE_INDEXED_VALUE:
                                 dataset = SynthIO.synthio_parameter(category)
 #                                print('DATASET:', dataset, parameter)
