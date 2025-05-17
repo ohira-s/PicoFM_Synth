@@ -496,7 +496,10 @@
 
 ## 15. FILTER ENVELOPE ADSR
 　「StLv」で始まる画面で、FM変調された波形に適用するフィルターのエンベロープのADSRを設定します。
+　フィルターエンベロープは以下のパラメータと形状を持っています。  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.jpg)  
 　
+
 ### 15-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/15_filter_adsr.jpg) 
 	
@@ -532,6 +535,8 @@
 
 ## 16. VCA
 　「VCA」で始まる画面で、FM変調された波形に適用するVCAのエンベロープを設定します。
+　VCAエンベロープは以下のパラメータと形状を持っています。  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.jpg)  
 　
 ### 16-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/10_vca.jpg) 
