@@ -366,6 +366,15 @@
 ## 12. OSCILLATOR ENVELOPE
 　「OSCA:」で始まる画面で、4個のオペレーターの波形合成用エンベロープを設定します。
 　波形合成用エンベロープとVCAのエンベロープは別のものです。VCAエンベロープは1音符の出力ボリュームの変化を表しますが、波形合成用エンベロープはFM変調で波形を合成するときにのみ使用されます。各オペレーターの1周期の基本波形に対して適用され、基本波形1周期の振幅をエンベロープの形に整形します。  
+　波形合成用エンベロープがない（全域で1.0）場合に矩形波である波形と、そこに波形合成用エンベロープを設定した結果の波形を比較すると以下のようになります。  
+
+|エンベロープ|波形|
+|---|---|
+|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_00.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_01.jpg)|
+|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_10.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_11.jpg)|  
+
+　適用したエンベロープと元の矩形波を図にすると以下の通りです。エンベロープが0に近づくと波形も0に近づきます。  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_02.jpg) 
 　
 ### 12-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
