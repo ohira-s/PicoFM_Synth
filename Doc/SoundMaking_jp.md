@@ -103,5 +103,17 @@ Pico FM Synthesizer (PiFMS)での音色の作り方を見てみましょう。
 　
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)
 
-	
 　
+### 1-4. 波形の再利用
+　FM変調で作った波形はWAVE SHAPE画面で確認できます。ギザギザが激しい波形はノイズに近くなって楽器としては使いにくいといった傾向がわかります。  
+　WAVE SHAPE画面では表示されている波形をサンプリング波形のデータとして保存することができます。  
+　
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
+　
+　すると、その波形データをオペレーターの発信波形として使うことができるようになります。4個のオペレーターとアルゴリズムを駆使して作った波形を、たった1個のオペレーターで発信できるようになるわけです。	
+
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
+
+　このようにして、4個のオペレーターだけでは作れなかった波形もさらに変調をかけて作り出すことができます。マイクでサンプリングした波形も含めると、PiFMSは無限の波形を元にしてFM変調の音色を作り出すことができます。  
+
+

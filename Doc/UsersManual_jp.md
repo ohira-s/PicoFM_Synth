@@ -42,7 +42,6 @@
 |DAC|Digital Audio Convertor|
 |8Encoders|8個のロータリーエンコーダー|
 |OLED|ディスプレイ|　
-　
 
 ## 2. 外観
 ![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
@@ -126,7 +125,7 @@
 |SAMPLING WAVES|オペレーターに利用できるサンプリング波形を設定します。|
 |OSCILLATOR LFO|OSCILLATORに適用するLFOを設定します。|
 |OSCILLATORS|4個のオペレーターの発信設定をします。|
-|WAVE SHAPE|FM変調された結果の波形を表示します。|
+|WAVE SHAPE|FM変調された結果の波形を表示し、波形データの保存もできます。|
 |OSCILLATOR ADSR|4個のオペレーターの波形エンベロープを設定します。|
 |FILTER|フィルターを設定します。|
 |FILTER ENVELOPE|フィルターエンベロープの全体設定をします。|
@@ -343,6 +342,7 @@
 
 ## 11. WAVE SHAPE
 　現在の設定でFM変調された波形を表示します。また、その波形をサンプリング波形としてSDカードに保存できます。保存した波形はオシレーターの波形に利用できるため、音色作成のバリエーションが広がります。  
+　保存されるのは波形データであり、音色データではありません。音色はSAVE画面で保存します。  
 
 ### 11-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
