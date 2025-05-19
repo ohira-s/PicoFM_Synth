@@ -1,5 +1,7 @@
 [英語版READMEへ / README in Japanese](https://github.com/ohira-s/PicoFM_Synth/tree/main/README.md)  
 # Pico FM Synthesizer with DAC
+![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSnth.jpg)  
+
 ラズベリーパイPICO2を使ったUSB MIDIシンセサイザーです。  
 USBデバイスとしてもホストとしても動作します。演奏にはDAWのようなアプリやUSB MIDIキーボードなどのコントローラーが必要です。  
 このシンセサイザーはFM変調による波形合成、synthioによるフィルターとVCA、マイク入力による波形サンプリング機能を持っています。出力はDACで行っています。  
