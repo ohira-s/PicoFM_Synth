@@ -38,7 +38,7 @@ Specifications are as below.
 ||Control|LFO modulation.|
 |||Envelope modulation.|
 |VCA|Control| Envelope |
-|Sampler|Input|Mic|
+|Toy Sampler|Input|Mic|
 ||Editor|Noise reduction|
 |File|Sound|SAVE, LOAD|
 ||FM sound waves|SAVE|
