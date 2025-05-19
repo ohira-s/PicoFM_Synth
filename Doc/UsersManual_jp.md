@@ -286,7 +286,7 @@
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/05_oscillators.jpg) 　
 
 4オペレーターの切り替えはRT8で行います。先頭行に[1]とある場合はオペレーター1のパラメータ編集画面です。そこでRT8を右に回すと[2]となり、オペレーター2の編集画面になります。  
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/05_oscillators2.jpg) 　
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators2.jpg) 　
 
 [4]の状態でRT8を右に回すと次の画面に移動します。  
 
