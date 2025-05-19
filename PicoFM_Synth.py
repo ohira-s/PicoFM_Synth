@@ -72,10 +72,14 @@
 #            to re-use it as a wave shape for oscillators.
 #            Bug fixed: oscillator adsr.
 #
+#     0.1.5: 05/19/2025
+#            Some label text changed.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
 #   SCL: GP11(15)
+#   VCC: 3.3V(36)
 #
 # I2C Unit-0:: OLED SSD1306 128x64(21 chars x 7 lines)
 #   SDA: GP0( 1) 
@@ -88,6 +92,10 @@
 # USB:: USB MIDI HOST
 #   D+ : GP26(31)
 #   D- : GP27(32)
+#
+# MIC: AE-MICAMP
+#   OUT: A2/GP28(34)	ADC2
+#   VCC: 3.3V(36)
 #
 #------------------------------------------------------------------------------
 # MIT License
@@ -175,7 +183,7 @@ async def midi_in():
 #            print('===>MIDI IN:', midi_msg)
             # Note on
             if isinstance(midi_msg, NoteOn):
-                print('NOTE ON :', midi_msg.note, midi_msg.velocity)
+#                print('NOTE ON :', midi_msg.note, midi_msg.velocity)
                 
                 # The note is playing: stop the current note, then play new note
                 if midi_msg.note in notes:
@@ -231,7 +239,7 @@ async def midi_in():
 
             # Note off
             elif isinstance(midi_msg, NoteOff):
-                print('NOTE OFF:', midi_msg.note)
+#                print('NOTE OFF:', midi_msg.note)
                 if midi_msg.note in notes:
                     if notes[midi_msg.note] is not None:
                         synthesizer.release(notes[midi_msg.note])
@@ -2532,7 +2540,7 @@ class Application_class:
             'attack_time'  : {PAGE_OSCILLTOR_ADSR1: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'ATCK:', 'x':  30, 'y': 19, 'w': 98}},
             'decay_time'   : {PAGE_OSCILLTOR_ADSR1: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'DECY:', 'x':  30, 'y': 28, 'w': 98}},
             'sustain_level': {PAGE_OSCILLTOR_ADSR1: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'SuLv:', 'x':  30, 'y': 37, 'w': 98}},
-            'release_time' : {PAGE_OSCILLTOR_ADSR1: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}},
+            'release_time' : {PAGE_OSCILLTOR_ADSR1: {'label': 'SuRs:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'RELS:', 'x':  30, 'y': 46, 'w': 98}},
             'end_level'    : {PAGE_OSCILLTOR_ADSR1: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR2: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR3: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}, PAGE_OSCILLTOR_ADSR4: {'label': 'EdLv:', 'x':  30, 'y': 55, 'w': 98}}
         },
 
@@ -2561,7 +2569,7 @@ class Application_class:
             'ATTACK' : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
             'DECAY'  : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
             'SUSTAIN': {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
-            'RELEASE': {PAGE_VCA: {'label': 'SuRs:', 'x':  30, 'y': 37, 'w': 98}},
+            'RELEASE': {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 37, 'w': 98}},
             'CURSOR' : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}}
         },
         
@@ -2587,7 +2595,7 @@ class Application_class:
             'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
             'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 98}},
             'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
-            'SAMPLE': {PAGE_SAMPLING: {'label': 'SMPL:', 'x':  30, 'y': 55, 'w': 98}},
+            'SAMPLE': {PAGE_SAMPLING: {'label': 'TASK:', 'x':  30, 'y': 55, 'w': 98}},
             'WAVE1' : {PAGE_SAMPLING_WAVES: {'label': 'WAV1:', 'x':  30, 'y': 10, 'w': 98}},
             'WAVE2' : {PAGE_SAMPLING_WAVES: {'label': 'WAV2:', 'x':  30, 'y': 19, 'w': 98}},
             'WAVE3' : {PAGE_SAMPLING_WAVES: {'label': 'WAV3:', 'x':  30, 'y': 28, 'w': 98}},
