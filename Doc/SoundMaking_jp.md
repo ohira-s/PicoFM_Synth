@@ -106,7 +106,7 @@
 ### 1-4. シェイプ
 　素材と骨格だけでも音色として使える波形ができますが、オプション機能として波形の形を全体的に変形する機能があります。波形合成用エンベロープによる変形です。波形合成用エンベロープは以下のような形の、これも波形です。  
 
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.jpg)  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.png)  
 
 　0.0〜1.0の間で時間的に変化します。StLvから始まって、ATCK単位時間をかけて1.0まで増加し、その後DECY単位時間をかけてSuLvまで下降し、さらにSuRs単位時間をかけてEdLvまで推移します。  
 　波形合成用エンベロープがない（全域で1.0）場合に矩形波である波形と、そこに波形合成用エンベロープを設定した結果の波形を比較すると以下のようになります。  
