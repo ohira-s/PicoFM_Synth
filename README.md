@@ -1,6 +1,6 @@
 [日本語版READMEへ / README in Japanese](https://github.com/ohira-s/PicoFM_Synth/tree/main/README_jp.md)  
 # Pico FM Synthesizer with DAC
-![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSnth.jpg)  
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
 
 USB MIDI Synthesizer with Raspberry Pi PICO2.  This device works as a USB device and host.  A USB MIDI controller is needed.  
 This synthesizer works with FM wave generator, synthio, sound sampler and I2S DAC.  Block diagram is as below.  
