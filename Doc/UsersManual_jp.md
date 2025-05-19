@@ -365,6 +365,8 @@
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
 
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
+
 
 ## 12. OSCILLATOR ENVELOPE
 　「OSCA:」で始まる画面で、4個のオペレーターの波形合成用エンベロープを設定します。
