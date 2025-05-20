@@ -2563,7 +2563,7 @@ class Application_class:
             'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y': 10, 'w': 98}},
             'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 19, 'w': 98}},
             'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 28, 'w': 98}},
-            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 35, 'w': 98}},
+            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 37, 'w': 98}},
             'ADSR_VELOCITY'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'VELO:', 'x':  30, 'y': 46, 'w': 98}},
             'START_LEVEL'    : {PAGE_FILTER_ADSR: {'label': 'StLv:', 'x':  30, 'y':  1, 'w': 30}},
             'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
@@ -2723,8 +2723,9 @@ class Application_class:
         display.fill(1)
         display.text('PiFM Synth', 5, 15, 0, 2)
         display.text('(C) 2025 S.Ohira', 15, 35, 0)
-        display.text('SW=0:usbHOST/1:DEVICE', 0, 55, 0)
+        display.text('SW=0:usbHOST/1:DEVICE', 2, 55, 0)
         display.show()
+        time.sleep(2)
 
     # Display a page
     def show_OLED_page(self, page_no=None):
