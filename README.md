@@ -29,7 +29,7 @@ Specifications are as below.
 |---|---|---|
 |Waves|Basic waves|6 kinds of waves line sine.|
 ||Sampled waves|Waves you sampled.|
-|Waveshape Modulation|Frequency Modulation|4 operators and 7 algorithms|
+|Waveshape Modulation|Frequency Modulation|4 operators and 8 algorithms|
 |||Envelope to form the waves.|
 |VCO|Voices|12 voices polyphonic|
 ||Control|LFO vibrate|
@@ -37,7 +37,9 @@ Specifications are as below.
 |Filter|Type|LPF, HPF, BPF, NOTCH|
 ||Control|LFO modulation.|
 |||Envelope modulation.|
+|||Note-On velocity.|
 |VCA|Control| Envelope |
+|||Note-On velocity.|
 |Toy Sampler|Input|Mic|
 ||Editor|Noise reduction|
 |File|Sound|SAVE, LOAD|

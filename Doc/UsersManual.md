@@ -11,12 +11,14 @@ Pico FM Synthesizer (PiFMS) is a synthesizer sound module working as a USB host 
 |Wave shape Modulation|FM(Frequency Modulation)|4 operators, 8 algorithms.|
 ||Envelope|An envelope generator to shape a wave.|
 |VCO|Note-ON/OFF|12 voices polyphonic.|
-||LFO|Tremoro|
-||LFO|Vibrate|
+||LFO|Tremolo|
+|||Vibrate|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
+|||Note-On velocity.|
 |VCA|Envelope|Control note volume.|
+|||Note-On velocity.|
 |Toy sampler|Input|Built-in mic.|
 |File|Sound|SAVE, LOAD|
 ||FM modulated wave|Save as the wave shape data.|
