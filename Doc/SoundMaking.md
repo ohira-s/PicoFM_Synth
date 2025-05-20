@@ -169,107 +169,110 @@ LFO speed.
 
 Maximum fluctuation of the cut off frequency by the LFO.  
 　
-### 3-2. フィルターエンベロープ
-　時間経過とともに滑らかに音色に変化を付けるのがフィルターエンベロープです。エンベロープという波形の形状に従ってフィルターのカットオフ周波数やレゾナンスを変化させられます。音の出だしでは高い音が含まれるものの、時間とともにそれがなくなって行くといった変化を付けることができます。  
-　設定するパラメータがたくさんありますが、実際の楽器らしい音を出すには重要な設定です。  
-　フィルターエンベロープは以下のパラメータと形状を持っています。  
+### 3-2. Filter Envelope
+PiFMS filter envelope can change both the cut off frequency and the resonance value of the filter along time after MIDI note-on.  The filter envelope has following parameters.  
+
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
 
-#### 3-2-1. INTV (RT2)  
+#### 3-2-1. INTV 
 
-	フィルターエンベロープの時間推移の間隔を指定します。通常の楽器では10〜50程度です。  
+The filter envelope of PiFMS has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
 	
-#### 3-2-2. FQmx (RT3)  
+#### 3-2-2. FQmx 
 
-	フィルターのカットオフ周波数の最大変動幅（周波数）を設定します。  
+Maximum fluctuation of the cut off frequency by the filter envelope.  
 
-#### 3-2-3. FQrv (RT3)  
+#### 3-2-3. FQrv  
 
-	フィルターのカットオフ周波数の変動幅を反転（減少）させるか否かの設定をします。OFFで増加、ONで減少します。  
+Turn off: Positive envelope for the cut off frequency.  
+Turn on: Negative envelope for the cut off frequency.    
 	
-#### 3-2-4. Qfmx (RT3)  
+#### 3-2-4. Qfmx  
 
-	フィルターのQファクター値の最大変動幅を設定します。  
+Maximum fluctuation of the resonance by the filter envelope.  
 
-#### 3-2-5. Qfrv (RT3)  
+#### 3-2-5. Qfrv  
 
-	フィルターのQファクター値の変動幅を反転（減少）させるか否かの設定をします。OFFで増加、ONで減少します。  
+Turn off: Positive envelope for the resonance.  
+Turn on: Negative envelope for the resonance.    
 　
-#### 3-2-6. StLv (RT2)  
+#### 3-2-6. VELO  
 
-	エンベロープの最初のレベル（スタートレベル）を0.0〜1.0で設定します。
-	レベル1.0でFQMxと同じ変動となり、レベルを0.0にするとフィルタの設定値のままとなります。  
+You can edit the ratio which MIDI Note-ON velocity affects to the filter envelope.  0.0 is to ignore the velocity.  Larger value (up to 5.0), you will get larger envelope.  
+
+#### 3-2-6. StLv  
+
+Start level (0.0 .. 1.0) of the envelope.  You will get the FREQ cut off frequency and RESO resonance values if the level is zero. And get FREQ\+FQmx and RESO\+Qfmx values if the level is 1.0.  
 	
-#### 3-2-7. ATCK (RT3)  
+#### 3-2-7. ATCK  
 
-	スタートレベルから1.0にまでスイープする長さをINTVの倍数で設定します。0は即座に移行することを表します。  
+Attack time (INTV unit times) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately.  
 
-#### 3-2-8. DECY (RT4)  
+#### 3-2-8. DECY  
 
-	アタック完了後にサスティーンレベルまでスイープする長さをINTVの倍数で設定します。0は即座に移行することを表します。  
+Decay time (INTV unit times) to sweep the envelope to the sustain level from 1.0.  Zero means immediately.  
 
-#### 3-2-9. SuLv (RT5)  
+#### 3-2-9. SuLv  
 
-	ディケイが完了するレベル（サスティーンレベル）を0.0〜1.0で設定します。  
+Sustain level (0.0 .. 1.0) after the decay process.  
 
-#### 3-2-10. SuRs (RT6)  
+#### 3-2-10. SuRs  
 
-	サスティーンレベルからエンドレベルにスイープする長さをINTVの倍数で設定します。0は即座に移行することを表します。  
+Release time (INTV unit times) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
 
-#### 3-2-11. EdLv (RT7)  
+#### 3-2-11. EdLv  
 
-	最終的なレベルを0.0〜1.0で設定します。  
+End level (0.0 .. 1.0).  
 
 
-## 4. 音量を変化させる
-　多くの楽器は音の出だしから消えるまで、その音量も時間経過で変化します。ピアノは鍵盤を押した瞬間に音が出ますが、バイオリンのような弦楽器は徐々に音が大きくなって一定の大きさになってから小さくなって消えて行くといった感じです。この変化を設定するのがVCAという機能で、これまでにも出てきたエンベロープという波形を使って音量を変化させます。  
-　さらに、VCOというそもそもの音を出す機能にもトレモロやビブラートという言葉で知られる効果を付ける設定があります。
-　VCAエンベロープは以下のパラメータと形状を持っています。  
+## 4. Change Note Volume
+PiFMS VCA envelope can change each note volume along time after MIDI note-on.  In addition, PiFMS can apply tremolo and vibrate effect to notes.  
+The VCA envelope has following parameters.
+
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 
-### 4-1. VCAエンベロープ
+### 4-1. VCA Envelope
 
-#### 4-1-1. ATCK (RT2)  
+#### 4-1-1. ATCK 
 
-	エンベロープのアタック秒数を設定します。  
+Attack time in seconds.  
 	
-#### 4-1-2. DECY (RT3)  
+#### 4-1-2. DECY  
 
-	エンベロープのディケイ秒数を設定します。  
+Decay time in seconds.  
 	
-#### 4-1-3. SuLv (RT4)  
+#### 4-1-3. SuLv  
 
-	エンベロープのサスティーンレベルを0.0〜1.0で設定します。  
+Sustain level from 0.0 to 1.0.  
 
-#### 4-1-4. RELS (RT5)  
+#### 4-1-4. RELS  
 
-	エンベロープのリリース秒数を設定します。  
+Release time in seconds.  
 
-### 4-2. トレモロ
+### 4-2. Tremolo
 
-#### 4-2-1. TREM (RT1)  
+#### 4-2-1. TREM  
 
-	トレモロのON/OFFを設定します。  
+Turn on the tremolo.
 	
-#### 4-2-2. TrRT (RT2)  
+#### 4-2-2. TrRT  
 
-	トレモロの速さを設定します。  
+Set the speed of the tremolo.  
 	
-#### 4-2-3. TrSC (RT3)  
+#### 4-2-3. TrSC 
 
-	トレモロの深さを設定します。  
+Set the effect depth of the tremolo.  
 
+### 4-3. Vibrate
 
-### 4-3. ビブラート
+#### 4-3-1. BEND  
 
-#### 4-3-1. BEND (RT4)  
+Turn on the vibrate.
 
-	ビブラートのON/OFFを設定します。  
+#### 4-3-2. BdRT  
 
-#### 4-3-2. BdRT (RT5)  
+Set the speed of the vibrate.  
 
-	ビブラートの速さを設定します。  
+#### 4-3-3. BdSC  
 
-#### 4-3-3. BdSC (RT6)  
-
-	ビブラートの深さを設定します。  
+Set the effect depth of the vibrate.  
