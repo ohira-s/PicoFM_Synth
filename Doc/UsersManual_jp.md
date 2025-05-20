@@ -220,8 +220,8 @@
 	WAVE1にサンプリング波形を登録します。ロータリーエンコーダーRT5を回すことで、SDカードに保存されているサンプリング波形名が順番に表示されます。  
 
 
-## 9. VCO LFO
-　画面サイズの関係で「VCO LFO」とは表示されおらず、最初の設定パラメータ「TREM」で始まります。  
+## 9. VCO MOD
+　VCOのモジュレーション（トレモロとビブラート）を設定します。  
 　
 ### 9-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/04_vca_lfo.jpg) 
@@ -401,7 +401,7 @@
 
 
 ## 13. FILTER
-　「FILT:」で始まる画面で、FM変調された波形に適用するフィルターを設定します。
+　「FM変調された波形に適用するフィルターを設定します。
 　
 ### 13-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/09_filter.jpg) 
@@ -444,8 +444,8 @@
 	増減する実数値の桁位置を設定します。  
 
 
-## 14. FILTER ENVELOPE
-　「FILTER ENVELPE」で始まる画面で、FM変調された波形に適用するフィルターのエンベロープ全体の設定をします。
+## 14. FILTER ENVELOPE MUDOLATION
+　FM変調された波形に適用するフィルターのエンベロープ全体の設定をします。
 　
 ### 14-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/14_filter_envelope.jpg) 
@@ -475,8 +475,8 @@
 	増減する実数値の桁位置を設定します。  
 
 
-## 15. FILTER ENVELOPE ADSR
-　「StLv」で始まる画面で、FM変調された波形に適用するフィルターのエンベロープのADSRを設定します。
+## 15. FILTER ENV
+　「FM変調された波形に適用するフィルターのエンベロープのADSRを設定します。
 　フィルターエンベロープは以下のパラメータと形状を持っています。  
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
 　
@@ -515,7 +515,7 @@
 
 
 ## 16. VCA
-　「VCA」で始まる画面で、FM変調された波形に適用するVCAのエンベロープを設定します。
+　FM変調された波形に適用するVCAのエンベロープを設定します。
 　VCAエンベロープは以下のパラメータと形状を持っています。  
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 　
@@ -544,7 +544,7 @@
 
 
 ## 17. SAVE
-　「SAVE」で始まる画面で、現在の音色パラメータをSDカードに保存します。
+　現在の音色パラメータをSDカードに保存します。
 　
 ### 17-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/11_save.jpg) 
@@ -573,7 +573,7 @@
 
 
 ## 18. LOAD
-　「SAVE」で始まる画面で、現在の音色パラメータをSDカードに保存します。
+　SDカードから音色データを読み込んで演奏できるようにします。
 　
 ### 18-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/12_load.jpg) 
@@ -604,8 +604,8 @@
 
 
 ## 19. SAMPLING
-　「SAMPLING」で始まる画面で、マイクで拾った音をサンプリングしてサンプリング波形としてSDカードに保存します。  
-　サンプリングといっても実験的なもので、おもちゃレベルのものです。一般的なサンプラーのように収録した音を再生するのではなく、マイクで拾った音の先頭部分のごく一部の波形を取り出して波形の素材を作るものです。  
+　マイクで拾った音をサンプリングしてサンプリング波形としてSDカードに保存します。  
+　サンプリングといっても実験的なおもちゃレベルのものです。一般的なサンプラーのように収録した音を再生するのではなく、マイクで拾った音の先頭部分のごく一部の波形を取り出して波形の素材を作るものです。  
 　
 ### 19-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/13_sampling.jpg) 
