@@ -1,7 +1,7 @@
 # Pico FM Synthesizer User's Manual
 
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)  
-## 1. 機能
+## 1. Features
 Pico FM Synthesizer (PiFMS) is a synthesizer sound module working as a USB host or a USB device.  PiFMS has following functions.  
 
 |CATEGORY|FUNCTION|DESCRIPTIONS|
