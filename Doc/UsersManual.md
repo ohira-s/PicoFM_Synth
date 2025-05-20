@@ -8,7 +8,7 @@ Pico FM Synthesizer (PiFMS) is a synthesizer sound module working as a USB host 
 |---|---|---|
 |Wave shape|Basic waves|6 kinds of mathematic wave shapes.|
 ||Sampling waves|Wave shapes by PiFMS built-in toy-sampler.|
-|Wave shape Modulation|FM(Frequency Modulation)|4 operators, 7 algorithms.|
+|Wave shape Modulation|FM(Frequency Modulation)|4 operators, 8 algorithms.|
 ||Envelope|An envelope generator to shape a wave.|
 |VCO|Note-ON/OFF|12 voices polyphonic.|
 ||LFO|Tremoro|
@@ -90,7 +90,7 @@ DO NOT supply 5V to the USB OTG cable when you use PiFMS as USB device mode.  In
 ![Connect to OTG](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_otg.jpg)
 
 
-## 5. Bacis Operations
+## 5. Basic Operations
 
 ### 5-1. Rotary encodes RT1..RT7
 The rotary encoders RT1..RT7 correspond to the OLED display lines.  RT1 for the 1st line, RT2 for the 2nd line, and so on.  A rotary encoder changes a parameter value on a corresponding line.    
@@ -139,7 +139,7 @@ There are the following parameter pages.
 ## 6. SOUND MAIN
 You can see the current sound information and edit the FM algorithm.  
 
-### 6-1. OLED画面
+### 6-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)  
 
 1) BANK:0  
@@ -161,7 +161,7 @@ On this page, FM algorithms are shown with something like an expression.  For is
 |m\*n|Operator-m modulates operator-n.|
 |m\+n|Mix operator-m with operator-n.|
 
-PiFMS has 7 algorithms.  
+PiFMS has 8 algorithms.  
 
 |No.|ALGORITHM|
 |----|----|
@@ -176,12 +176,12 @@ PiFMS has 7 algorithms.
 
 
 ## 7. ALGORITHM
-　現在のFM変調アルゴリズムをダイアグラムで表示します。この画面は表示のみで、操作はありません。  
+You can show an algorithm block diagram of the current sound.  
 
-### 7-1. OLED画面
+### 7-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/02_algorithm.jpg)  
 
-　以下のアルゴリズムがあります。  
+PiFMS has 8 algorithms.  
 
 |Algorithm|Diagram|
 |---|---|
@@ -196,213 +196,190 @@ PiFMS has 7 algorithms.
             
 
 ## 8. SAMPLING WAVES
-　オペレーターの基本波形として利用するサンプリング波形を登録します。最大で4個登録できます。  
+You can register maximum 4 sampling wave shapes to use them as operator's wave.    
 
-### 8-1. OLED画面
+### 8-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/03_sampling_waves.jpg) 
 
 ### 8-2. WAV1 (RT2)  
 
-	WAVE1にサンプリング波形を登録します。ロータリーエンコーダーRT2を回すことで、SDカードに保存されているサンプリング波形名が順番に表示されます。  
+Register a sampling wave shape to the WAVE1.  You can sampling wave shape names in the SD card by rotating RT2.  
 
 ### 8-3. WAV2 (RT3)  
 
-	WAVE1にサンプリング波形を登録します。ロータリーエンコーダーRT3を回すことで、SDカードに保存されているサンプリング波形名が順番に表示されます。  
+Register a sampling wave shape to the WAVE2.  
 
 ### 8-4. WAV3 (RT4)  
 
-	WAVE1にサンプリング波形を登録します。ロータリーエンコーダーRT4を回すことで、SDカードに保存されているサンプリング波形名が順番に表示されます。  
-	空欄はサンプリング波形を登録しないことを表します。  
+Register a sampling wave shape to the WAVE3.  
 
 ### 8-5. WAV4 (RT5)  
 
-	WAVE1にサンプリング波形を登録します。ロータリーエンコーダーRT5を回すことで、SDカードに保存されているサンプリング波形名が順番に表示されます。  
+Register a sampling wave shape to the WAVE4.  
 
 
-## 9. VCO LFO
-　画面サイズの関係で「VCO LFO」とは表示されおらず、最初の設定パラメータ「TREM」で始まります。  
+## 9. VCO MOD
+You can edit tremolo and vibrate modulations to the VCO.    
 　
-### 9-1. OLED画面
+### 9-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/04_vca_lfo.jpg) 
 
 ### 9-2. TREM (RT1)  
 
-	トレモロのON/OFFを設定します。  
+Turn on the tremolo.
 	
 ### 9-3. TrRT (RT2)  
 
-	トレモロの速さを設定します。  
+Set the speed of the tremolo.  
 	
 ### 9-4. TrSC (RT3)  
 
-	トレモロの深さを設定します。  
+Set the effect depth of the tremolo.  
 
 ### 9-5. BEND (RT4)  
 
-	ビブラートのON/OFFを設定します。  
+Turn on the vibrate.
 
 ### 9-6. BdRT (RT5)  
 
-	ビブラートの速さを設定します。  
+Set the speed of the vibrate.  
 
 ### 9-7. BdSC (RT6)  
 
-	ビブラートの深さを設定します。  
+Set the effect depth of the vibrate.  
 
 ### 9-8. CURS (RT7)  
 
-	増減する実数値の桁位置を設定します。  
+Move the cursor to change the edit position.
 
-
-## 10. OSCILLATORS
-　「OSCW:」で始まる画面で、4個のオペレーターの発信パラメータを設定します。  
+## 10. OPERATORS
+You can edit the oscillator parameters of the 4 operators.  
 　
-### 10-1. OLED画面
+### 10-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/05_oscillators.jpg) 　
-
-4オペレーターの切り替えはRT8で行います。先頭行に[1]とある場合はオペレーター1のパラメータ編集画面です。そこでRT8を右に回すと[2]となり、オペレーター2の編集画面になります。  
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators2.jpg) 　
-
-[4]の状態でRT8を右に回すと次の画面に移動します。  
 
 ### 10-2. OSCW (RT8)  
 
-	オペレーターの切り替えをします。[n]で表示されている番号nのオペレーターが編集対象となります。  
+You can change the operator to edit by rotating RT8.  The top line is the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
+
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators2.jpg) 　
 	
 ### 10-3. ALGO (---)  
 
-	現在のアルゴリズムを表示しています。  
+You can see the current algorithm.  
 	
 ### 10-4. WAVE (RT3)  
 
-	基本波形を設定します。以下の波形があります。  
+Choose a wave shape for this operator's oscillator.  PiFMS has following wave shapes.  
 
-|表記|波形|
+|Abbr.|WAVE SHAPE|
 |---|---|
-|Sin|Sine wave|
-|Tri|Triangle wave|
-|Sqr|Square wave (duty=50%)|
-|aSi|Absolute value of sine wave|
-|+Si|Positive value of sine wave|
-|Noi|Noise|
-|WV1|Sampling wave1|
-|WV2|Sampling wave2|
-|WV3|Sampling wave3|
-|WV4|Sampling wave4|
-
-	WV1〜4はSAMPLING WAVES画面で登録したサンプリング波形のWAVE1〜4に相当します。サンプリング波形が登録されていない場合はノイズが選択されます。  
+|Sin|Sine wave.|
+|Tri|Triangle wave.|
+|Sqr|Square wave (duty=50%).|
+|aSi|Absolute value of sine wave.|
+|+Si|Positive value of sine wave.|
+|Noi|Noise.|
+|WV1|Sampling wave1 registered in the SAMPLING WAVES.|
+|WV2|Sampling wave2 registered in the SAMPLING WAVES.|
+|WV3|Sampling wave3 registered in the SAMPLING WAVES.|
+|WV4|Sampling wave4 registered in the SAMPLING WAVES.|
 
 ### 10-5. FREQ (RT4)  
 
-	発信の1周期内に含める基本波形の数（整数倍）を設定します。
-	基本波形がNoiseの場合は乱数を発生するシードの値になります。同じ値であれば同じ乱数を発生します。    
+You can edit the number of waves(10-4) in an oscillation cycle.  Regarding a sine wave, FREQ=1 means sin(x) and FREQ=2 means sin(2x).  
+If the selected wave is the Noise, FREQ is used for a seed of random numbers.  
 
 ### 10-6. DETU (RT5)  
 
-	発信の1周期内に含める基本波形の数（小数部）を設定します。  
-	一般に、DETUを0以外にしたオペレーターがあると倍音を合成しやすくなります。  
+You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 and DETU=15 means sin(2.15x).  
 
 ### 10-7. LEVL (RT6)  
 
-	オペレーターの出力振幅レベルを設定します。数値が大きいほど大きな出力となります。  
+You can edit the output level of the operator.  Bigger number, you will get larger output.  
+You should make less or equal than 255 for total of the audio output operators.   
 
 ### 10-8. FDBK (RT7)  
 
-	自分自身のオペレーターにフィードバックする振幅レベルを設定します（フィードバック可能なオペレータでのみ有効です）  
-
-### 10-9. スライドスイッチ  
-
-	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
+You can edit the feedback level to modulate own-self.  This parameter is valid for the operators with the feedback function.  
 
 
 ## 11. WAVE SHAPE
-　現在の設定でFM変調された波形を表示します。また、その波形をサンプリング波形としてSDカードに保存できます。保存した波形はオシレーターの波形に利用できるため、音色作成のバリエーションが広がります。  
-　保存されるのは波形データであり、音色データではありません。音色はSAVE画面で保存します。  
+You will see the current wave shape before filtered as a graph.  
+You can also save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.  
 
-### 11-1. OLED画面
+### 11-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
 
-　この波形はFM変調直後のものであり、実際にシンセサイザーが出力する波形ではありません。シンセサイザーが出す音は、さらにFILTERとVCAで変調された波形になります。
+The wave shape you will see is the FM wave generator's output before filtered.  
 	
 ### 11-2. NAME (RT1)  
 
-	FM変調された波形を保存する名前を設定します。  
+You can enter a wave shape name to save.  
 
 ### 11-3. CURS (RT2)  
 
-	増減する実数値の桁位置を設定します。  
+Move the cursor to edit position.  
 
 ### 11-4. SAVE (RT3)  
 
-	FM変調された波形をサンプリング波形として保存します。
-	RT3を右に回すと「Save?」と確認表示が出ます。さらにRT3を右に回すと実際に保存が行われます。  
-	保存した波形データは、サンプリング波形と同じフォーマットのファイルのため、オペレーターの発信波形として使うことができるようになります。4個のオペレーターとアルゴリズムを駆使して作った波形を、たった1個のオペレーターで発信できるようになるわけです。	
-
+You can save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.	
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
 
 
-## 12. OSCILLATOR ENVELOPE
-　「OSCA:」で始まる画面で、4個のオペレーターの波形合成用エンベロープを設定します。
-　波形合成用エンベロープとVCAのエンベロープは別のものです。VCAエンベロープは1音符の出力ボリュームの変化を表しますが、波形合成用エンベロープはFM変調で波形を合成するときにのみ使用されます。各オペレーターの1周期の基本波形に対して適用され、基本波形1周期の振幅をエンベロープの形に整形します。  
-　波形合成用エンベロープがない（全域で1.0）場合に矩形波である波形と、そこに波形合成用エンベロープを設定した結果の波形を比較すると以下のようになります。  
+## 12. OPERATOR ENVELOPE
+You can edit the envelopes for the operator waves.  This envelope is not for the VCA.  The operator envelope is used in a process to reform one cycle wave shape in the operator.  
+Here are samples.  The first one is without operator envelope.  The second one has an envelope.    
 
-|エンベロープ|波形|
+|Operator Envelope|Output Wave Shape|
 |---|---|
 |![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_00.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_01.jpg)|
 |![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_10.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_11.jpg)|  
 
-　適用したエンベロープと元の矩形波を図にすると以下の通りです。エンベロープが0に近づくと波形も0に近づきます。  
+The reform works as below.  No wave outputs during envelope is zero.      
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_02.jpg)  
 
-　波形合成用エンベロープは以下のパラメータと形状を持っています。  
+The operator envelope has following parameters.  
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.png)  
 　
-### 12-1. OLED画面
+### 12-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
-
-　4オペレーターの切り替えはRT8で行います。先頭行に[1]とある場合はオペレーター1のパラメータ編集画面です。そこでRT8を右に回すと[2]となり、オペレーター2の編集画面になります。  
-　[4]の状態でRT8を右に回すと次の画面に移動します。  
 
 ### 12-2. OSCA (RT8)  
 
-	オペレーターの切り替えをします。[n]で表示されている番号nのオペレーターが編集対象となります。  
+You can change the operator to edit by rotating RT8.  The top line is the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
 	
 ### 12-3. StLv (RT2)  
 
-	エンベロープの最初のレベル（スタートレベル）を0.0〜1.0で設定します。
-	レベル1.0で基本波形と同じ振幅となり、レベルを0.0にすると波のそのタイミングでは振幅がなくなります。  
+Start level (0.0 .. 1.0) of the envelope.  No wave outputs during envelope is zero.  
 	
 ### 12-4. ATCK (RT3)  
 
-	スタートレベルから1.0にまでスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
+Attack time (0..511) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately. 	 
 
 ### 12-5. DECY (RT4)  
 
-	アタック完了後にサスティーンレベルまでスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
+Decay time (0..511) to sweep the envelope to the sustain level from 1.0.  Zero means immediately. 	 
 
 ### 12-6. SuLv (RT5)  
 
-	ディケイが完了するレベル（サスティーンレベル）を0.0〜1.0で設定します。  
+Sustain level (0.0 .. 1.0) after the decay process.  
 
 ### 12-7. SuRs (RT6)  
 
-	サスティーンレベルからエンドレベルにスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
+Release time (0..511) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
 
 ### 12-8. EdLv (RT7)  
 
-	最終的なレベルを0.0〜1.0で設定します。  
-
-### 12-9. スライドスイッチ  
-
-	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
+End level (0.0 .. 1.0).
 
 
 ## 13. FILTER
 　「FILT:」で始まる画面で、FM変調された波形に適用するフィルターを設定します。
 　
-### 13-1. OLED画面
+### 13-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/09_filter.jpg) 
 
 ### 13-2. FILT (RT1)  
@@ -446,7 +423,7 @@ PiFMS has 7 algorithms.
 ## 14. FILTER ENVELOPE
 　「FILTER ENVELPE」で始まる画面で、FM変調された波形に適用するフィルターのエンベロープ全体の設定をします。
 　
-### 14-1. OLED画面
+### 14-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/14_filter_envelope.jpg) 
 
 ### 14-2. INTV (RT2)  
@@ -480,7 +457,7 @@ PiFMS has 7 algorithms.
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
 　
 
-### 15-1. OLED画面
+### 15-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/15_filter_adsr.jpg) 
 	
 ### 15-2. StLv (RT2)  
@@ -518,7 +495,7 @@ PiFMS has 7 algorithms.
 　VCAエンベロープは以下のパラメータと形状を持っています。  
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 　
-### 16-1. OLED画面
+### 16-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/10_vca.jpg) 
 
 ### 16-2. ATCK (RT2)  
@@ -545,7 +522,7 @@ PiFMS has 7 algorithms.
 ## 17. SAVE
 　「SAVE」で始まる画面で、現在の音色パラメータをSDカードに保存します。
 　
-### 17-1. OLED画面
+### 17-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/11_save.jpg) 
 
 ### 17-2. BANK (RT2)  
@@ -574,7 +551,7 @@ PiFMS has 7 algorithms.
 ## 18. LOAD
 　「SAVE」で始まる画面で、現在の音色パラメータをSDカードに保存します。
 　
-### 18-1. OLED画面
+### 18-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/12_load.jpg) 
 
 ### 18-2. BANK (RT2)  
@@ -606,7 +583,7 @@ PiFMS has 7 algorithms.
 　「SAMPLING」で始まる画面で、マイクで拾った音をサンプリングしてサンプリング波形としてSDカードに保存します。  
 　サンプリングといっても実験的なもので、おもちゃレベルのものです。一般的なサンプラーのように収録した音を再生するのではなく、マイクで拾った音の先頭部分のごく一部の波形を取り出して波形の素材を作るものです。  
 　
-### 19-1. OLED画面
+### 19-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/13_sampling.jpg) 
 
 ### 19-2. TIME (RT2)  
