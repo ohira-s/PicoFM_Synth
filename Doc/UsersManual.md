@@ -70,6 +70,8 @@ The mic will be used to sample sound to make sampling wave shape.
 
 You can save sound data and sampling wave shape data into a SD card.  
 
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
+
 ## 3. Notes
 DO NOT supply 5V to the USB OTG cable when you use PiFMS as USB device mode.  In this case, 5V is supplied via PICO2 on-board USB cable.  
 

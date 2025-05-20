@@ -73,6 +73,8 @@
 
 	作成した音色やサンプリングした波形を保存できます。  
 
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
+
 ## 3. 注意事項
 　USB OTGケーブルと通常のUSBケーブルの両方を同時に接続している状態では、OTGケーブル側から電源を供給しないで下さい。  
 
