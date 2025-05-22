@@ -2132,7 +2132,8 @@ class SynthIO_class:
         # LOAD-SOUND:
         if   category == 'LOAD' and parameter == 'SOUND':
             if data_value >= 0:
-                direction = 1 if delta > 0 else -1
+#                direction = 1 if delta > 0 else -1
+                direction = delta
                 max_files = len(SynthIO_class.VIEW_SOUND_FILES)
                 next_value = (data_value + direction) % max_files
                 while next_value != data_value and len(SynthIO_class.VIEW_SOUND_FILES[next_value]) < 5:
@@ -2163,7 +2164,7 @@ class SynthIO_class:
                 
         # Increment a Charactor on the cursor in string ([0]cursor: 0123..., [1]inc value)
         elif data_attr['TYPE'] == SynthIO_class.TYPE_STRING:
-            print('STRING DELTA:', delta, data_attr, data_value, len(data_value))
+#            print('STRING DELTA:', delta, data_attr, data_value, len(data_value))
             cur = delta[0]
             inc = delta[1]
             if cur < data_attr['MAX']:
@@ -2182,7 +2183,7 @@ class SynthIO_class:
 
         # Indexed value
         elif data_attr['TYPE'] == SynthIO_class.TYPE_INDEXED_VALUE:
-            print('INDEXED DELTA:', delta, data_attr, data_value, len(data_value))
+#            print('INDEXED DELTA:', delta, data_attr, data_value, len(data_value))
             indexed_list = self._params_attr[category][parameter]['VIEW']
             if data_value in indexed_list:
                 pos = indexed_list.index(data_value)
