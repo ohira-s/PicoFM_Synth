@@ -81,6 +81,9 @@
 #     0.1.7: 05/21/2025
 #           Minor bugs fixed.
 #
+#     0.1.8: 05/22/2025
+#           Improve pause the DAC during editing mode to reduce noise.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -181,13 +184,17 @@ async def midi_in():
         vca = SynthIO.synthio_parameter('VCA')
 
         midi_msg = MIDI_obj.midi_in()
+#        print('###MIDI IN:', midi_msg)
         if midi_msg is not None:
 #            print('===>MIDI IN:', midi_msg)
             # Note on
             if isinstance(midi_msg, NoteOn):
-#                print('NOTE ON :', midi_msg.note, midi_msg.velocity)
+                if Application.EDITOR_MODE == True:
+                    Application.EDITOR_MODE = False
+                    SynthIO.audio_pause(False)
                 
                 # The note is playing: stop the current note, then play new note
+#                print('NOTE ON :', midi_msg.note, midi_msg.velocity)
                 if midi_msg.note in notes:
                     if notes[midi_msg.note] is not None:
                         synthesizer.release(notes[midi_msg.note])
@@ -242,6 +249,10 @@ async def midi_in():
 
             # Note off
             elif isinstance(midi_msg, NoteOff):
+                if Application.EDITOR_MODE == True:
+                    Application.EDITOR_MODE = False
+                    SynthIO.audio_pause(False)
+
 #                print('NOTE OFF:', midi_msg.note)
                 if midi_msg.note in notes:
                     if notes[midi_msg.note] is not None:
@@ -273,25 +284,43 @@ async def get_8encoder():
     while True:
         Encoder_obj.i2c_lock()
         on_change = False
-        
+        M5Stack_8Encoder_class.status['on_change']['switch'] = False
+        for rt in list(range(8)):
+            M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = False
+            
         try:
             enc_switch  = Encoder_obj.get_switch()
             change = (M5Stack_8Encoder_class.status['switch'] != enc_switch)
             on_change = on_change or change
             M5Stack_8Encoder_class.status['on_change']['switch'] = change
             M5Stack_8Encoder_class.status['switch'] = enc_switch
+            
+            if change and Application.EDITOR_MODE == False:
+                Application.EDITOR_MODE = True
+                SynthIO.audio_pause()
+
             await asyncio.sleep(0.01)
             
-            for rt in list(range(8)):
-                enc_rotary = Encoder_obj.get_rotary_increment(rt)
-                change = (enc_rotary != 0)
-                on_change = on_change or change
-                M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
-                M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
-                await asyncio.sleep(0.01)
+            if not on_change:
+                for rt in list(range(8)):
+                    enc_rotary = Encoder_obj.get_rotary_increment(rt)
+                    change = (enc_rotary != 0)
+                    on_change = on_change or change
+                    M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
+                    M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
+                    
+                    if change and Application.EDITOR_MODE == False:
+                        Application.EDITOR_MODE = True
+                        SynthIO.audio_pause()
+
+                    await asyncio.sleep(0.01)
+                    
+                    if on_change:
+                        break
     
             Encoder_obj.i2c_unlock()
 
+            # Do 8encoder tasks if something changed
             if on_change:
                 Application.task_8encoder()
         
@@ -300,7 +329,8 @@ async def get_8encoder():
 
         # Gives away process time to the other tasks.
         # If there is no task, let give back process time to me.
-        await asyncio.sleep(0.01)
+        if Application.EDITOR_MODE == False:
+            await asyncio.sleep(0.01)
 
 
 ##########################################
@@ -371,14 +401,13 @@ class OLED_SSD1306_class:
 
     def show(self):
         if self.is_available():
-            SynthIO.audio_pause()
-            self._display.show()
-            SynthIO.audio_pause(False)
+            if Application.EDITOR_MODE == False:
+                SynthIO.audio_pause()
 
-#    def clear(self, color=0, refresh=True):
-#        self.fill(color)
-#        if refresh:
-#            self.show()
+            self._display.show()
+
+            if Application.EDITOR_MODE == False:
+                SynthIO.audio_pause(False)
         
 ################# End of OLED SSD1306 Class Definition #################
 
@@ -1437,7 +1466,7 @@ class SynthIO_class:
                 'AMPLITUDE'  : 0,
                 'LFO_RATE_A' : 4.0,
                 'LFO_SCALE_A': 1.8,
-                'BEND'       : 0,
+                'VIBR'       : 0,
                 'LFO_RATE_B' : 4.0,
                 'LFO_SCALE_B': 1.8,
                 'CURSOR'     : 0
@@ -1538,16 +1567,16 @@ class SynthIO_class:
         # Parameter attributes
         self._params_attr = {
             'SOUND': {
-                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':    9, 'VIEW': '{:1d}'},
-                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  999, 'VIEW': '{:03d}'},
-                'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':   0, 'MAX':   12, 'VIEW': '{:12s}'},
-                'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
-                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
-                'BEND'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
-                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 20.0, 'VIEW': '{:4.1f}'},
-                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
+                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
+                'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
+                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
+                'VIBR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
+                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
+                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5}
             },
             
             'OSCILLATORS': {
@@ -1644,8 +1673,10 @@ class SynthIO_class:
 
     def audio_pause(self, set_pause=True):
         if set_pause:
+#            print('---PAUSE---')
             self.audio.pause()
         else:
+#            print('---PLAY ---')
             self.audio.resume()
 
     def mixer_voice_level(self, volume):
@@ -1782,7 +1813,7 @@ class SynthIO_class:
                 scale=self._synth_params['SOUND']['LFO_SCALE_A']
             )
 
-        if self._synth_params['SOUND']['BEND'] == 0:
+        if self._synth_params['SOUND']['VIBR'] == 0:
             self._lfo_sound_bend = None
             
         else:
@@ -2326,7 +2357,7 @@ class Application_class:
             {'CATEGORY': 'SOUND', 'PARAMETER': 'AMPLITUDE', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_RATE_A', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_SCALE_A', 'OSCILLATOR': None},
-            {'CATEGORY': 'SOUND', 'PARAMETER': 'BEND', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'VIBR', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_RATE_B', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'LFO_SCALE_B', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None}
@@ -2528,9 +2559,9 @@ class Application_class:
             'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
             'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
-            'BEND'       : {PAGE_SOUND_MODULATION: {'label': 'BEND:', 'x':  30, 'y': 28, 'w': 98}},
-            'LFO_RATE_B' : {PAGE_SOUND_MODULATION: {'label': 'BdRT:', 'x':  30, 'y': 37, 'w': 98}},
-            'LFO_SCALE_B': {PAGE_SOUND_MODULATION: {'label': 'BdSC:', 'x':  30, 'y': 46, 'w': 98}},
+            'VIBR'       : {PAGE_SOUND_MODULATION: {'label': 'VIBR:', 'x':  30, 'y': 28, 'w': 98}},
+            'LFO_RATE_B' : {PAGE_SOUND_MODULATION: {'label': 'ViRT:', 'x':  30, 'y': 37, 'w': 98}},
+            'LFO_SCALE_B': {PAGE_SOUND_MODULATION: {'label': 'ViSC:', 'x':  30, 'y': 46, 'w': 98}},
             'CURSOR'     : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
         
@@ -2691,6 +2722,9 @@ class Application_class:
             ''
         ]
     ]
+
+    # True: Watch the 8encoder preferentially / False: MIDI-IN preferentially
+    EDITOR_MODE = True
 
     def __init__(self):
         self.init_sdcard()
@@ -2993,6 +3027,7 @@ class Application_class:
                             elif category == 'LOAD':
                                 load_sound = SynthIO_class.VIEW_LOAD_SOUND[dataset['LOAD_SOUND']]
                                 if   load_sound == 'LOAD':
+                                    load_file = (dataset['BANK'], dataset['SOUND'], dataset['SOUND_NAME'])
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
                                     time.sleep(1.0)
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
@@ -3008,7 +3043,8 @@ class Application_class:
                                     
                                     # Set up the synthesizer
                                     SynthIO.setup_synthio()
-                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
+#                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
+                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
@@ -3134,7 +3170,7 @@ if __name__=='__main__':
     
     # Seach a USB MIDI device to connect
     MIDI_obj.look_for_usb_midi_device()
-    SynthIO.audio_pause(False)
+#    SynthIO.audio_pause(False)
     Application.show_OLED_page()
 
     #####################################################
