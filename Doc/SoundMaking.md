@@ -265,14 +265,14 @@ Set the effect depth of the tremolo.
 
 ### 4-3. Vibrate
 
-#### 4-3-1. BEND  
+#### 4-3-1. VIBR  
 
 Turn on the vibrate.
 
-#### 4-3-2. BdRT  
+#### 4-3-2. ViRT  
 
 Set the speed of the vibrate.  
 
-#### 4-3-3. BdSC  
+#### 4-3-3. ViSC  
 
 Set the effect depth of the vibrate.  
