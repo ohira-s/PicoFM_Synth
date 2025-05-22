@@ -83,6 +83,7 @@
 #
 #     0.1.8: 05/22/2025
 #           Improve pause the DAC during editing mode to reduce noise.
+#           Vibrate bug fixed.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -241,7 +242,8 @@ async def midi_in():
                     notes[midi_msg.note].amplitude=SynthIO.lfo_sound_amplitude()
                 
                 if SynthIO.lfo_sound_bend() is not None:
-                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_bend()
+#                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_bend()
+                    notes[midi_msg.note].bend=SynthIO.lfo_sound_bend()
 
 #                synthesizer.envelope = SynthIO.vca_envelope()
                 synthesizer.press(notes[midi_msg.note])
