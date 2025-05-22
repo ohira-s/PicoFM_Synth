@@ -65,4 +65,13 @@ UNDER CONSTRUCTION...
 [回路図はこちら。](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_sch.png) 
 
 # Software Installation
-UNDER CONSTRUCTION...  
+1) circuitpython (v9.2.1)をPICO2Wにコピーします。  
+2) 以下のファイルをPICO2Wのルートにコピーします。  
+
+- PicoFM_Synth.py  
+
+	code.pyとしてコピーします。  
+
+- font5x8.bin
+- libフォルダー  
+- SYNTHフォルダー  

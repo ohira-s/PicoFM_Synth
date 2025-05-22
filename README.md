@@ -64,4 +64,13 @@ UNDER CONSTRUCTION...
 [Circuit schematics is here.](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_sch.png)  
 
 # Software Installation
-UNDER CONSTRUCTION...  
+1) Copy circuitpython (v9.2.1) into PICO2W.  
+2) Copy all files below to PICO2 root.  
+
+- PicoFM_Synth.py  
+
+	Copy as code.py.  
+
+- font5x8.bin
+- lib folder.  
+- SYNTH folder.  
