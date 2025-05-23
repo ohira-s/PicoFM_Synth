@@ -553,7 +553,7 @@ Move cursor to edit position.
 ### 17-6. TASK (RT6)  
 
 Turn clockwise, you will see 'Save?'.  Then turn one more, PiFMS saves the sound data and shows you 'SAVE'.  
-(Same as anti-clockwise.)  
+Turn anti-clockwise, you will see 'Copy?'.  Then turn one more, PiFMS copies the selected program name to the name to save and shows you 'COPY'.  
 
 
 ## 18. LOAD
