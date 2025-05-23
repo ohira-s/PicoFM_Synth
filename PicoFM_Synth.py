@@ -85,6 +85,9 @@
 #           Improve pause the DAC during editing mode to reduce noise.
 #           Vibrate bug fixed.
 #
+#     0.1.9: 05/23/2025
+#           Improve tremolo depth.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -242,7 +245,6 @@ async def midi_in():
                     notes[midi_msg.note].amplitude=SynthIO.lfo_sound_amplitude()
                 
                 if SynthIO.lfo_sound_bend() is not None:
-#                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_bend()
                     notes[midi_msg.note].bend=SynthIO.lfo_sound_bend()
 
 #                synthesizer.envelope = SynthIO.vca_envelope()
@@ -1459,112 +1461,7 @@ class SynthIO_class:
         self.mixer.voice[0].level = 0.4
 
         # Synthesize parameters
-        self._synth_params = {
-            # SOUND
-            'SOUND': {
-                'BANK'       : 0,
-                'SOUND'      : 0,
-                'SOUND_NAME' : 'NO NAME',
-                'AMPLITUDE'  : 0,
-                'LFO_RATE_A' : 4.0,
-                'LFO_SCALE_A': 1.8,
-                'VIBR'       : 0,
-                'LFO_RATE_B' : 4.0,
-                'LFO_SCALE_B': 1.8,
-                'CURSOR'     : 0
-            },
-            
-            # OSCILLATORS
-            'OSCILLATORS': [
-                {'algorithm': 0},
-                {
-                    'oscillator': 0, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
-                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
-                },
-                {
-                    'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  0, 'feedback': 0,
-                    'start_level': 0.2, 'attack_time': 0, 'decay_time': 200,
-                    'sustain_level': 0.3, 'release_time': 100, 'end_level': 0.0
-                },
-                {
-                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 0, 'feedback': 0,
-                    'start_level': 1.0, 'attack_time': 100, 'decay_time': 50,
-                    'sustain_level': 0.7, 'release_time': 100, 'end_level': 0.4
-                }
-            ],
-            
-            # Filter
-            'FILTER': {
-                'TYPE': SynthIO_class.FILTER_PASS,
-                'FREQUENCY'      : 2000,
-                'RESONANCE'      : 1.0,
-                'MODULATION'     : 0,
-                'LFO_RATE'       : 1.20,
-                'LFO_FQMAX'      : 1000,
-                'ADSR_INTERVAL'  : 10,
-                'ADSR_FQMAX'     : 1000,
-                'ADSR_FQ_REVS'   : 0,
-                'ADSR_QfMAX'     : 0.0,
-                'ADSR_Qf_REVS'   : 0,
-                'START_LEVEL'    : 0.5,
-                'ATTACK_TIME'    : 10,
-                'DECAY_TIME'     : 30,
-                'SUSTAIN_LEVEL'  : 0.6,
-                'SUSTAIN_RELEASE': 50,
-                'END_LEVEL'      : 0.0,
-                'ADSR_VELOCITY'  : 0.0,
-                'CURSOR'         : 0
-            },
-            
-            # VCA
-            'VCA': {
-                'ATTACK_LEVEL': 1.5,
-                'ATTACK'      : 0.2,
-                'DECAY'       : 0.3,
-                'SUSTAIN'     : 0.5,
-                'RELEASE'     : 0.2,
-                'CURSOR'      : 0
-            },
-            
-            # SAVE
-            'SAVE': {
-                'BANK'      : 0,
-                'SOUND'     : 0,
-                'SOUND_NAME': 'A',
-                'CURSOR'    : 0,
-                'SAVE_SOUND': 0
-            },
-            
-            # LOAD
-            'LOAD': {
-                'BANK'      : 0,
-                'SOUND'     : 0,
-                'SOUND_NAME': '',
-                'CURSOR'    : 0,
-                'LOAD_SOUND': 0
-            },
-            
-            # SAMPLING
-            'SAMPLING': {
-                'TIME'  : 1,
-                'WAIT'  : 3.0,
-                'CUT'   : 500,
-                'NAME'  : '',
-                'CURSOR': 0,
-                'SAMPLE': 0,
-                'WAVE1' : '',
-                'WAVE2' : '',
-                'WAVE3' : '',
-                'WAVE4' : '',
-                'SAVE'  : 0
-            }
-        }
+        self._init_parameters()
         
         # Parameter attributes
         self._params_attr = {
@@ -1672,6 +1569,114 @@ class SynthIO_class:
         # Set up the synthio with the current parameters
         self.setup_synthio()
         self.audio_pause(False)
+
+    def _init_parameters(self):
+        self._synth_params = {
+            # SOUND
+            'SOUND': {
+                'BANK'       : 0,
+                'SOUND'      : 0,
+                'SOUND_NAME' : 'NO NAME',
+                'AMPLITUDE'  : 0,
+                'LFO_RATE_A' : 4.0,
+                'LFO_SCALE_A': 1.8,
+                'VIBR'       : 0,
+                'LFO_RATE_B' : 4.0,
+                'LFO_SCALE_B': 1.8,
+                'CURSOR'     : 0
+            },
+            
+            # OSCILLATORS
+            'OSCILLATORS': [
+                {'algorithm': 0},
+                {
+                    'oscillator': 0, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                },
+                {
+                    'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
+                    'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
+                    'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
+                }
+            ],
+            
+            # Filter
+            'FILTER': {
+                'TYPE': SynthIO_class.FILTER_PASS,
+                'FREQUENCY'      : 2000,
+                'RESONANCE'      : 1.0,
+                'MODULATION'     : 0,
+                'LFO_RATE'       : 1.20,
+                'LFO_FQMAX'      : 1000,
+                'ADSR_INTERVAL'  : 10,
+                'ADSR_FQMAX'     : 1000,
+                'ADSR_FQ_REVS'   : 0,
+                'ADSR_QfMAX'     : 0.0,
+                'ADSR_Qf_REVS'   : 0,
+                'START_LEVEL'    : 0.5,
+                'ATTACK_TIME'    : 10,
+                'DECAY_TIME'     : 30,
+                'SUSTAIN_LEVEL'  : 0.6,
+                'SUSTAIN_RELEASE': 50,
+                'END_LEVEL'      : 0.0,
+                'ADSR_VELOCITY'  : 0.0,
+                'CURSOR'         : 0
+            },
+            
+            # VCA
+            'VCA': {
+                'ATTACK_LEVEL': 1.5,
+                'ATTACK'      : 0.2,
+                'DECAY'       : 0.3,
+                'SUSTAIN'     : 0.5,
+                'RELEASE'     : 0.2,
+                'CURSOR'      : 0
+            },
+            
+            # SAVE
+            'SAVE': {
+                'BANK'      : 0,
+                'SOUND'     : 0,
+                'SOUND_NAME': 'A',
+                'CURSOR'    : 0,
+                'SAVE_SOUND': 0
+            },
+            
+            # LOAD
+            'LOAD': {
+                'BANK'      : 0,
+                'SOUND'     : 0,
+                'SOUND_NAME': '',
+                'CURSOR'    : 0,
+                'LOAD_SOUND': 0
+            },
+            
+            # SAMPLING
+            'SAMPLING': {
+                'TIME'  : 1,
+                'WAIT'  : 3.0,
+                'CUT'   : 500,
+                'NAME'  : '',
+                'CURSOR': 0,
+                'SAMPLE': 0,
+                'WAVE1' : '',
+                'WAVE2' : '',
+                'WAVE3' : '',
+                'WAVE4' : '',
+                'SAVE'  : 0
+            }
+        }
 
     def audio_pause(self, set_pause=True):
         if set_pause:
@@ -1812,7 +1817,8 @@ class SynthIO_class:
         else:
             self._lfo_sound_amp = synthio.LFO(
                 rate=self._synth_params['SOUND']['LFO_RATE_A'],
-                scale=self._synth_params['SOUND']['LFO_SCALE_A']
+                scale=self._synth_params['SOUND']['LFO_SCALE_A'],
+                offset=1
             )
 
         if self._synth_params['SOUND']['VIBR'] == 0:
@@ -2208,6 +2214,7 @@ class SynthIO_class:
                 f.close()
             
             # Overwrite parameters loaded
+            self._init_parameters()
             print('DATA KEYS:', file_data.keys())
             for category in file_data.keys():
                 if category == 'OSCILLATORS':
