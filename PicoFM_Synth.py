@@ -88,6 +88,9 @@
 #     0.1.9: 05/23/2025
 #           Improve tremolo depth.
 #
+#     0.2.0: 05/23/2025
+#           Ignore MIDI Active Sensing event.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -159,6 +162,7 @@ import adafruit_midi
 #from adafruit_midi.control_change import ControlChange
 from adafruit_midi.note_off import NoteOff
 from adafruit_midi.note_on import NoteOn
+from adafruit_midi.midi_message import MIDIUnknownEvent
 #from adafruit_midi.pitch_bend import PitchBend
 #from adafruit_midi.program_change import ProgramChange
 import usb_host					# for USB HOST
@@ -174,7 +178,6 @@ i2s_data = board.GP11 # DIN on PCM5102	I2C SCL
 # Analog MIC
 from analogio import AnalogIn
 
-
 ##########################################
 # MIDI IN in async task
 ##########################################
@@ -184,9 +187,11 @@ async def midi_in():
     notes_stack = []				# [note1, note2,...]  contains only notes playing.
     synthesizer = SynthIO.synth()
     while True:
+        # Upate working filters
         SynthIO.generate_filter(True)
         vca = SynthIO.synthio_parameter('VCA')
 
+        # Get a MIDI-IN event
         midi_msg = MIDI_obj.midi_in()
 #        print('###MIDI IN:', midi_msg)
         if midi_msg is not None:
@@ -725,8 +730,9 @@ class MIDI_class:
             self._usb_host_mode = False
             print('TURN ON WITH USB MIDI device mode.')
             return None
-        
+
         self._usb_midi_host = adafruit_midi.MIDI(midi_in=self._raw_midi_host)  
+#        self._usb_midi_host = adafruit_midi.MIDI(midi_in=self._raw_midi_host, in_buf_size=128)  
 #        self._usb_midi_host = adafruit_midi.MIDI(midi_in=self._raw_midi_host, in_channel=0)  
 #        self._usb_midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0], in_channel=0, midi_out=usb_midi.ports[1], out_channel=0)
         print('TURN ON WITH USB MIDI HOST MODE.')
@@ -737,10 +743,25 @@ class MIDI_class:
         # MIDI-IN via USB
         if self._midi_in_usb:
             try:
-                if self._usb_host_mode:
-                    midi_msg = self._usb_midi_host.receive()
-                else:
-                    midi_msg = self._usb_midi.receive()
+                start = int(time.monotonic() * 1000) % 10000
+                while True:
+                    if self._usb_host_mode:
+                        midi_msg = self._usb_midi_host.receive()
+                    else:
+                        midi_msg = self._usb_midi.receive()
+
+#                    print('MIDI MSG:', midi_msg, isinstance(midi_msg, MIDIUnknownEvent))                   
+                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
+                        break
+                    
+                    # Ignore unknown events (normally Active Sensing)
+                    if isinstance(midi_msg, MIDIUnknownEvent):
+                        monotonic = int(time.monotonic() * 1000) % 10000
+                        if (monotonic - start) % 10000 < 10:
+                            continue
+                    
+                    midi_msg = None
+                    break
 
             except Exception as e:
                 print('CHANGE TO DEVICE MODE:', e)
