@@ -1425,7 +1425,7 @@ class SynthIO_class:
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
     VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
-    VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?']
+    VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?', 'COPY', 'Copy?']
     VIEW_LOAD_SOUND = ['----', 'Load?', 'LOAD', 'Load?', 'SEARCH', 'Search?']
     VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Save?', 'SAVE', 'Save?']
     VIEW_CURSOR_f3 = ['^  ', ' ^ ', '  ^']
@@ -3030,8 +3030,12 @@ class Application_class:
                                     SynthIO.synthio_parameter('SOUND', {'BANK': dataset['BANK'], 'SOUND': dataset['SOUND'], 'SOUND_NAME': dataset['SOUND_NAME']})
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
                                     SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
-                                    time.sleep(1.0)
+                                    time.sleep(0.5)
 #                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
+
+                                elif save_sound == 'COPY':
+                                    sound_name = SynthIO.get_sound_name_of_file(dataset['BANK'], dataset['SOUND'])
+                                    SynthIO.synthio_parameter('SAVE', {'SOUND_NAME': sound_name, 'SAVE_SOUND': 0})
 
                             # Load a sound file page
                             elif category == 'LOAD':
@@ -3039,7 +3043,7 @@ class Application_class:
                                 if   load_sound == 'LOAD':
                                     load_file = (dataset['BANK'], dataset['SOUND'], dataset['SOUND_NAME'])
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
-                                    time.sleep(1.0)
+                                    time.sleep(0.5)
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILES:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
