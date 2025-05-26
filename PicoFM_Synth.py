@@ -2205,8 +2205,8 @@ class SynthIO_class:
                         ch_index = (ch_index + inc) % len(SynthIO_class.VIEW_CHARACTER)
                         ch = chr(SynthIO_class.VIEW_CHARACTER[ch_index])
                         data_value = data_value[:cur] + ch + data_value[cur+1:]
-                        print('VCHAR:', SynthIO_class.VIEW_CHARACTER)
-                        print('INCED:', parameter, ch_index, SynthIO_class.VIEW_CHARACTER[ch_index], ch, data_value)
+#                        print('VCHAR:', SynthIO_class.VIEW_CHARACTER)
+#                        print('INCED:', parameter, ch_index, SynthIO_class.VIEW_CHARACTER[ch_index], ch, data_value)
 
         # Indexed value
         elif data_attr['TYPE'] == SynthIO_class.TYPE_INDEXED_VALUE:
