@@ -305,7 +305,8 @@ You should make less or equal than 255 for total of the audio output operators.
 
 ### 10-8. FDBK (RT7)  
 
-You can edit the feedback level to modulate own-self.  This parameter is valid for the operators with the feedback function.  
+For operators with feedback function, you can edit the feedback level to modulate own-self.  
+For operators without feedback function, you can edit the phase shift level of wave shape.  The value from 0 to 255 corresponds to from 0 to 99 percent of phase shift.   
 
 
 ## 11. WAVE SHAPE
