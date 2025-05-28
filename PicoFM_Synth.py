@@ -95,6 +95,9 @@
 #           Phase shfter for making a waveshape.
 #           The file to save will be changed to the loaded file.
 #
+#     0.2.2: 05/28/2025
+#           Add new algorithms 8, 9, 10.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -806,7 +809,7 @@ class FM_Waveshape_class:
     WAVE_WHITE_NOISE = 6
 
     def __init__(self):
-        self._algorithm = [(self.fm_algorithm0, (0,1)), (self.fm_algorithm1, (0,1)), (self.fm_algorithm2, (0,1,2,3)), (self.fm_algorithm3, (0,1,2,3)), (self.fm_algorithm4, (0,1,2,3)), (self.fm_algorithm5, (0,1,2,3)), (self.fm_algorithm6, (0,1,2,3)), (self.fm_algorithm7, (0,1,2,3))]
+        self._algorithm = [(self.fm_algorithm0, (0,1)), (self.fm_algorithm1, (0,1)), (self.fm_algorithm2, (0,1,2,3)), (self.fm_algorithm3, (0,1,2,3)), (self.fm_algorithm4, (0,1,2,3)), (self.fm_algorithm5, (0,1,2,3)), (self.fm_algorithm6, (0,1,2,3)), (self.fm_algorithm7, (0,1,2,3)), (self.fm_algorithm8, (0,1,2,3)), (self.fm_algorithm9, (0,1,2,3)), (self.fm_algorithm10, (0,1,2,3))]
         self._waveshape = [
             self.wave_sine, self.wave_saw, self.wave_triangle, self.wave_square50,
             self.wave_sine_abs, self.wave_sine_plus, self.wave_white_noise,
@@ -1137,18 +1140,22 @@ class FM_Waveshape_class:
     # Make an waveshape with a carrier and a modulator
     def waveshape(self, shape, adsr, an, fn, modulator=None, phase_shift=None):
 #        print('WAVESHAPE:', shape, an ,fn)
-        wave = self._waveshape[shape](adsr, an, fn / FM_Waveshape_class.OSC_FREQ_RESOLUTION, modulator)
+
+        # Modulator phase shift
+        mod_phase = modulator
+        if phase_shift is not None and modulator is not None:
+            shifter = int(FM_Waveshape_class.SAMPLE_SIZE * phase_shift / 255)
+            if shifter > 0 and shifter < FM_Waveshape_class.SAMPLE_SIZE - 1:
+#                print('WAVE SHIFT:', shifter)
+                mod_phase = np.roll(modulator, shifter)
+
+        # Make a wave shape
+        wave = self._waveshape[shape](adsr, an, fn / FM_Waveshape_class.OSC_FREQ_RESOLUTION, mod_phase)
         for w in list(range(len(wave))):
             if wave[w] > FM_Waveshape_class.SAMPLE_VOLUME:
                 wave[w] = FM_Waveshape_class.SAMPLE_VOLUME
             elif wave[w] < -FM_Waveshape_class.SAMPLE_VOLUME:
                 wave[w] = -FM_Waveshape_class.SAMPLE_VOLUME
-
-        if phase_shift is not None:
-            shifter = int(FM_Waveshape_class.SAMPLE_SIZE * phase_shift / 255)
-            if shifter > 0 and shifter < FM_Waveshape_class.SAMPLE_SIZE - 1:
-#                print('WAVE SHIFT:', shifter)
-                wave = np.roll(wave, shifter)
 
         return wave
 
@@ -1159,7 +1166,7 @@ class FM_Waveshape_class:
         
         return level / FM_Waveshape_class.OSC_LEVEL_MAX * FM_Waveshape_class.OSC_MODULATION_MAX
 
-    # FM ALGORITHM-0: [0]-->1-->
+    # FM ALGORITHM-0: <0>-->1-->
     def fm_algorithm0(self, osc_m, osc_c):
         # Modulator
         wm = self._oscillators[osc_m]['waveshape']
@@ -1187,7 +1194,7 @@ class FM_Waveshape_class:
         
         return wave_shape
     
-    # FM ALGORITHM-1: ([0] + 1)-->
+    # FM ALGORITHM-1: (<0> + 1)-->
     def fm_algorithm1(self, osc_m, osc_c):
         # Modulator-1
         wm = self._oscillators[osc_m]['waveshape']
@@ -1224,7 +1231,7 @@ class FM_Waveshape_class:
         wave2 = self.fm_algorithm1(osc_mb, osc_cb)
         return np.array(wave1 + wave2)
 
-    # FM ALGORITHM-3: ( [0] + ([1] * 2) )-->3-->
+    # FM ALGORITHM-3: ( <0> + (<1> * 2) )-->3-->
     def fm_algorithm3(self, osc_ma, osc_ca, osc_mb, osc_cb):
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
@@ -1273,7 +1280,7 @@ class FM_Waveshape_class:
         wave3 = self.waveshape(w3, t3, a3, f3, wave02, b3)
         return wave3
 
-    # FM ALGORITHM-4: [0]-->1-->2-->3-->
+    # FM ALGORITHM-4: <0>-->1-->2-->3-->
     def fm_algorithm4(self, osc_ma, osc_ca, osc_mb, osc_cb):
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
@@ -1313,13 +1320,13 @@ class FM_Waveshape_class:
         wave3 = self.waveshape(w3, t3, a3, f3, wave2, b3)
         return wave3
 
-    # FM ALGORITHM-5: ( ([0]-->1) + ([2]-->3) )-->
+    # FM ALGORITHM-5: ( (<0>-->1) + (<2>-->3) )-->
     def fm_algorithm5(self, osc_ma, osc_ca, osc_mb, osc_cb):
         wave1 = self.fm_algorithm0(osc_ma, osc_ca)
         wave2 = self.fm_algorithm0(osc_mb, osc_cb)
         return np.array(wave1 + wave2)
 
-    # FM ALGORITHM-6: ( [0] + ([1]-->2-->3) )-->
+    # FM ALGORITHM-6: ( <0> + (<1>-->2-->3) )-->
     def fm_algorithm6(self, osc_ma, osc_ca, osc_mb, osc_cb):
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
@@ -1369,7 +1376,7 @@ class FM_Waveshape_class:
         wave03 = np.array(wave0 + wave3)
         return wave03
 
-    # FM ALGORITHM-7: ( [0] + ([1]-->2) + [3] )-->
+    # FM ALGORITHM-7: ( <0> + (<1>-->2) + <3> )-->
     def fm_algorithm7(self, osc_ma, osc_ca, osc_mb, osc_cb):
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
@@ -1426,6 +1433,193 @@ class FM_Waveshape_class:
         wave023 = np.array(wave0 + wave2 + wave3)
         return wave023
 
+    # FM ALGORITHM-8: <1>-->(2+3)+<4>-->
+    def fm_algorithm8(self, osc_ma, osc_ca1, osc_ca2, osc_cb):
+        w0 = self._oscillators[osc_ma]['waveshape']
+        f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
+        b0 = self._oscillators[osc_ma]['feedback']
+        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
+        t0 = self._oscillators[osc_ma]['adsr']
+
+        w1 = self._oscillators[osc_ca1]['waveshape']
+        f1 = self._oscillators[osc_ca1]['frequency'] * 100 + self._oscillators[osc_ca1]['freq_decimal']
+        b1 = self._oscillators[osc_ca1]['feedback']
+        a1 = self.operator_level(self._oscillators[osc_ca1]['amplitude'], True)
+        t1 = self._oscillators[osc_ca1]['adsr']
+
+        w2 = self._oscillators[osc_ca2]['waveshape']
+        f2 = self._oscillators[osc_ca2]['frequency'] * 100 + self._oscillators[osc_ca2]['freq_decimal']
+        b2 = self._oscillators[osc_ca2]['feedback']
+        a2 = self.operator_level(self._oscillators[osc_ca2]['amplitude'], True)
+        t2 = self._oscillators[osc_ca2]['adsr']
+
+        w3 = self._oscillators[osc_cb]['waveshape']
+        f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
+        b3 = self._oscillators[osc_cb]['feedback']
+        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
+        t3 = self._oscillators[osc_cb]['adsr']
+
+        # Without feedback0
+        if b0 <= 0:
+            wave0 = self.waveshape(w0, t0, a0, f0)
+            
+        # With feedback0
+        else:
+            base_shape = self.waveshape(w0, t0, b0, f0)
+            wave0 = self.waveshape(w0, t0, a0, f0, base_shape)
+
+        # Without feedback3
+        if b3 <= 0:
+            wave3 = self.waveshape(w3, t3, a3, f3)
+            
+        # With feedback3
+        else:
+            base_shape = self.waveshape(w3, t3, b3, f3)
+            wave3 = self.waveshape(w3, t3, a3, f3, base_shape)
+
+        # Without feedback1
+        if b1 <= 0:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0)
+            
+        # With feedback1
+        else:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0, b1)
+
+        # Without feedback2
+        if b2 <= 0:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave0)
+            
+        # With feedback1
+        else:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave0, b2)
+        
+        wave = np.array(wave1 + wave2 + wave3)
+        return wave
+
+    # FM ALGORITHM-9: <1>-->(2-->3+4)-->
+    def fm_algorithm9(self, osc_ma, osc_mb, osc_ca, osc_cb):
+        w0 = self._oscillators[osc_ma]['waveshape']
+        f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
+        b0 = self._oscillators[osc_ma]['feedback']
+        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
+        t0 = self._oscillators[osc_ma]['adsr']
+
+        w1 = self._oscillators[osc_mb]['waveshape']
+        f1 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
+        b1 = self._oscillators[osc_mb]['feedback']
+        a1 = self.operator_level(self._oscillators[osc_mb]['amplitude'])
+        t1 = self._oscillators[osc_mb]['adsr']
+
+        w2 = self._oscillators[osc_ca]['waveshape']
+        f2 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
+        b2 = self._oscillators[osc_ca]['feedback']
+        a2 = self.operator_level(self._oscillators[osc_ca]['amplitude'], True)
+        t2 = self._oscillators[osc_ca]['adsr']
+
+        w3 = self._oscillators[osc_cb]['waveshape']
+        f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
+        b3 = self._oscillators[osc_cb]['feedback']
+        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
+        t3 = self._oscillators[osc_cb]['adsr']
+
+        # Without feedback0
+        if b0 <= 0:
+            wave0 = self.waveshape(w0, t0, a0, f0)
+            
+        # With feedback0
+        else:
+            base_shape = self.waveshape(w0, t0, b0, f0)
+            wave0 = self.waveshape(w0, t0, a0, f0, base_shape)
+
+        # Without feedback1
+        if b1 <= 0:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0)
+            
+        # With feedback0
+        else:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0, b1)
+
+        # Without feedback2
+        if b2 <= 0:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave1)
+            
+        # With feedback1
+        else:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave1, b2)
+
+        # Without feedback3
+        if b3 <= 0:
+            wave3 = self.waveshape(w3, t3, a3, f3, wave0)
+            
+        # With feedback3
+        else:
+            wave3 = self.waveshape(w3, t3, a3, f3, wave0, b3)
+        
+        wave = np.array(wave2 + wave3)
+        return wave
+
+    # FM ALGORITHM-10: <1>-->(2+3+4)-->
+    def fm_algorithm10(self, osc_ma, osc_ca, osc_cb, osc_cc):
+        w0 = self._oscillators[osc_ma]['waveshape']
+        f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
+        b0 = self._oscillators[osc_ma]['feedback']
+        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
+        t0 = self._oscillators[osc_ma]['adsr']
+
+        w1 = self._oscillators[osc_ca]['waveshape']
+        f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
+        b1 = self._oscillators[osc_ca]['feedback']
+        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'], True)
+        t1 = self._oscillators[osc_ca]['adsr']
+
+        w2 = self._oscillators[osc_cb]['waveshape']
+        f2 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
+        b2 = self._oscillators[osc_cb]['feedback']
+        a2 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
+        t2 = self._oscillators[osc_cb]['adsr']
+
+        w3 = self._oscillators[osc_cc]['waveshape']
+        f3 = self._oscillators[osc_cc]['frequency'] * 100 + self._oscillators[osc_cc]['freq_decimal']
+        b3 = self._oscillators[osc_cc]['feedback']
+        a3 = self.operator_level(self._oscillators[osc_cc]['amplitude'], True)
+        t3 = self._oscillators[osc_cc]['adsr']
+
+        # Without feedback0
+        if b0 <= 0:
+            wave0 = self.waveshape(w0, t0, a0, f0)
+            
+        # With feedback0
+        else:
+            base_shape = self.waveshape(w0, t0, b0, f0)
+            wave0 = self.waveshape(w0, t0, a0, f0, base_shape)
+
+        # Without feedback1
+        if b1 <= 0:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0)
+            
+        # With feedback0
+        else:
+            wave1 = self.waveshape(w1, t1, a1, f1, wave0, b1)
+
+        # Without feedback2
+        if b2 <= 0:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave0)
+            
+        # With feedback1
+        else:
+            wave2 = self.waveshape(w2, t2, a2, f2, wave0, b2)
+
+        # Without feedback3
+        if b3 <= 0:
+            wave3 = self.waveshape(w3, t3, a3, f3, wave0)
+            
+        # With feedback3
+        else:
+            wave3 = self.waveshape(w3, t3, a3, f3, wave0, b3)
+        
+        wave = np.array(wave1 + wave2 + wave3)
+        return wave
+
     # Make a waveshape of an algorithm
     def fm_algorithm(self, algorithm):
         if algorithm >= 0 and algorithm < len(self._algorithm):
@@ -1472,7 +1666,7 @@ class SynthIO_class:
     
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
-    VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+<2>*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+<2>*3+<4>']
+    VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+<2>*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+<2>*3+<4>', '8:<1>*(2+3)+<4>', '9:<1>*(2*3+4)', '10:<1>*(2+3+4)']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
     VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
@@ -1482,6 +1676,7 @@ class SynthIO_class:
     VIEW_CURSOR_f3 = ['^  ', ' ^ ', '  ^']
     VIEW_CURSOR_f4 = ['^   ', ' ^  ', '  ^ ', '   ^']
     VIEW_CURSOR_f5 = ['^    ', ' ^   ', '  ^  ', '   ^ ', '    ^']
+    VIEW_CURSOR_f6 = ['^     ', ' ^    ', '  ^   ', '   ^  ', '    ^ ', '     ^']
     VIEW_CURSOR_s8   = [
         '^       ', ' ^      ', '  ^     ', '   ^    ',
         '    ^   ', '     ^  ', '      ^ ', '       ^'
@@ -1521,12 +1716,12 @@ class SynthIO_class:
                 'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
                 'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
-                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
+                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'VIBR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
-                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:5.2f}'},
-                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5}
+                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
             'OSCILLATORS': {
@@ -1630,10 +1825,10 @@ class SynthIO_class:
                 'SOUND_NAME' : 'NO NAME',
                 'AMPLITUDE'  : 0,
                 'LFO_RATE_A' : 4.0,
-                'LFO_SCALE_A': 1.8,
+                'LFO_SCALE_A': 1.80,
                 'VIBR'       : 0,
                 'LFO_RATE_B' : 4.0,
-                'LFO_SCALE_B': 1.8,
+                'LFO_SCALE_B': 1.80,
                 'CURSOR'     : 0
             },
             
@@ -2780,6 +2975,33 @@ class Application_class:
             '<2>->3--+-->',
             '        +',
             '<4>-----',
+            ''
+        ],
+        [	# 8|<1>*(2+3)+4']
+            '',
+            '     -->2--',
+            '<1>-|      |',
+            '     -->3--+-->',
+            '           |',
+            '<4>--------',
+            ''
+        ],
+        [	# 9|<1>*(2*3+4)']
+            '',
+            '     -->2-->3--',
+            '<1>-|          +-->',
+            '     -->4------',
+            '',
+            '',
+            ''
+        ],
+        [	# 10|<1>*(2+3+4)']
+            '',
+            '     -->2--',
+            '    |      |',
+            '<1>-+-->3--+-->',
+            '    |      |',
+            '     -->4--',
             ''
         ]
     ]
