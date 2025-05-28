@@ -188,7 +188,7 @@ You can show an algorithm block diagram of the current sound.
 ### 7-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/02_algorithm.jpg)  
 
-PiFMS has 8 algorithms.  
+PiFMS has 11 algorithms.  
 
 |Algorithm|Diagram|
 |---|---|
