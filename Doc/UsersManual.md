@@ -165,7 +165,7 @@ On this page, FM algorithms are shown with something like an expression.  For is
 |m\*n|Operator-m modulates operator-n.|
 |m\+n|Mix operator-m with operator-n.|
 
-PiFMS has 8 algorithms.  
+PiFMS has 11 algorithms.  
 
 |No.|ALGORITHM|
 |----|----|
