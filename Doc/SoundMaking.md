@@ -71,8 +71,8 @@ You will set output level of operator in the 'LEVL' line on the 'OPERATORS' page
 |---|---|---|---|
 |![FDBK=2](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_50.jpg)|![Samplling](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_fm_51.jpg)|FDBK=2 for the OP-1.|The OP-2 is no longer a triangle wave.|  　
 　
-### 1-3. 8種類のアルゴリズム
-PiFMS has 8 algorithms.  Imagine sound you want, choose an algorithm by its structure ('ADD' and 'MODULATE').  
+### 1-3. 11 Algorithms
+PiFMS has 11 algorithms.  Imagine sound you want, choose an algorithm by its structure ('ADD' and 'MODULATE').  
 
 |Algorithm|Structure|Expression Form|
 |---|---|---|
@@ -84,6 +84,9 @@ PiFMS has 8 algorithms.  Imagine sound you want, choose an algorithm by its stru
 |5|`<1>-->2---`<br/>`　　　　　　+-->`<br/>`<3>-->4---`|`<1>*2+<3>*4`|
 |6|`<1>----------`<br/>`　　　　　　　　+-->`<br/>`<2>-->3-->4--`|`<1>+<2>*3*4`|
 |7|`<1>------`<br/>`　　　　　+`<br/>`<2>-->3--+-->`<br/>`　　　　　+`<br/>`<4>------`|`<1>+2*3+<4>`|
+|8|`　　　-->2--`<br/>`<1>-|　　　 |`<br/>`　　　-->3--+-->`<br/>`　　　　　　 |`<br/>`<4>--------`|<1>\*(2+3)+<4>|
+|9|`　　　-->2-->3--`<br/>`<1>-|　　　　　　+-->`<br/>`　　　-->4------`|<1>\*(2\*3+4)|
+|10|`　　　 -->2---`<br/>`　　　|　　　　|`<br/>`<1>--+-->3---+-->`<br/>`　　　|　　　　|`<br/>`　　　 -->4---`|<1>\*(2+3+4)|
 
 You can choose an algorithm on the 'SOUND MAIN' page.　 
 

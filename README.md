@@ -21,7 +21,7 @@ This synthesizer works with FM wave generator, synthio, sound sampler and I2S DA
 |8Encoders|8 Rotary encoders with LEDs|
 |OLED|Display|
 
-The FM wave generator is my original program.  It has 4 oscillators (operators), 8 algorithms and 6 basic wave shapes and sampling waves you sampled.  
+The FM wave generator is my original program.  It has 4 oscillators (operators), 11 algorithms and 6 basic wave shapes and sampling waves you sampled.  
 
 Specifications are as below.  
 
