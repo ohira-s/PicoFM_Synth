@@ -180,6 +180,10 @@ PiFMS has 11 algorithms.
 |8|<1>\*(2+3)+<4>|
 |9|<1>\*(2\*3+4)|
 |10|<1>\*(2+3+4)|
+	
+4) VOLM:5  
+
+You can change the master volume from 1 to 9.  
 
 
 ## 7. ALGORITHM
