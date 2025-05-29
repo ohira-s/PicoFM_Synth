@@ -98,6 +98,9 @@
 #     0.2.2: 05/28/2025
 #           Add new algorithms 8, 9, 10.
 #
+#     0.2.3: 05/29/2025
+#           VCA key sensitivity is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -231,17 +234,42 @@ async def midi_in():
                 init_filter = SynthIO.filter(filters[midi_msg.note])['FILTER']
 
                 # Note on velocity
-                attack_level = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
-                if attack_level > 1.0:
-                    attack_level = 1.0
+                attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
+                sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
                     
+                # VCA key senesitivity
+                if   vca['KEYSENSE'] > 0:
+                    magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
+#                    print('VCA KEY SENSE+:', attack_level, magni)
+                    attack_level  = attack_level  + magni
+                    sustain_level = sustain_level + magni
+#                    print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
+                    
+                elif vca['KEYSENSE'] < 0:
+                    magni = vca['KEYSENSE'] * midi_msg.note / 1280
+#                    print('VCA KEY SENSE-:', attack_level, magni)
+                    attack_level  = attack_level  + magni
+                    sustain_level = sustain_level + magni
+#                    print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
+
+                # Adjust VCA ADSR ranges
+                if   attack_level > 1.0:
+                    attack_level = 1.0
+                elif attack_level < 0.0:
+                    attack_level = 0.0
+
+                if   sustain_level > 1.0:
+                    sustain_level = 1.0
+                elif sustain_level < 0.0:
+                    sustain_level = 0.0
+
                 # Generate an ADSR for note
                 note_env = synthio.Envelope(
                                 attack_time=vca['ATTACK'],
                                 decay_time=vca['DECAY'],
                                 release_time=vca['RELEASE'],
                                 attack_level=attack_level,
-                                sustain_level=vca['SUSTAIN']
+                                sustain_level=sustain_level
                             )
 
                 # Play the note
@@ -1768,6 +1796,7 @@ class SynthIO_class:
                 'DECAY'        : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
                 'SUSTAIN'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.00, 'VIEW': '{:4.2f}'},
                 'RELEASE'      : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 9.99, 'VIEW': '{:4.2f}'},
+                'KEYSENSE'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':  -9, 'MAX':    9, 'VIEW': '{:+2d}'},
                 'CURSOR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
             },
         
@@ -1887,6 +1916,7 @@ class SynthIO_class:
                 'DECAY'       : 0.3,
                 'SUSTAIN'     : 0.5,
                 'RELEASE'     : 0.2,
+                'KEYSENSE'    : 0,
                 'CURSOR'      : 0
             },
             
@@ -2745,6 +2775,7 @@ class Application_class:
             {'CATEGORY': 'VCA', 'PARAMETER': 'DECAY',   'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'SUSTAIN', 'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'RELEASE', 'OSCILLATOR': None},
+            {'CATEGORY': 'VCA', 'PARAMETER': 'KEYSENSE','OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'CURSOR',  'OSCILLATOR': None},
             {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None}
         ]},
@@ -2865,11 +2896,12 @@ class Application_class:
         },
 
         'VCA': {
-            'ATTACK' : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
-            'DECAY'  : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
-            'SUSTAIN': {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
-            'RELEASE': {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 37, 'w': 98}},
-            'CURSOR' : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}}
+            'ATTACK'  : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
+            'DECAY'   : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
+            'SUSTAIN' : {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
+            'RELEASE' : {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 37, 'w': 98}},
+            'KEYSENSE': {PAGE_VCA: {'label': 'KEYS:', 'x':  30, 'y': 46, 'w': 98}},
+            'CURSOR'  : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
         
         'SAVE': {
@@ -3266,7 +3298,13 @@ class Application_class:
                                     # Integer
                                     elif data_view[-1] == 'd':
                                         data_view = data_view[:-1]
-                                        total_len = int(data_view)
+                                        if data_view[0] == '+':
+              #                              total_len = int(data_view[1:]) - 1
+                                            total_len = int(data_view[1:])
+                                            
+                                        else:
+                                            total_len = int(data_view)
+                                            
                                         inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
 
                                     # String
