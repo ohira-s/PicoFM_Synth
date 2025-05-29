@@ -99,7 +99,7 @@
 #           Add new algorithms 8, 9, 10.
 #
 #     0.2.3: 05/29/2025
-#           VCA key sensitivity is available.
+#           VCA key sensitivity and Master Volume is available.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -348,7 +348,8 @@ async def get_8encoder():
             if not on_change:
                 for rt in list(range(8)):
                     enc_rotary = Encoder_obj.get_rotary_increment(rt)
-                    change = (enc_rotary != 0)
+#                    change = (enc_rotary != 0)
+                    change = abs(enc_rotary) >= 2
                     on_change = on_change or change
                     M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
                     M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
@@ -1732,7 +1733,7 @@ class SynthIO_class:
         self.audio.play(self.mixer)
         self.audio_pause()
         self.mixer.voice[0].play(self._synth)
-        self.mixer.voice[0].level = 0.4
+        self.mixer.voice[0].level = 0.5
 
         # Synthesize parameters
         self._init_parameters()
@@ -1749,6 +1750,7 @@ class SynthIO_class:
                 'VIBR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'VOLUME'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
                 'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
@@ -1858,6 +1860,7 @@ class SynthIO_class:
                 'VIBR'       : 0,
                 'LFO_RATE_B' : 4.0,
                 'LFO_SCALE_B': 1.80,
+                'VOLUME'     : 5,
                 'CURSOR'     : 0
             },
             
@@ -1962,7 +1965,10 @@ class SynthIO_class:
 #            print('---PLAY ---')
             self.audio.resume()
 
-    def mixer_voice_level(self, volume):
+    def mixer_voice_level(self, volume=None):
+        if volume is None:
+            volume = self._synth_params['SOUND']['VOLUME'] / 10.0
+            
         self.mixer.voice[0].level = volume
         
     # Get synthio.Synthesizer object
@@ -2365,6 +2371,7 @@ class SynthIO_class:
 
     # Set up the synthio
     def setup_synthio(self):
+        self.mixer_voice_level()
         self.generate_sound()
         self.generate_wave_shape()
         self.generate_filter_adsr()
@@ -2398,7 +2405,7 @@ class SynthIO_class:
     #     TYPE_FLOAT: (cursor >=0:INT, <=-1:DECIMAL, increment value for a digit)
     #     TYPE_STRING: (cursor, increment value for chr)
     def increment_value(self, delta, category, parameter, oscillator=None):
-#        print('INC DELTA=', delta)
+#        print('INC DELTA=', delta, category, parameter, oscillator)
         # Oscillator category parameter
         if category == 'OSCILLATORS' and oscillator is not None:
             data_set = self.wave_parameter(oscillator)
@@ -2614,7 +2621,7 @@ class Application_class:
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'VOLUME', 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
         ]},
@@ -2843,6 +2850,7 @@ class Application_class:
             'BANK'       : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
             'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
             'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
+            'VOLUME'     : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
             'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
             'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
@@ -3273,49 +3281,49 @@ class Application_class:
                             if data_type != SynthIO_class.TYPE_INDEX and data_type != SynthIO_class.TYPE_INDEXED_VALUE:
                                 dataset = SynthIO.synthio_parameter(category)
 #                                print('DATASET:', dataset, parameter)
-                                if parameter in dataset and 'CURSOR' in dataset:
-                                    cursor_pos = dataset['CURSOR']
-
-                                    data_view = data_attr['VIEW']
-                                    data_view = data_view[:-1]
-                                    data_view = data_view[data_view.find(':')+1:]
-                                    
-                                    # Floating point
-                                    if data_view[-1] == 'f':
+                                if parameter in dataset:
+                                    if 'CURSOR' in dataset and (category != 'SOUND' or parameter != 'VOLUME'):
+                                        cursor_pos = dataset['CURSOR']
+                                        data_view = data_attr['VIEW']
                                         data_view = data_view[:-1]
-                                        data_form = data_view.split('.')
-                                        total_len = int(data_form[0])
-                                        decimal_len = int(data_form[1])
-                                        decimal_point = total_len - decimal_len - 1
-                                        if cursor_pos < total_len and cursor_pos != decimal_point:
-                                            if cursor_pos < decimal_point:
-                                                inc = (decimal_point - cursor_pos - 1, inc * inc_magni)
+                                        data_view = data_view[data_view.find(':')+1:]
+                                        
+                                        # Floating point
+                                        if data_view[-1] == 'f':
+                                            data_view = data_view[:-1]
+                                            data_form = data_view.split('.')
+                                            total_len = int(data_form[0])
+                                            decimal_len = int(data_form[1])
+                                            decimal_point = total_len - decimal_len - 1
+                                            if cursor_pos < total_len and cursor_pos != decimal_point:
+                                                if cursor_pos < decimal_point:
+                                                    inc = (decimal_point - cursor_pos - 1, inc * inc_magni)
+                                                else:
+                                                    inc = (decimal_point - cursor_pos, inc * inc_magni)
                                             else:
-                                                inc = (decimal_point - cursor_pos, inc * inc_magni)
+                                                inc = None
+
+                                        # Integer
+                                        elif data_view[-1] == 'd':
+                                            data_view = data_view[:-1]
+                                            if data_view[0] == '+':
+#                                                total_len = int(data_view[1:]) - 1
+                                                total_len = int(data_view[1:])
+                                                
+                                            else:
+                                                total_len = int(data_view)
+                                                
+                                            inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
+
+                                        # String
+                                        elif data_view[-1] == 's':
+                                            data_view = data_view[:-1]
+                                            total_len = int(data_view)
+                                            inc = None if cursor_pos >= total_len else (cursor_pos, inc * inc_magni)
+                                        
+                                        # Unknown
                                         else:
                                             inc = None
-
-                                    # Integer
-                                    elif data_view[-1] == 'd':
-                                        data_view = data_view[:-1]
-                                        if data_view[0] == '+':
-              #                              total_len = int(data_view[1:]) - 1
-                                            total_len = int(data_view[1:])
-                                            
-                                        else:
-                                            total_len = int(data_view)
-                                            
-                                        inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
-
-                                    # String
-                                    elif data_view[-1] == 's':
-                                        data_view = data_view[:-1]
-                                        total_len = int(data_view)
-                                        inc = None if cursor_pos >= total_len else (cursor_pos, inc * inc_magni)
-                                    
-                                    # Unknown
-                                    else:
-                                        inc = None
                         
                         # Oscillators
                         else:
