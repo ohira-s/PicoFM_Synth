@@ -252,6 +252,11 @@ Sustain level from 0.0 to 1.0.
 
 Release time in seconds.  
 
+#### 4-1-5. KEYS  
+
+Key scale sensitivity from -9 to +9.  
+0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
+
 ### 4-2. Tremolo
 
 #### 4-2-1. TREM  

@@ -529,7 +529,12 @@ Sustain level from 0.0 to 1.0.
 
 Release time in seconds.  
 
-### 16-6. CURS (RT6)  
+### 16-6. KEYS (RT6)  
+
+Key scale sensitivity from -9 to +9.  
+0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
+
+### 16-7. CURS (RT7)  
 
 Move cursor to edit position.  
 
