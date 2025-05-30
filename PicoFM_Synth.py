@@ -101,6 +101,9 @@
 #     0.2.3: 05/29/2025
 #           VCA key sensitivity and Master Volume is available.
 #
+#     0.2.4: 05/30/2025
+#           Numeric parameter editor improvement.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -2045,7 +2048,7 @@ class SynthIO_class:
                 
                 if category == 'LOAD' and parameter == 'SOUND':
                     if value < 0:
-                        return '<NO FILE>'
+                        return 'NO FILE'
                     
                     return SynthIO_class.VIEW_SOUND_FILES[value]
                 
@@ -2498,7 +2501,7 @@ class SynthIO_class:
             
             # Overwrite parameters loaded
             self._init_parameters()
-            print('DATA KEYS:', file_data.keys())
+#            print('DATA KEYS:', file_data.keys())
             for category in file_data.keys():
                 if category == 'OSCILLATORS':
                     for osc in file_data[category]:
@@ -2538,7 +2541,7 @@ class SynthIO_class:
 
     # Get a sound name from a file
     def get_sound_name_of_file(self, bank, sound):
-        sound_name = '<NEW FILE>  '
+        sound_name = 'NEW FILE'
         try:
             file_name = '/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json'
             with open(file_name, 'r') as f:
@@ -3282,7 +3285,7 @@ class Application_class:
                                 dataset = SynthIO.synthio_parameter(category)
 #                                print('DATASET:', dataset, parameter)
                                 if parameter in dataset:
-                                    if 'CURSOR' in dataset and (category != 'SOUND' or parameter != 'VOLUME'):
+                                    if 'CURSOR' in dataset:
                                         cursor_pos = dataset['CURSOR']
                                         data_view = data_attr['VIEW']
                                         data_view = data_view[:-1]
@@ -3307,13 +3310,14 @@ class Application_class:
                                         elif data_view[-1] == 'd':
                                             data_view = data_view[:-1]
                                             if data_view[0] == '+':
-#                                                total_len = int(data_view[1:]) - 1
-                                                total_len = int(data_view[1:])
+                                                total_len = int(data_view[1:]) - 1
                                                 
                                             else:
                                                 total_len = int(data_view)
-                                                
-                                            inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
+                                            
+                                            # Not single digit
+                                            if total_len > 1:
+                                                inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
 
                                         # String
                                         elif data_view[-1] == 's':
@@ -3360,7 +3364,8 @@ class Application_class:
                             elif category == 'LOAD':
                                 load_sound = SynthIO_class.VIEW_LOAD_SOUND[dataset['LOAD_SOUND']]
                                 if   load_sound == 'LOAD':
-                                    load_file = (dataset['BANK'], dataset['SOUND'], dataset['SOUND_NAME'])
+                                    sound_name = SynthIO.get_sound_name_of_file(dataset['BANK'], dataset['SOUND'])
+                                    load_file = (dataset['BANK'], dataset['SOUND'], sound_name)
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
                                     time.sleep(0.5)
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
@@ -3377,7 +3382,7 @@ class Application_class:
                                     # Set up the synthesizer
                                     SynthIO.setup_synthio()
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
-                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
+                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': ''})
                                     SynthIO.synthio_parameter('SAVE', {'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
