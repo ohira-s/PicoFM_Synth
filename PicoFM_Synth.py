@@ -104,6 +104,9 @@
 #     0.2.4: 05/30/2025
 #           Numeric parameter editor improvement.
 #
+#     0.2.5: 05/31/2025
+#           Move to a page directly with the 8encoder buttons.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -334,6 +337,7 @@ async def get_8encoder():
         M5Stack_8Encoder_class.status['on_change']['switch'] = False
         for rt in list(range(8)):
             M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = False
+            M5Stack_8Encoder_class.status['on_change']['button'][rt] = False
             
         try:
             enc_switch  = Encoder_obj.get_switch()
@@ -350,6 +354,7 @@ async def get_8encoder():
             
             if not on_change:
                 for rt in list(range(8)):
+                    # Increment
                     enc_rotary = Encoder_obj.get_rotary_increment(rt)
 #                    change = (enc_rotary != 0)
                     change = abs(enc_rotary) >= 2
@@ -365,7 +370,21 @@ async def get_8encoder():
                     
                     if on_change:
                         break
-    
+
+                    # Button
+                    if Encoder_obj.get_button(rt):
+                        if M5Stack_8Encoder_class.status['button'][rt] == False:
+                            M5Stack_8Encoder_class.status['button'][rt] = True
+                            M5Stack_8Encoder_class.status['on_change']['button'][rt] = True
+                            on_change = True
+#                            print('TURN ON:', rt)
+                            break
+                        
+                    else:
+#                        if M5Stack_8Encoder_class.status['button'][rt] == True:
+#                            print('TURN OFF:', rt)
+                        M5Stack_8Encoder_class.status['button'][rt] = False
+
             Encoder_obj.i2c_unlock()
 
             # Do 8encoder tasks if something changed
@@ -589,7 +608,7 @@ class ADC_MIC_class:
 # CLASS: 8Encoder Unit for M5Stack
 ###################################
 class M5Stack_8Encoder_class:
-    status = {'switch': None, 'rotary_inc': [None]*8, 'on_change':{'switch': False, 'rotary_inc': [False]*8}}
+    status = {'switch': None, 'rotary_inc': [None]*8, 'button': [None]*8, 'on_change':{'switch': False, 'rotary_inc': [False]*8, 'button': [False]*8}}
     
     def __init__(self, i2c, scl=board.GP2, sda=board.GP1, i2c_address=0x41):
         self._i2c_address = i2c_address
@@ -673,6 +692,13 @@ class M5Stack_8Encoder_class:
             time.sleep(0.01)
 
         return M5Stack_8Encoder_class.__bits_to_int(v, 32)
+
+    def get_button(self, button):
+        bytes_read = bytearray(1)
+        self._i2c.writeto(self._i2c_address, bytearray([0x50 + button]))
+        self._i2c.readfrom_into(self._i2c_address, bytes_read)
+#        print('BUTTON', button + 1, '=', bytes_read[0] == 0)
+        return bytes_read[0] == 0
 
     # Turn on a LED in colro(R,G,B)
     def led(self, led_num, color=[0x00, 0x00, 0x00]):
@@ -2618,6 +2644,20 @@ class Application_class:
     PAGE_LOAD              = 17
     PAGE_SAMPLING          = 18
     PAGE_SAMPLING_WAVES    = 19
+    
+    # Direct page access with the 8encoders push switches
+    PAGE_DIRECT_ACCESS = [
+        [PAGE_SOUND_MAIN],											# BT1
+        [PAGE_OSCILLTOR_WAVE1, PAGE_WAVE_SHAPE],					# BT2
+        [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],	# BT3
+        [PAGE_VCA, PAGE_SOUND_MODULATION],							# BT4
+        [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],						# BT5
+        [PAGE_LOAD],												# BT6
+        [PAGE_SAVE],												# BT7
+        []															# BT8
+    ]
+    
+    # Pages order and items to show in each line
     PAGES = [
         {'PAGE': PAGE_SOUND_MAIN, 'EDITOR': [
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
@@ -3054,7 +3094,12 @@ class Application_class:
 
     def __init__(self):
         self.init_sdcard()
-
+        
+        # Convert the parameter page numbers to the edit page numbers
+        for direct_pages in Application_class.PAGE_DIRECT_ACCESS:
+            for idx in list(range(len(direct_pages))):
+                direct_pages[idx] = self.get_page_number(direct_pages[idx])
+        
     def init_sdcard(self):
         # SD Card
         sd_mosi  = board.GP19
@@ -3215,6 +3260,61 @@ class Application_class:
                 
         return None
 
+    # Change page
+    def change_page(self):
+        # Select sampling waves page
+#        print('CHANGE PAGE:', Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'])
+        if Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_SAMPLING_WAVES:
+            # Update the sampling files list
+            ADC_Mic.find_sampling_files()
+#            print('SAMPLING FILES:', SynthIO_class.VIEW_SAMPLE_WAVES)
+            dataset = SynthIO.synthio_parameter('SAMPLING')
+            for w in list(range(1,5)):
+                SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['MAX'] = len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1
+                SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['VIEW'] = SynthIO_class.VIEW_SAMPLE_WAVES
+                if dataset['WAVE' + str(w)] not in SynthIO_class.VIEW_SAMPLE_WAVES:
+                    SynthIO.synthio_parameter('SAMPLING', {'WAVE' + str(w): ''})
+
+        # Search sound files just moving into the LOAD page
+        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_LOAD:
+            dataset = SynthIO.synthio_parameter('LOAD')
+            finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
+            if finds > 0:
+                sound_no = 0 if len(SynthIO_class.VIEW_SOUND_FILES[dataset['SOUND']]) <= 4 else dataset['SOUND']
+
+            else:
+                sound_no = 0
+                
+#            print('SOUND FILESp:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
+            SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': sound_no if finds > 0 else -1})
+
+        # Show the page
+        self.show_OLED_page()
+
+    # Get the page number of a parameter page
+    def get_page_number(self, parm_page):
+        for pg in list(range(len(Application_class.PAGES))):
+            if Application_class.PAGES[pg]['PAGE'] == parm_page:
+                return pg
+            
+        return None
+
+    # Get a page to change direct
+    def get_direct_page(self, button):
+        direct_pages = Application_class.PAGE_DIRECT_ACCESS[button]
+#        print('DIRECT BUTTON:', button, direct_pages)
+        if len(direct_pages) == 0:
+            return None
+            
+        if Application_class.DISPLAY_PAGE in direct_pages:
+            idx = direct_pages.index(Application_class.DISPLAY_PAGE)
+            page = direct_pages[(idx + 1) % len(direct_pages)]
+            
+        else:
+            page = direct_pages[0]
+            
+        return page
+
     # Treat 8encoder events
     def task_8encoder(self):
         # Increment magnification
@@ -3229,6 +3329,18 @@ class Application_class:
             
         # Change the editor page
         for rot in list(range(8)):
+            # Direct page access button
+            if M5Stack_8Encoder_class.status['on_change']['button'][rot]:
+#                print('ONCHANGE BUTTON:', rot)
+                if M5Stack_8Encoder_class.status['button'][rot]:
+#                    print('TURN ON BUTTON:', rot)
+                    direct_page = self.get_direct_page(rot)
+#                    print('DIRECT PAGE:', direct_page)
+                    if direct_page is not None:
+                        Application_class.DISPLAY_PAGE = direct_page
+                        self.change_page()
+                        continue
+                
             # Rotary encoders
             if M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rot]:
                 inc = 1 if M5Stack_8Encoder_class.status['rotary_inc'][rot] <= 127 else -1
@@ -3237,35 +3349,7 @@ class Application_class:
                 # Change the current page
                 if rot == 7:
                     Application_class.DISPLAY_PAGE = (Application_class.DISPLAY_PAGE + inc) % len(Application_class.PAGES)
-                    
-                    # Select sampling waves page
-#                    print('CHANGE PAGE:', Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'])
-                    if Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_SAMPLING_WAVES:
-                        # Update the sampling files list
-                        ADC_Mic.find_sampling_files()
-#                        print('SAMPLING FILES:', SynthIO_class.VIEW_SAMPLE_WAVES)
-                        dataset = SynthIO.synthio_parameter('SAMPLING')
-                        for w in list(range(1,5)):
-                            SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['MAX'] = len(SynthIO_class.VIEW_SAMPLE_WAVES) - 1
-                            SynthIO._params_attr['SAMPLING']['WAVE' + str(w)]['VIEW'] = SynthIO_class.VIEW_SAMPLE_WAVES
-                            if dataset['WAVE' + str(w)] not in SynthIO_class.VIEW_SAMPLE_WAVES:
-                                SynthIO.synthio_parameter('SAMPLING', {'WAVE' + str(w): ''})
-
-                    # Search sound files just moving into the LOAD page
-                    elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_LOAD:
-                        dataset = SynthIO.synthio_parameter('LOAD')
-                        finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
-                        if finds > 0:
-                            sound_no = 0 if len(SynthIO_class.VIEW_SOUND_FILES[dataset['SOUND']]) <= 4 else dataset['SOUND']
-        
-                        else:
-                            sound_no = 0
-                            
-#                        print('SOUND FILESp:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
-                        SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': sound_no if finds > 0 else -1})
-
-                    # Show the page
-                    self.show_OLED_page()
+                    self.change_page()
                     
                 # Increment a value
                 else:
