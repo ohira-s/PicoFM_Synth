@@ -119,25 +119,25 @@ In this case, turn RT1 to clockwise, you can get 'FREQ: 1100', and turn RT2 to a
 You can select increment/decrement steps with the slide switch on the right side of the rotary encoders.  Set it '0', increment/decrement one by one.  Set it '1', increment.decrement every five steps.  
 　
 ### 5-3. Rotary encoder RT8
-Rotary encoder RT8 changes PiFMS parameter pages.  Turn to clockwise, you will see the next page, and turn to anti-clockwise, the previous page.  
-There are the following parameter pages.  
+Rotary encoder RT8 changes PiFMS parameter pages.  Turn to clockwise, you will see the next page, and turn to anti-clockwise, the previous page.  In addition, there are the short cuts with pressing the button switches of Rotary encoder.  
+There are the following parameter pages.  'BT4x2' means that press BT4 twice.  
 
-|PAGE|DESCRIPTION|
-|---|---|
-|SOUND MAIN|Current sound name and algorithm.|
-|ALGORITHM|Algorithm diagram.|
-|SAMPLING WAVES|Set 4 sampling waves for the operators.|
-|OSCILLATOR LFO|Tremolo and vibrate.|
-|OSCILLATORS|4 operators basic settings.|
-|WAVE SHAPE|Current wave shape.|
-|OSCILLATOR ADSR|Envelope for the operators.|
-|FILTER|Finter basic settings.|
-|FILTER ENVELOPE|Filter envelope basic settings.|
-|FILTER ADSR|Envelope for the filter.|
-|VCA|Envelope for the VCA.|
-|SAVE|Save the current sound parameters.|
-|LOAD|Load a sound parameters.|
-|SAMPLING|Sample sound to generate wave shape data.|
+|PAGE|DESCRIPTION|SHORT CUT|
+|---|---|---|
+|SOUND MAIN|Current sound name and algorithm.|BT1|
+|ALGORITHM|Algorithm diagram.||
+|SAMPLING WAVES|Set 4 sampling waves for the operators.|BT5x2|
+|OSCILLATOR LFO|Tremolo and vibrate.|BT4x2|
+|OSCILLATORS|4 operators basic settings.|BT2|
+|WAVE SHAPE|Current wave shape.|BT2x2|
+|OSCILLATOR ADSR|Envelope for the operators.||
+|FILTER|Filter basic settings.|BT3|
+|FILTER ENVELOPE|Filter envelope basic settings.|BT3x2|
+|FILTER ADSR|Envelope for the filter.|BT3x3|
+|VCA|Envelope for the VCA.|BT4|
+|SAVE|Save the current sound parameters.|BT7|
+|LOAD|Load a sound parameters.|BT6|
+|SAMPLING|Sample sound to generate wave shape data.|BT5|
 
 
 ## 6. SOUND MAIN
