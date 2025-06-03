@@ -107,6 +107,9 @@
 #     0.2.5: 05/31/2025
 #           Move to a page directly with the 8encoder buttons.
 #
+#     0.2.6: 06/03/2025
+#           UNISON mode is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -198,129 +201,9 @@ from analogio import AnalogIn
 # MIDI IN in async task
 ##########################################
 async def midi_in():
-    notes = {}						# {note number: Note object}
-    filters = {}					# {note number: filter number=voice}
-    notes_stack = []				# [note1, note2,...]  contains only notes playing.
-    synthesizer = SynthIO.synth()
     while True:
-        # Upate working filters
-        SynthIO.generate_filter(True)
-        vca = SynthIO.synthio_parameter('VCA')
-
-        # Get a MIDI-IN event
-        midi_msg = MIDI_obj.midi_in()
-#        print('###MIDI IN:', midi_msg)
-        if midi_msg is not None:
-#            print('===>MIDI IN:', midi_msg)
-            # Note on
-            if isinstance(midi_msg, NoteOn):
-                if Application.EDITOR_MODE == True:
-                    Application.EDITOR_MODE = False
-                    SynthIO.audio_pause(False)
-                
-                # The note is playing: stop the current note, then play new note
-#                print('NOTE ON :', midi_msg.note, midi_msg.velocity)
-                if midi_msg.note in notes:
-                    if notes[midi_msg.note] is not None:
-                        synthesizer.release(notes[midi_msg.note])
-                        notes_stack.remove(midi_msg.note)
-
-                # New note
-                elif len(notes_stack) == SynthIO_class.MAX_VOICES:
-                    # Stop the oldest note if over max voices
-                    stop_note = notes_stack.pop()
-                    synthesizer.release(notes[stop_note])
-                    del notes[stop_note]
-                    SynthIO.filter_release(filters[stop_note])
-                    del filters[stop_note]
-
-                # Generate a filter for the note, then store the filter number
-                filters[midi_msg.note] = SynthIO.filter(None, midi_msg.velocity)
-#                print('NOTE FILTER:', filters[midi_msg.note], SynthIO.filter(filters[midi_msg.note]))
-                init_filter = SynthIO.filter(filters[midi_msg.note])['FILTER']
-
-                # Note on velocity
-                attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
-                sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
-                    
-                # VCA key senesitivity
-                if   vca['KEYSENSE'] > 0:
-                    magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
-#                    print('VCA KEY SENSE+:', attack_level, magni)
-                    attack_level  = attack_level  + magni
-                    sustain_level = sustain_level + magni
-#                    print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
-                    
-                elif vca['KEYSENSE'] < 0:
-                    magni = vca['KEYSENSE'] * midi_msg.note / 1280
-#                    print('VCA KEY SENSE-:', attack_level, magni)
-                    attack_level  = attack_level  + magni
-                    sustain_level = sustain_level + magni
-#                    print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
-
-                # Adjust VCA ADSR ranges
-                if   attack_level > 1.0:
-                    attack_level = 1.0
-                elif attack_level < 0.0:
-                    attack_level = 0.0
-
-                if   sustain_level > 1.0:
-                    sustain_level = 1.0
-                elif sustain_level < 0.0:
-                    sustain_level = 0.0
-
-                # Generate an ADSR for note
-                note_env = synthio.Envelope(
-                                attack_time=vca['ATTACK'],
-                                decay_time=vca['DECAY'],
-                                release_time=vca['RELEASE'],
-                                attack_level=attack_level,
-                                sustain_level=sustain_level
-                            )
-
-                # Play the note
-                filter_to_set = SynthIO.filter(filters[midi_msg.note])['FILTER']
-                notes[midi_msg.note] = synthio.Note(
-                    frequency=synthio.midi_to_hz(midi_msg.note),
-                    filter=init_filter,
-                    envelope=note_env,
-                    waveform=SynthIO.wave_shape()
-                )
-                
-                if SynthIO.lfo_sound_amplitude() is not None:
-                    notes[midi_msg.note].amplitude=SynthIO.lfo_sound_amplitude()
-                
-                if SynthIO.lfo_sound_bend() is not None:
-                    notes[midi_msg.note].bend=SynthIO.lfo_sound_bend()
-
-#                synthesizer.envelope = SynthIO.vca_envelope()
-                synthesizer.press(notes[midi_msg.note])
-                notes_stack.insert(0, midi_msg.note)
-
-            # Note off
-            elif isinstance(midi_msg, NoteOff):
-                if Application.EDITOR_MODE == True:
-                    Application.EDITOR_MODE = False
-                    SynthIO.audio_pause(False)
-
-#                print('NOTE OFF:', midi_msg.note)
-                if midi_msg.note in notes:
-                    if notes[midi_msg.note] is not None:
-                        synthesizer.release(notes[midi_msg.note])
-                        del notes[midi_msg.note]
-                        notes_stack.remove(midi_msg.note)
-                        SynthIO.filter_release(filters[midi_msg.note])
-                        del filters[midi_msg.note]
-
-#            print('===NOTES :', notes)
-#            print('===VOICES:', notes_stack)
-
-#        else:
-        # Filter LFO and ADSR (ADSlSr) modulation
-        if len(filters) > 0:
-            for note in notes.keys():
-#                print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
-                notes[note].filter=SynthIO.filter(filters[note])['FILTER']
+        # Receive and treat MIDI events
+        MIDI_obj.receive_midi_events()
                     
         # Gives away process time to the other tasks.
         # If there is no task, let give back process time to me.
@@ -716,7 +599,7 @@ class MIDI_class:
     # Constructor
     #   USB MIDI
     #     usb_midi_host_port: A tuple of (D+, D-)
-    def __init__(self, usb_midi_host_port=(board.GP26, board.GP27)):
+    def __init__(self, synthesizer, usb_midi_host_port=(board.GP26, board.GP27)):
         # USB MIDI device
         print('USB MIDI:', usb_midi.ports)
         self._usb_midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0], midi_out=usb_midi.ports[1], out_channel=0)
@@ -734,6 +617,13 @@ class MIDI_class:
             print('USB<host>!')
         else:
             print('!USB<host>')
+
+        # For receiving and treating MIDI events
+        self.notes = {}						# {note number: Note object}
+        self.filters = {}					# {note number: filter number=voice}
+        self.notes_stack = []				# [note1, note2,...]  contains only notes playing.
+        self.synthIO = synthesizer
+        self.synthesizer = synthesizer.synth()
 
     # Is host mode or not
     def as_host(self):
@@ -837,7 +727,150 @@ class MIDI_class:
             return midi_msg
 
         return None
-        
+
+    # Treat MIDI events
+    def treat_midi_event(self, midi_msg, unison_heltz=0):
+        # Upate working filters
+        self.synthIO.generate_filter(True)
+        vca = self.synthIO.synthio_parameter('VCA')
+
+        if midi_msg is not None:
+#            print('===>MIDI IN:', midi_msg)
+            unison_hz = 0
+            while True:
+                # Note on
+                if isinstance(midi_msg, NoteOn):
+                    if Application.EDITOR_MODE == True:
+                        Application.EDITOR_MODE = False
+                        self.synthIO.audio_pause(False)
+                    
+                    # MIDI note number with the unison heltz (offset 1000)
+                    midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
+                    
+                    # The note is playing: stop the current note, then play new note
+#                    print('NOTE ON :', midi_msg.note, midi_msg.velocity, unison_hz, midi_note_number)
+                    if midi_note_number in self.notes:
+                        if self.notes[midi_note_number] is not None:
+                            self.synthesizer.release(self.notes[midi_note_number])
+                            self.notes_stack.remove(midi_note_number)
+
+                    # New note
+                    elif len(self.notes_stack) == SynthIO_class.MAX_VOICES:
+                        # Stop the oldest note if over max voices
+                        stop_note = self.notes_stack.pop()
+                        self.synthesizer.release(self.notes[stop_note])
+                        del self.notes[stop_note]
+                        self.synthIO.filter_release(self.filters[stop_note])
+                        del self.filters[stop_note]
+
+                    # Generate a filter for the note, then store the filter number
+                    self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity)
+#                    print('NOTE FILTER:', self.filters[midi_msg.note], self.synthIO.filter(self.filters[midi_note_number]))
+                    init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
+
+                    # Note on velocity
+                    attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
+                    sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
+                        
+                    # VCA key senesitivity
+                    if   vca['KEYSENSE'] > 0:
+                        magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
+#                        print('VCA KEY SENSE+:', attack_level, magni)
+                        attack_level  = attack_level  + magni
+                        sustain_level = sustain_level + magni
+#                        print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
+                        
+                    elif vca['KEYSENSE'] < 0:
+                        magni = vca['KEYSENSE'] * midi_msg.note / 1280
+#                        print('VCA KEY SENSE-:', attack_level, magni)
+                        attack_level  = attack_level  + magni
+                        sustain_level = sustain_level + magni
+#                        print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
+
+                    # Adjust VCA ADSR ranges
+                    if   attack_level > 1.0:
+                        attack_level = 1.0
+                    elif attack_level < 0.0:
+                        attack_level = 0.0
+
+                    if   sustain_level > 1.0:
+                        sustain_level = 1.0
+                    elif sustain_level < 0.0:
+                        sustain_level = 0.0
+
+                    # Generate an ADSR for note
+                    note_env = synthio.Envelope(
+                                    attack_time=vca['ATTACK'],
+                                    decay_time=vca['DECAY'],
+                                    release_time=vca['RELEASE'],
+                                    attack_level=attack_level,
+                                    sustain_level=sustain_level
+                                )
+
+                    # Play the note
+                    filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
+                    self.notes[midi_note_number] = synthio.Note(
+                        frequency=synthio.midi_to_hz(midi_msg.note) + unison_hz,
+                        filter=init_filter,
+                        envelope=note_env,
+                        waveform=SynthIO.wave_shape()
+                    )
+                    
+                    if self.synthIO.lfo_sound_amplitude() is not None:
+                        self.notes[midi_note_number].amplitude=self.synthIO.lfo_sound_amplitude()
+                    
+                    if self.synthIO.lfo_sound_bend() is not None:
+                        self.notes[midi_note_number].bend=self.synthIO.lfo_sound_bend()
+
+#                    self.synthesizer.envelope = SynthIO.vca_envelope()
+                    self.synthesizer.press(self.notes[midi_note_number])
+                    self.notes_stack.insert(0, midi_note_number)
+
+                # Note off
+                elif isinstance(midi_msg, NoteOff):
+                    if Application.EDITOR_MODE == True:
+                        Application.EDITOR_MODE = False
+                        self.synthIO.audio_pause(False)
+                    
+                    # MIDI note number with the unison heltz (offset 1000)
+                    midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
+
+#                    print('NOTE OFF:', midi_msg.note, midi_note_number)
+                    if midi_note_number in self.notes:
+                        if self.notes[midi_note_number] is not None:
+                            self.synthesizer.release(self.notes[midi_note_number])
+                            del self.notes[midi_note_number]
+                            self.notes_stack.remove(midi_note_number)
+                            self.synthIO.filter_release(self.filters[midi_note_number])
+                            del self.filters[midi_note_number]
+
+#                print('===NOTES :', self.notes)
+#                print('===VOICES:', self.notes_stack)
+
+                # Not unison mode
+                if unison_heltz == 0:
+#                    print('UNISON0:', unison_heltz)
+                    break
+                
+                # Unison mode
+#                print('UNISON1:', unison_heltz)
+                unison_hz = unison_heltz
+                unison_heltz = 0
+
+        # Filter LFO and ADSR (ADSlSr) modulation
+        if len(self.filters) > 0:
+            for note in self.notes.keys():
+#                print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
+                self.notes[note].filter=self.synthIO.filter(self.filters[note])['FILTER']
+
+    # Receive MIDI events
+    def receive_midi_events(self):
+        # Get a MIDI-IN event
+        midi_msg = MIDI_obj.midi_in()
+
+#        print('###MIDI IN:', midi_msg)
+        self.treat_midi_event(midi_msg, self.synthIO._synth_params['SOUND']['UNISON'])
+
 ################# End of MIDI Class Definition #################
 
 
@@ -1780,6 +1813,7 @@ class SynthIO_class:
                 'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'VOLUME'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
+                'UNISON'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
@@ -1890,6 +1924,7 @@ class SynthIO_class:
                 'LFO_RATE_B' : 4.0,
                 'LFO_SCALE_B': 1.80,
                 'VOLUME'     : 5,
+                'UNISON'     : 0,
                 'CURSOR'     : 0
             },
             
@@ -2665,7 +2700,7 @@ class Application_class:
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'VOLUME', 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'UNISON', 'OSCILLATOR': None},
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
         ]},
 
@@ -2894,6 +2929,7 @@ class Application_class:
             'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
             'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
             'VOLUME'     : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
+            'UNISON'     : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
             'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
             'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
@@ -3586,7 +3622,7 @@ if __name__=='__main__':
     SynthIO.audio_pause()
 
     # Create a MIDI object
-    MIDI_obj = MIDI_class()
+    MIDI_obj = MIDI_class(SynthIO)
 
     # Start the application with showing the editor top page.
     Application.start()
