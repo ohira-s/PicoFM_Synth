@@ -109,6 +109,7 @@
 #
 #     0.2.6: 06/03/2025
 #           UNISON mode is available.
+#           Simple sequencer for testing program is available.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -201,10 +202,48 @@ from analogio import AnalogIn
 # MIDI IN in async task
 ##########################################
 async def midi_in():
+    wait_count = 0
     while True:
         # Receive and treat MIDI events
         MIDI_obj.receive_midi_events()
+
+        # Sequencer
+        if wait_count <= 0:
+            sequence = Application.pop_sequence()
+            if sequence is not None:                
+                # Wait
+                if   'WAIT' in sequence:
+                    wait_count = sequence['WAIT']
                     
+                # Note On
+                elif 'ON' in sequence and 'VELOCITY' in sequence:
+                    midi_msg = NoteOn(sequence['ON'], velocity = sequence['VELOCITY'])
+                    MIDI_obj.receive_midi_events(midi_msg)
+                    
+                # Note Off
+                elif 'OFF' in sequence:
+                    midi_msg = NoteOff(sequence['OFF'])
+                    MIDI_obj.receive_midi_events(midi_msg)
+                    
+                # Program change
+                elif 'BANK' in sequence and 'SOUND' in sequence:
+                    SynthIO.audio_pause()
+
+                    SynthIO.load_parameter_file(sequence['BANK'], sequence['SOUND'])
+#                    print('LOAD SEQUENCE PROGRAM:', sequence['BANK'], sequence['SOUND'])
+                    sound_name = SynthIO.get_sound_name_of_file(sequence['BANK'], sequence['SOUND'])
+                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': sequence['BANK'], 'SOUND': sequence['SOUND'], 'SOUND_NAME': ''})
+                    SynthIO.synthio_parameter('SAVE', {'BANK': sequence['BANK'], 'SOUND': sequence['SOUND'], 'SOUND_NAME': sound_name})
+
+#                    Application_class.DISPLAY_PAGE = 18
+#                    Application.show_OLED_page()
+                    
+                    SynthIO.audio_pause(False)
+
+        # Sequencer wait time
+        else:
+            wait_count -= 1
+
         # Gives away process time to the other tasks.
         # If there is no task, let give back process time to me.
         await asyncio.sleep(0.0)
@@ -864,9 +903,10 @@ class MIDI_class:
                 self.notes[note].filter=self.synthIO.filter(self.filters[note])['FILTER']
 
     # Receive MIDI events
-    def receive_midi_events(self):
+    def receive_midi_events(self, midi_msg=None):
         # Get a MIDI-IN event
-        midi_msg = MIDI_obj.midi_in()
+        if midi_msg is None:
+            midi_msg = MIDI_obj.midi_in()
 
 #        print('###MIDI IN:', midi_msg)
         self.treat_midi_event(midi_msg, self.synthIO._synth_params['SOUND']['UNISON'])
@@ -2658,7 +2698,7 @@ class SynthIO_class:
 # CLASS: Application
 ###################################
 class Application_class:
-    # Paramete pages
+    # Parameter pages
     PAGE_SOUND_MAIN        = 0
     PAGE_ALGORITHM         = 1
     PAGE_SOUND_MODULATION  = 2
@@ -3135,7 +3175,33 @@ class Application_class:
         for direct_pages in Application_class.PAGE_DIRECT_ACCESS:
             for idx in list(range(len(direct_pages))):
                 direct_pages[idx] = self.get_page_number(direct_pages[idx])
-        
+
+        # Sequencer data
+        self._sequencer = []
+
+    # Set/Append sequncer data
+    #   {'ON'  : note_number, 'VELOCITY': velocity}
+    #   {'OFF' : note_number}
+    #   {'WAIT': wait_count}
+    #   {'BANK': bank_number, 'SOUND': program_number}
+    def set_sequencer(self, sequences, append_mode=False):
+        if append_mode == False:
+            self._sequencer = []
+            
+        self._sequencer = self._sequencer + sequences
+    
+    # Get the 1st sequence data
+    def pop_sequence(self):
+        if len(self._sequencer) > 0:
+            sequence = self._sequencer[0]
+            self._sequencer = self._sequencer[1:]
+            
+        else:
+            sequence = None
+
+        return sequence
+
+    # Initialize the SD card I/F
     def init_sdcard(self):
         # SD Card
         sd_mosi  = board.GP19
@@ -3631,6 +3697,22 @@ if __name__=='__main__':
     MIDI_obj.look_for_usb_midi_device()
 #    SynthIO.audio_pause(False)
     Application.show_OLED_page()
+
+    # Sequencer test
+#    for sound in [1, 2, 3, 9, 10, 13, 15, 20, 23, 25, 41, 57, 72, 75, 95, 110, 126, 128]:
+#        Application.set_sequencer([
+#            {'BANK': 0, 'SOUND': sound},
+#            {'ON': 60, 'VELOCITY': 127},
+#            {'WAIT': 10},
+#            {'OFF': 60, 'VELOCITY': 127},
+#            {'ON': 64, 'VELOCITY': 127},
+#            {'WAIT': 10},
+#            {'OFF': 64, 'VELOCITY': 127},
+#            {'ON': 67, 'VELOCITY': 127},
+#            {'WAIT': 10},
+#            {'OFF': 67, 'VELOCITY': 127},
+#            {'WAIT': 10}
+#        ], True)
 
     #####################################################
     # Start application
