@@ -184,6 +184,13 @@ PiFMS has 11 algorithms.
 4) VOLM:5  
 
 You can change the master volume from 1 to 9.  
+	
+5) UNIS:1  
+
+You can change the unison mode, value is from 0 to 9.  
+0 is for Not-Unison mode.  PiFMS plays one tone for a note.  
+In case of from 1 to 9, PiFMS plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
+PiFMS can play 6 notes maximum in the unison mode.    
 
 
 ## 7. ALGORITHM
