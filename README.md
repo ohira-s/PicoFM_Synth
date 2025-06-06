@@ -31,6 +31,7 @@ Specifications are as below.
 ||Sampled waves|Waves you sampled.|
 |Waveshape Modulation|Frequency Modulation|4 operators and 8 algorithms|
 |||Envelope to form the waves.|
+||Additive Synthesis|8 oscillators|
 |VCO|Voices|12 voices polyphonic|
 ||Control|LFO vibrate|
 |||Envelope|
