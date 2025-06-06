@@ -111,6 +111,9 @@
 #           UNISON mode is available.
 #           Simple sequencer for testing program is available.
 #
+#     0.3.0: 06/06/2025
+#           Additive Waves function is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -386,7 +389,7 @@ class OLED_SSD1306_class:
     def show_message(self, msg, x=0, y=0, w=0, h=0, color=1):
         self._display.fill_rect(x, y, w, h, 0 if color == 1 else 1)
         self._display.text(msg, x, y, color)
-#        self._display.show()
+#        print('SHOW MSG:', x, y, msg)
 
     def show(self):
         if self.is_available():
@@ -1050,12 +1053,12 @@ class FM_Waveshape_class:
         # Without modulation
         if modulator is None:
 #            print('SIN no-mod:', an, ansv, fn, FM_Waveshape_class.SAMPLE_SIZE, len(adsr))
-            wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * fn, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)) * adsr * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
+            wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * fn, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)) * (adsr if adsr is not None else 1.0) * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
 #            print('SIN no-mod:', an, ansv, len(wave), wave)
         
         # With modulation
         else:
-            wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * fn, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False) + modulator) * adsr * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
+            wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * fn, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False) + modulator) * (adsr if adsr is not None else 1.0) * FM_Waveshape_class.SAMPLE_VOLUME * ansv)
 #            print('SIN ad-mod:', an, ansv, len(wave), wave)
 
         return wave
@@ -1759,6 +1762,19 @@ class FM_Waveshape_class:
                 algo = self._algorithm[algorithm]
                 wave = algo[0](*algo[1])
 
+                # Additive waves
+                if SynthIO is not None:
+                    for oscillator in list(range(8)):
+                        dataset = SynthIO.additivewave_parameter(oscillator)
+                        if dataset['amplitude'] > 0:
+                            amp = self.operator_level(dataset['amplitude'], True)
+                            print('ADD WAVE', oscillator, dataset, amp)
+                            addwave = self.wave_sine(None, amp, dataset['frequency'] + dataset['freq_decimal'] / 100)
+                            print('ADDED:', len(addwave), addwave)
+                            print('ORIGI:', wave)
+                            wave = np.array(wave + addwave)
+                            print('MODUL:', wave)
+
                 # Compress in the sample volume
                 wave = np.where(wave >  FM_Waveshape_class.SAMPLE_VOLUME_f,  FM_Waveshape_class.SAMPLE_VOLUME, wave)
                 wave = np.where(wave < -FM_Waveshape_class.SAMPLE_VOLUME_f, -FM_Waveshape_class.SAMPLE_VOLUME, wave)
@@ -1872,7 +1888,14 @@ class SynthIO_class:
                 'release_time' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': FM_Waveshape_class.SAMPLE_SIZE - 1, 'VIEW': '{:3d}'},
                 'end_level'    : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'}
             },
-
+            
+            'ADDITIVEWAVE': {
+                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':   7, 'VIEW': '{:3d}'},
+                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   1, 'MAX':  99, 'VIEW': '{:3d}'},
+                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:3d}'},
+                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'}
+            },
+            
             'FILTER': {
                 'TYPE'           : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
                 'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
@@ -1992,7 +2015,59 @@ class SynthIO_class:
                     'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0
                 }
             ],
-            
+
+            # Additive WaveSynthesis
+            'ADDITIVEWAVE': [
+                {
+                    'oscillator'   : 0,
+                    'frequency'    : 1,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 1,
+                    'frequency'    : 2,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 2,
+                    'frequency'    : 3,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 3,
+                    'frequency'    : 4,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 4,
+                    'frequency'    : 5,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 5,
+                    'frequency'    : 6,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 6,
+                    'frequency'    : 7,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                },
+                {
+                    'oscillator'   : 7,
+                    'frequency'    : 8,
+                    'freq_decimal' : 0,
+                    'amplitude'    : 0
+                }
+            ],
+
             # Filter
             'FILTER': {
                 'TYPE': SynthIO_class.FILTER_PASS,
@@ -2138,6 +2213,36 @@ class SynthIO_class:
 
         return None
 
+    # Set / Get ADDITIVEWAVE parameter
+    #   osc_num>= 0: oscillator GET or SET
+    #   params     : parameters hash   SET
+    def additivewave_parameter(self, osc_num=None, params=None):
+        # Get whole of wave parameters
+        if osc_num is None and params is None:
+            return self._synth_params['ADDITIVEWAVE']
+
+        # Get a parameter set (osc_num=-1 is to get the algorithm)
+        if params is None:
+            for dataset in self._synth_params['ADDITIVEWAVE']:
+                if 'oscillator' in dataset.keys():
+                    if dataset['oscillator'] == osc_num:
+                        return dataset
+
+            return None
+
+        # Set parameters
+        for dataset in self._synth_params['ADDITIVEWAVE']:
+            # Oscillator
+            if 'oscillator' in dataset.keys():
+                if dataset['oscillator'] == osc_num:
+                    for parm in params.keys():
+                        if parm in dataset.keys():
+                            dataset[parm] = params[parm]
+                    
+                    return dataset
+
+        return None
+
     # Get parameter in its format
     def get_formatted_parameter(self, category, parameter, oscillator=None):
 #        print('FORMAT:', category, parameter, oscillator)
@@ -2151,6 +2256,7 @@ class SynthIO_class:
                     if value < 0:
                         return 'NO FILE'
                     
+                    print('LOAD SOUND:', value, SynthIO_class.VIEW_SOUND_FILES[value])
                     return SynthIO_class.VIEW_SOUND_FILES[value]
                 
                 if category == 'SAVE' and parameter == 'SOUND':
@@ -2163,10 +2269,16 @@ class SynthIO_class:
                 return '?'
             
         # Oscillators
-        else:
+        elif category == 'OSCILLATORS':
             value = self.wave_parameter(oscillator)[parameter]
             attr  = self._params_attr[category][parameter]              
-           
+            
+        # Additive Wave
+        elif category == 'ADDITIVEWAVE':
+            value = self.additivewave_parameter(oscillator)[parameter]
+            attr  = self._params_attr[category][parameter]              
+
+        # Return value
         if    attr['TYPE'] == SynthIO_class.TYPE_INDEX:
             return attr['VIEW'][value]
         elif attr['TYPE'] == SynthIO_class.TYPE_INDEXED_VALUE:
@@ -2514,6 +2626,9 @@ class SynthIO_class:
         if category == 'OSCILLATORS' and oscillator is not None:
             data_set = self.wave_parameter(oscillator)
 
+        elif category == 'ADDITIVEWAVE' and oscillator is not None:
+            data_set = self.additivewave_parameter(oscillator)
+
         # Other category parameter
         else:
             data_set = self.synthio_parameter(category)
@@ -2614,6 +2729,10 @@ class SynthIO_class:
                         else:
                             self.wave_parameter(-1, osc)
                             
+                elif category == 'ADDITIVEWAVE':
+                    for osc in file_data[category]:
+                        self.additivewave_parameter(osc['oscillator'], osc)
+                            
                 # Others
                 else:
                     self.synthio_parameter(category, file_data[category])
@@ -2689,6 +2808,7 @@ class SynthIO_class:
                                     
                         f.close()
 
+#        print('FINDS:', finds, SynthIO_class.VIEW_SOUND_FILES)
         return finds
         
 ################# End of SynthIO Class Definition #################
@@ -2719,17 +2839,21 @@ class Application_class:
     PAGE_LOAD              = 17
     PAGE_SAMPLING          = 18
     PAGE_SAMPLING_WAVES    = 19
-    
+    PAGE_ADDITIVE_WAVE1    = 20
+    PAGE_ADDITIVE_WAVE2    = 21
+    PAGE_ADDITIVE_WAVE3    = 22
+    PAGE_ADDITIVE_WAVE4    = 23
+
     # Direct page access with the 8encoders push switches
     PAGE_DIRECT_ACCESS = [
-        [PAGE_SOUND_MAIN],											# BT1
-        [PAGE_OSCILLTOR_WAVE1, PAGE_WAVE_SHAPE],					# BT2
-        [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],	# BT3
-        [PAGE_VCA, PAGE_SOUND_MODULATION],							# BT4
-        [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],						# BT5
-        [PAGE_LOAD],												# BT6
-        [PAGE_SAVE],												# BT7
-        []															# BT8
+        [PAGE_SOUND_MAIN],																		# BT1
+        [PAGE_OSCILLTOR_WAVE1, PAGE_ADDITIVE_WAVE1, PAGE_WAVE_SHAPE, PAGE_OSCILLTOR_ADSR1],		# BT2
+        [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],								# BT3
+        [PAGE_VCA, PAGE_SOUND_MODULATION],														# BT4
+        [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],													# BT5
+        [PAGE_LOAD],																			# BT6
+        [PAGE_SAVE],																			# BT7
+        []																						# BT8
     ]
     
     # Pages order and items to show in each line
@@ -2822,6 +2946,46 @@ class Application_class:
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_ADDITIVE_WAVE1, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 0},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 0},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 0},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 1},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 1},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 1}
+        ]},
+
+        {'PAGE': PAGE_ADDITIVE_WAVE2, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 2},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 2},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 2},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 3},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 3},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 3}
+        ]},
+
+        {'PAGE': PAGE_ADDITIVE_WAVE3, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 4},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 4},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 4},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 5},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 5},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 5}
+        ]},
+
+        {'PAGE': PAGE_ADDITIVE_WAVE4, 'EDITOR': [
+            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 6},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 6},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 6},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 7},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 7},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 7}
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_ADSR1, 'EDITOR': [
@@ -2959,7 +3123,11 @@ class Application_class:
         PAGE_VCA              : 'VCA',
         PAGE_SAVE             : 'SAVE',
         PAGE_LOAD             : 'LOAD',
-        PAGE_SAMPLING         : 'SAMPLING'
+        PAGE_SAMPLING         : 'SAMPLING',
+        PAGE_ADDITIVE_WAVE1   : 'ADDW:[A]| B | C | D  ',
+        PAGE_ADDITIVE_WAVE2   : 'ADDW: A |[B]| C | D  ',
+        PAGE_ADDITIVE_WAVE3   : 'ADDW: A | B |[C]| D  ',
+        PAGE_ADDITIVE_WAVE4   : 'ADDW: A | B | C |[D] '
     }
     
     # Parameter attributes
@@ -2967,7 +3135,8 @@ class Application_class:
         'SOUND': {
             'BANK'       : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
             'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
-            'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
+#            'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
+            'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}},
             'VOLUME'     : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
             'UNISON'     : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
             'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
@@ -3060,6 +3229,13 @@ class Application_class:
             'WAVE4' : {PAGE_SAMPLING_WAVES: {'label': 'WAV4:', 'x':  30, 'y': 37, 'w': 98}},
             'SAVE'  : {PAGE_WAVE_SHAPE: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}}
         },
+        
+        'ADDITIVEWAVE': {
+            'oscillator'   : {},
+            'frequency'    : {PAGE_ADDITIVE_WAVE1: {'label': 'FREQ:', 'x':  30, 'y': 10, 'w': 98}, PAGE_ADDITIVE_WAVE2: {'label': 'WAVE:', 'x':  30, 'y': 10, 'w': 98}, PAGE_ADDITIVE_WAVE3: {'label': 'WAVE:', 'x':  30, 'y': 10, 'w': 98}, PAGE_ADDITIVE_WAVE4: {'label': 'WAVE:', 'x':  30, 'y': 10, 'w': 98}},
+            'freq_decimal' : {PAGE_ADDITIVE_WAVE1: {'label': 'DETU:', 'x':  30, 'y': 19, 'w': 98}, PAGE_ADDITIVE_WAVE2: {'label': 'DETU:', 'x':  30, 'y': 19, 'w': 98}, PAGE_ADDITIVE_WAVE3: {'label': 'DETU:', 'x':  30, 'y': 19, 'w': 98}, PAGE_ADDITIVE_WAVE4: {'label': 'DETU:', 'x':  30, 'y': 19, 'w': 98}},
+            'amplitude'    : {PAGE_ADDITIVE_WAVE1: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE2: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE3: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE4: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}}
+        }
     }
 
     # Algorithm chart
@@ -3293,6 +3469,28 @@ class Application_class:
                                     display.show_message(data, disp['x'] + oscillator * 24, disp['y'], disp['w'], 9, 1)
 #                                    print('DISP OSC:', oscillator, data)
 
+            # Additive Wave
+            elif category == 'ADDITIVEWAVE':
+                for parm in Application_class.DISP_PARAMETERS[category].keys():
+                    for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                        # The page to show
+                        if page == page_no:
+                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
+                            display.show_message(disp['label'], 0, disp['y'],      40, 9, 1)
+                            display.show_message(disp['label'], 0, disp['y'] + 27, 40, 9, 1)
+                            
+                            for oscillator in list(range(8)):
+                                data = SynthIO.get_formatted_parameter(category, parm, oscillator)
+                                if oscillator < 6:
+                                    data = data + '|'
+                                    
+                                if oscillator % 2 == 0:
+                                    display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'],      disp['w'], 9, 1)
+                                else:
+                                    display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'] + 27, disp['w'], 9, 1)
+                                                                        
+#                                print('DISP ADD:', oscillator, data)
+
             # Others
             else:
                 for parm in Application_class.DISP_PARAMETERS[category].keys():
@@ -3306,6 +3504,7 @@ class Application_class:
                             
                             # Show data
                             data = SynthIO.get_formatted_parameter(category, parm)
+#                            print('SHOW:', category, parm, data)
                             display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
                             
 #                            if category == 'SAVE':
@@ -3514,7 +3713,7 @@ class Application_class:
                                         # Unknown
                                         else:
                                             inc = None
-                        
+
                         # Oscillators
                         else:
                             if data_type == SynthIO_class.TYPE_INT:
@@ -3526,7 +3725,9 @@ class Application_class:
                         if inc is not None:
 #                            print('INCREMENT:', inc, category, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
+                            print('SHOW OLED PAGE:', category, parameter, oscillator)
                             self.show_OLED_page()
+                            print('SHOWN')
 
                             # Tasks after updated a parameter
                             dataset = SynthIO.synthio_parameter(category)
