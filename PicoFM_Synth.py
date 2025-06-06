@@ -112,7 +112,7 @@
 #           Simple sequencer for testing program is available.
 #
 #     0.3.0: 06/06/2025
-#           Additive Waves function is available.
+#           Additive Waves Generator is available.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -1768,12 +1768,12 @@ class FM_Waveshape_class:
                         dataset = SynthIO.additivewave_parameter(oscillator)
                         if dataset['amplitude'] > 0:
                             amp = self.operator_level(dataset['amplitude'], True)
-                            print('ADD WAVE', oscillator, dataset, amp)
+#                            print('ADD WAVE', oscillator, dataset, amp)
                             addwave = self.wave_sine(None, amp, dataset['frequency'] + dataset['freq_decimal'] / 100)
-                            print('ADDED:', len(addwave), addwave)
-                            print('ORIGI:', wave)
+#                            print('ADDED:', len(addwave), addwave)
+#                            print('ORIGI:', wave)
                             wave = np.array(wave + addwave)
-                            print('MODUL:', wave)
+#                            print('MODUL:', wave)
 
                 # Compress in the sample volume
                 wave = np.where(wave >  FM_Waveshape_class.SAMPLE_VOLUME_f,  FM_Waveshape_class.SAMPLE_VOLUME, wave)
@@ -2256,7 +2256,7 @@ class SynthIO_class:
                     if value < 0:
                         return 'NO FILE'
                     
-                    print('LOAD SOUND:', value, SynthIO_class.VIEW_SOUND_FILES[value])
+#                    print('LOAD SOUND:', value, SynthIO_class.VIEW_SOUND_FILES[value])
                     return SynthIO_class.VIEW_SOUND_FILES[value]
                 
                 if category == 'SAVE' and parameter == 'SOUND':
@@ -3415,6 +3415,7 @@ class Application_class:
 
     # Display a page
     def show_OLED_page(self, page_no=None):
+#        print('SHOW OLED page')
 #        SynthIO.mixer_voice_level(0.0)
         
         # Show the current page
@@ -3725,9 +3726,7 @@ class Application_class:
                         if inc is not None:
 #                            print('INCREMENT:', inc, category, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
-                            print('SHOW OLED PAGE:', category, parameter, oscillator)
                             self.show_OLED_page()
-                            print('SHOWN')
 
                             # Tasks after updated a parameter
                             dataset = SynthIO.synthio_parameter(category)
@@ -3741,11 +3740,13 @@ class Application_class:
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
                                     SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
                                     time.sleep(0.5)
+                                    self.show_OLED_page()
 #                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
 
                                 elif save_sound == 'COPY':
                                     sound_name = SynthIO.get_sound_name_of_file(dataset['BANK'], dataset['SOUND'])
                                     SynthIO.synthio_parameter('SAVE', {'SOUND_NAME': sound_name, 'SAVE_SOUND': 0})
+                                    self.show_OLED_page()
 
                             # Load a sound file page
                             elif category == 'LOAD':
@@ -3771,11 +3772,13 @@ class Application_class:
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': ''})
                                     SynthIO.synthio_parameter('SAVE', {'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
+                                    self.show_OLED_page()
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILESl:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
+                                    self.show_OLED_page()
 
                             # Sampling page
                             elif category == 'SAMPLING':
@@ -3803,6 +3806,7 @@ class Application_class:
                                         ADC_Mic.save_samplig_file(dataset['NAME'], SynthIO.wave_shape())
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAVE': 0})
+                                        self.show_OLED_page()
 
                                 # Sound sampler (sampling or save)
                                 elif parameter == 'SAMPLE':                                    
@@ -3841,18 +3845,20 @@ class Application_class:
                                         Encoder_obj.led(6, [0x00, 0x00, 0x00])
                                         Encoder_obj.i2c_unlock()
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
+                                        self.show_OLED_page()
 
                                     # Save the current wave sampled
                                     elif sampling == 'SAVE':
                                         ADC_Mic.save_samplig_file(dataset['NAME'])
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
+                                        self.show_OLED_page()
 
                             # Sound parameter pages
                             else:
                                 SynthIO.setup_synthio()
                             
-                            self.show_OLED_page()
+#                            self.show_OLED_page()
 
 ################# End of Applicatio  Class Definition #################
 
