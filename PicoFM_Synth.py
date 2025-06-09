@@ -117,6 +117,9 @@
 #     0.3.1: 06/09/2025
 #           Audio output levels adjuster is available.
 #
+#     0.3.2: 06/10/2025
+#           Minor bug fixed.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -3161,7 +3164,7 @@ class Application_class:
         PAGE_OSCILLTOR_WAVE2  : 'OSCW: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_WAVE3  : 'OSCW: 1 | 2 |[3]| 4  ',
         PAGE_OSCILLTOR_WAVE4  : 'OSCW: 1 | 2 | 3 |[4] ',
-        PAGE_WAVE_SHAPE       : '              FM WAVE',
+        PAGE_WAVE_SHAPE       : '              FM+WAVE',
         PAGE_OSCILLTOR_ADSR1  : 'OSCA:[1]| 2 | 3 | 4  ',
         PAGE_OSCILLTOR_ADSR2  : 'OSCA: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_ADSR3  : 'OSCA: 1 | 2 |[3]| 4  ',
@@ -3188,6 +3191,7 @@ class Application_class:
             'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
             'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
             'ADJUST_LEVEL': {PAGE_SOUND_MAIN: {'label': 'ADJS:', 'x':  30, 'y': 55, 'w': 74}},
+            'AMPLITUDE'   : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A'  : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
             'LFO_SCALE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
             'VIBR'        : {PAGE_SOUND_MODULATION: {'label': 'VIBR:', 'x':  30, 'y': 28, 'w': 98}},
