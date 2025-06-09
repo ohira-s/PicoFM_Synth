@@ -13,7 +13,8 @@ USBデバイスとしてもホストとしても動作します。演奏にはDA
 |SMP|サンプラー|
 |USB|USBケーブルおよびポート|
 |UMI|USB MIDI IN|
-|FMWG|FM変調アルゴリズム|
+|FMWG|FM波形合成|
+|ADWG|加算波形合成|
 |ADSR|エンベロープジェネレーター|
 |LFO|Low Frequency Oscillator|
 |FLT|フィルター|
@@ -52,7 +53,7 @@ FM変調のプログラムはオリジナルで、4オペレーター、11アル
 circuit pythonでプログラムしています。  
 
 # Wave Synthesis
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.jpg)  
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
 
 音色の波形合成には3つの方法があります。  
 (1) FM合成（FM Synthesis）  

@@ -12,7 +12,8 @@ This synthesizer works with FM wave generator, synthio, sound sampler and I2S DA
 |SMP|Sound Sampler|
 |USB|USB cable and port|
 |UMI|USB MIDI IN|
-|FMWG|Frequency Modulation Algorithm|
+|FMWG|Frequency Modulation Wave Generator|
+|ADWG|Additive Synthesis Wave Generator|
 |ADSR|Envelope Generator|
 |LFO|Low Frequency Oscillator|
 |FLT|Filter (VCF)|
@@ -51,7 +52,7 @@ Specifications are as below.
 PICO is programmed with circuit python.  
 
 # Wave Synthesis
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.jpg)  
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
 
 There are 3 sound synthesis methods in Pico FM Synthesizer.  
 
