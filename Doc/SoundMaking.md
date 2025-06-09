@@ -164,10 +164,24 @@ The wave form is as below.
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/17_clarinet.jpg) 　
 
-## 3. Filter
+## 3. FM合成＋加算合成
+PiFM+S adds both waves made with the FM Synthesis and the Additive Synthesis.  
+
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
+
+(1) FM Synthesis only  
+Frequency Modulation with 4 operators and 11 algorithms is suitable for synthesis metallic sounds.    
+
+(2) Additive Synthesis only  
+Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
+
+(3) FM+Additive Synthesis  
+You can mixture sounds made by the FM synthesis and the Additive synthesis.
+
+## 4. Filter
 The sounds made with the FMWG can be used as music instruments.  However you can apply the PiFM+S filter to the sound.
 　
-### 3-1. Filter Types
+### 4-1. Filter Types
 |Abbr.|Filter|Descriptions|
 |---|---|---|
 |PASS|Pass Through|No filter is applied.|
@@ -176,153 +190,153 @@ The sounds made with the FMWG can be used as music instruments.  However you can
 |BPF|Band Path Filter|Reduce both high and low sounds.|
 |NOTCH|Notch Filter|Reduces a certain range of sounds.|
 
-### 3-2. PASS
+### 4-2. PASS
 There is no parameter.  
 
-### 3-3. LPF
+### 4-3. LPF
 'FREQ' is cut off frequency.  Reduce high sounds more than FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 　
-### 3-4. HPF
+### 4-4. HPF
 'FREQ' is cut off frequency.  Reduce low sounds less than FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 3-5. BPF
+### 4-5. BPF
 'FREQ' is cut off frequency.  Reduce both high and low sounds far from FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 3-6. NOTCH
+### 4-6. NOTCH
 'FREQ' is cut off frequency.  Reduce sounds arouond FREQ.  
 'RESO' is resonance (Q-factor).  
 
 
-## 4. Change Filter Specs
+## 5. Change Filter Specs
 You can change filter specs along time from note-on.  
 　
-### 4-1. Filter Modulation
+### 5-1. Filter Modulation
 PiFM+S filter has a LFO to modulate filter cut off frequency.   
 
-#### 4-1-1. MODU  
+#### 5-1-1. MODU  
 
 Turn on/off the filter modulation with the LFO.  
 
-#### 4-1-2. LFOr  
+#### 5-1-2. LFOr  
 
 LFO speed.  
 
-#### 4-1-3. LFOf  
+#### 5-1-3. LFOf  
 
 Maximum fluctuation of the cut off frequency by the LFO.  
 　
-### 4-2. Filter Envelope
+### 5-2. Filter Envelope
 PiFM+S filter envelope can change both the cut off frequency and the resonance value of the filter along time after MIDI note-on.  The filter envelope has following parameters.  
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
 
-#### 4-2-1. INTV 
+#### 5-2-1. INTV 
 
 The filter envelope of PiFM+S has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
 	
-#### 4-2-2. FQmx 
+#### 5-2-2. FQmx 
 
 Maximum fluctuation of the cut off frequency by the filter envelope.  
 
-#### 4-2-3. FQrv  
+#### 5-2-3. FQrv  
 
 Turn off: Positive envelope for the cut off frequency.  
 Turn on: Negative envelope for the cut off frequency.    
 	
-#### 4-2-4. Qfmx  
+#### 5-2-4. Qfmx  
 
 Maximum fluctuation of the resonance by the filter envelope.  
 
-#### 4-2-5. Qfrv  
+#### 5-2-5. Qfrv  
 
 Turn off: Positive envelope for the resonance.  
 Turn on: Negative envelope for the resonance.    
 　
-#### 4-2-6. VELO  
+#### 5-2-6. VELO  
 
 You can edit the ratio which MIDI Note-ON velocity affects to the filter envelope.  0.0 is to ignore the velocity.  Larger value (up to 5.0), you will get larger envelope.  
 
-#### 4-2-6. StLv  
+#### 5-2-6. StLv  
 
 Start level (0.0 .. 1.0) of the envelope.  You will get the FREQ cut off frequency and RESO resonance values if the level is zero. And get FREQ\+FQmx and RESO\+Qfmx values if the level is 1.0.  
 	
-#### 4-2-7. ATCK  
+#### 5-2-7. ATCK  
 
 Attack time (INTV unit times) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately.  
 
-#### 4-2-8. DECY  
+#### 5-2-8. DECY  
 
 Decay time (INTV unit times) to sweep the envelope to the sustain level from 1.0.  Zero means immediately.  
 
-#### 4-2-9. SuLv  
+#### 5-2-9. SuLv  
 
 Sustain level (0.0 .. 1.0) after the decay process.  
 
-#### 4-2-10. SuRs  
+#### 5-2-10. SuRs  
 
 Release time (INTV unit times) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
 
-#### 4-2-11. EdLv  
+#### 5-2-11. EdLv  
 
 End level (0.0 .. 1.0).  
 
 
-## 5. Change Note Volume
+## 6. Change Note Volume
 PiFM+S VCA envelope can change each note volume along time after MIDI note-on.  In addition, PiFM+S can apply tremolo and vibrate effect to notes.  
 The VCA envelope has following parameters.
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 
-### 5-1. VCA Envelope
+### 6-1. VCA Envelope
 
-#### 5-1-1. ATCK 
+#### 6-1-1. ATCK 
 
 Attack time in seconds.  
 	
-#### 5-1-2. DECY  
+#### 6-1-2. DECY  
 
 Decay time in seconds.  
 	
-#### 5-1-3. SuLv  
+#### 6-1-3. SuLv  
 
 Sustain level from 0.0 to 1.0.  
 
-#### 5-1-4. RELS  
+#### 6-1-4. RELS  
 
 Release time in seconds.  
 
-#### 5-1-5. KEYS  
+#### 6-1-5. KEYS  
 
 Key scale sensitivity from -9 to +9.  
 0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
 
-### 5-2. Tremolo
+### 6-2. Tremolo
 
-#### 5-2-1. TREM  
+#### 6-2-1. TREM  
 
 Turn on the tremolo.
 	
-#### 5-2-2. TrRT  
+#### 6-2-2. TrRT  
 
 Set the speed of the tremolo.  
 	
-#### 5-2-3. TrSC 
+#### 6-2-3. TrSC 
 
 Set the effect depth of the tremolo.  
 
-### 5-3. Vibrate
+### 6-3. Vibrate
 
-#### 5-3-1. VIBR  
+#### 6-3-1. VIBR  
 
 Turn on the vibrate.
 
-#### 5-3-2. ViRT  
+#### 6-3-2. ViRT  
 
 Set the speed of the vibrate.  
 
-#### 5-3-3. ViSC  
+#### 6-3-3. ViSC  
 
 Set the effect depth of the vibrate.  
