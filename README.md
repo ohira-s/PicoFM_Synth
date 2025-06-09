@@ -29,7 +29,7 @@ Specifications are as below.
 |---|---|---|
 |Waves|Basic waves|6 kinds of waves line sine.|
 ||Sampled waves|Waves you sampled.|
-|Waveshape Modulation|Frequency Modulation|4 operators and 8 algorithms|
+|Waveshape Modulation|Frequency Modulation|4 operators and 11 algorithms|
 |||Envelope to form the waves.|
 ||Additive Synthesis|8 oscillators|
 |VCO|Voices|12 voices polyphonic|
@@ -48,7 +48,21 @@ Specifications are as below.
 ||Sampled waves|SAVE|
 |Output|DAC|Audio output via PCM5102A|
 
-PICO is programmed with circuit python.
+PICO is programmed with circuit python.  
+
+# Wave Synthesis
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.jpg)  
+
+There are 3 sound synthesis methods in Pico FM Synthesizer.  
+
+(1) FM Synthesis  
+Frequency Modulation with 4 operators and 11 algorithms is suitable for synthesis metallic sounds.   
+　
+(2) Additive Synthesis  
+Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
+
+(3) FM+Additive Synthesis  
+You can mixture sounds made by the FM synthesis and the Additive synthesis.
 
 # User's Manual
 [User's Manual in Japanese is here.](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/UsersManual_jp.md)  
