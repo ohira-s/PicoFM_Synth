@@ -2,13 +2,16 @@
 
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)  
 ## 1. Features
-Pico FM Synthesizer (PiFMS) is a synthesizer sound module working as a USB host or a USB device.  PiFMS has following functions.  
+Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host or a USB device.  
+
+### 1-1. Function Blocks
+  PiFM+S has following functions.  
 
 |CATEGORY|FUNCTION|DESCRIPTIONS|
 |---|---|---|
 |Wave shape|Basic waves|6 kinds of mathematic wave shapes.|
-||Sampling waves|Wave shapes by PiFMS built-in toy-sampler.|
-|Wave shape Modulation|FM(Frequency Modulation)|4 operators, 8 algorithms.|
+||Sampling waves|Wave shapes by PiFM+S built-in toy-sampler.|
+|Wave shape Modulation|FM(Frequency Modulation)|4 operators, 11 algorithms.|
 ||Envelope|An envelope generator to shape a wave.|
 ||Additive Synthesis|8 oscillators|
 |VCO|Note-ON/OFF|12 voices polyphonic.|
@@ -26,7 +29,7 @@ Pico FM Synthesizer (PiFMS) is a synthesizer sound module working as a USB host 
 ||File|Save as the wave shape data.|
 |Audio Output|DAC|PCM5102A.|
 
-PiFMS block diagram is as below.  
+PiFM+S block diagram is as below.  
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth_Block_Diagram.png)  
 
 |Abbr|DESCRIPTIONS|
@@ -35,7 +38,9 @@ PiFMS block diagram is as below.
 |SMP|Toy sampler.|
 |USB|USB cable and port.|
 |UMI|USB MIDI IN|
-|FMWG|FM Wave shape generator.|
+|FMWG|Frequency Modulation Wave Generator|
+|ALG|FM Synthesis Algorithm|
+|ADWG|Additive Synthesis Wave Generator|
 |ADSR|Envelope generator.|
 |LFO|Low Frequency Oscillator.|
 |FLT|Filter (VCF).|
@@ -44,8 +49,22 @@ PiFMS block diagram is as below.
 |8Encoders|8 Rotary encoders designed for M5Stack.|
 |OLED|OLED display (SSD-1306).|　
 
+### 1-2. Wave Synthesis
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
+
+There are 3 sound synthesis methods in Pico FM Synthesizer.  
+
+(1) FM Synthesis  
+Frequency Modulation with 4 operators and 11 algorithms is suitable for synthesis metallic sounds.    
+
+(2) Additive Synthesis  
+Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
+
+(3) FM+Additive Synthesis  
+You can mixture sounds made by the FM synthesis and the Additive synthesis.
+
 ## 2. Appearance
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
+![PiFM+S](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
 
 1) 8 rotary encoders  
 
@@ -57,11 +76,11 @@ The display shows you the synthesizer parameters.
 	
 3) Extended USB connector  
 
-You must connect a USB OTG cable to the extended USB connector when you use PiFMS as a USB host mode.  5V power must be supplied via the cable.  
+You must connect a USB OTG cable to the extended USB connector when you use PiFM+S as a USB host mode.  5V power must be supplied via the cable.  
 	
 4) PICO2 on-board USB connector  
 
-You must connect a USB cable to the PICO2 on-board USB connector when you use PiFMS as a USB device mode.  
+You must connect a USB cable to the PICO2 on-board USB connector when you use PiFM+S as a USB device mode.  
 	
 5) Mic  
 
@@ -71,10 +90,10 @@ The mic will be used to sample sound to make sampling wave shape.
 
 You can save sound data and sampling wave shape data into a SD card.  
 
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
+![PiFM+S](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
 
 ## 3. Notes
-DO NOT supply 5V to the USB OTG cable when you use PiFMS as USB device mode.  In this case, 5V is supplied via PICO2 on-board USB cable.  
+DO NOT supply 5V to the USB OTG cable when you use PiFM+S as USB device mode.  In this case, 5V is supplied via PICO2 on-board USB cable.  
 
 ## 4. Turn on
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)   
@@ -83,14 +102,14 @@ DO NOT supply 5V to the USB OTG cable when you use PiFMS as USB device mode.  In
 1) Set the slide switch to '1' to turn on as USB device mode.  
 2) Connect PICO2 on-board USB to your PC with DAW application.   
 3) Turn on the PC, then you will see **PiFM Synth** splash screen.  
-4) You will see **SOUND MAIN** screen after a while.  You can play PiFMS with your DAW application via MIDI.    
+4) You will see **SOUND MAIN** screen after a while.  You can play PiFM+S with your DAW application via MIDI.    
 ![Connect to Mac](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_to_mac.jpg)
 
 ### 4-2. USB host mode
 1) Set the slide switch to '0' to turn on as USB host mode.  
 2) Connect a USB MIDI controller to the OTG cable.  
 3) Connect the OTG cable to 5V power supply, then you will see **PiFM Synth** splash screen.  
-4) You will see **SOUND MAIN** screen after a while.  You can play PiFMS with your MIDI controller like a MIDI keyboard.    
+4) You will see **SOUND MAIN** screen after a while.  You can play PiFM+S with your MIDI controller like a MIDI keyboard.    
 　この画像は、KORG nanoKEY2と接続したものです。  
 ![Connect to OTG](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_otg.jpg)
 
@@ -120,7 +139,7 @@ In this case, turn RT1 to clockwise, you can get 'FREQ: 1100', and turn RT2 to a
 You can select increment/decrement steps with the slide switch on the right side of the rotary encoders.  Set it '0', increment/decrement one by one.  Set it '1', increment.decrement every five steps.  
 　
 ### 5-3. Rotary encoder RT8
-Rotary encoder RT8 changes PiFMS parameter pages.  Turn to clockwise, you will see the next page, and turn to anti-clockwise, the previous page.  In addition, there are the short cuts with pressing the button switches of Rotary encoder.  
+Rotary encoder RT8 changes PiFM+S parameter pages.  Turn to clockwise, you will see the next page, and turn to anti-clockwise, the previous page.  In addition, there are the short cuts with pressing the button switches of Rotary encoder.  
 There are the following parameter pages.  'BT4x2' means that press BT4 twice.  
 
 |PAGE|DESCRIPTION|SHORT CUT|
@@ -149,7 +168,7 @@ You can see the current sound information and edit the FM algorithm.
 
 1) BANK:0  
 
-PiFMS has 10 sound data banks from 0 to 9.  You can see the current sound bank number.  
+PiFM+S has 10 sound data banks from 0 to 9.  You can see the current sound bank number.  
 	
 2) SOUND:001 Piano  
 
@@ -166,7 +185,7 @@ On this page, FM algorithms are shown with something like an expression.  For is
 |m\*n|Operator-m modulates operator-n.|
 |m\+n|Mix operator-m with operator-n.|
 
-PiFMS has 11 algorithms.  
+PiFM+S has 11 algorithms.  
 
 |No.|ALGORITHM|
 |----|----|
@@ -189,9 +208,9 @@ You can change the master volume from 1 to 9.
 5) UNIS:1  
 
 You can change the unison mode, value is from 0 to 9.  
-0 is for Not-Unison mode.  PiFMS plays one tone for a note.  
-In case of from 1 to 9, PiFMS plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
-PiFMS can play 6 notes maximum in the unison mode.    
+0 is for Not-Unison mode.  PiFM+S plays one tone for a note.  
+In case of from 1 to 9, PiFM+S plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
+PiFM+S can play 6 notes maximum in the unison mode.    
 
 
 ## 7. ALGORITHM
@@ -200,7 +219,7 @@ You can show an algorithm block diagram of the current sound.
 ### 7-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/02_algorithm.jpg)  
 
-PiFMS has 11 algorithms.  
+PiFM+S has 11 algorithms.  
 
 |Algorithm|Diagram|
 |---|---|
@@ -292,7 +311,7 @@ You can see the current algorithm.
 	
 ### 10-4. WAVE (RT3)  
 
-Choose a wave shape for this operator's oscillator.  PiFMS has following wave shapes.  
+Choose a wave shape for this operator's oscillator.  PiFM+S has following wave shapes.  
 
 |Abbr.|WAVE SHAPE|
 |---|---|
@@ -351,6 +370,9 @@ You can save the wave shape into a SD card like sampling wave shapes.  The saved
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
 　
+## 12. ADDITIVE WAVE SYNTHESIS
+Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
+
 ### 12-1. OLED画面
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave.jpg) 　
 
@@ -426,7 +448,7 @@ You can apply a filter to the wave shape generated by the FM wave generator.
 
 ### 14-2. FILT (RT1)  
 
-PiFMS has following filters.  
+PiFM+S has following filters.  
 
 |Abbr.|FILTER TYPE|
 |---|---|
@@ -469,7 +491,7 @@ You can edit how to apply the filter envelope to the filter.
 
 ### 15-2. INTV (RT1)  
 
-The filter envelope of PiFMS has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
+The filter envelope of PiFM+S has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
 	
 ### 15-3. FQmx (RT2)  
 
@@ -578,11 +600,11 @@ You can save the current sound parameters into a SD card.
 
 ### 18-2. BANK (RT2)  
 
-You can choose a bank number to save the sound.  PiFMS has banks from 0 to 9.  
+You can choose a bank number to save the sound.  PiFM+S has banks from 0 to 9.  
 	
 ### 18-3. SOND (RT3)  
 
-You can choose a program number to save the sound.  PiFMS has program numbers from 000 to 999 every bank.  
+You can choose a program number to save the sound.  PiFM+S has program numbers from 000 to 999 every bank.  
 You will see a program name too with the number if the program data exists in the SD card.  
 	
 ### 18-4. NAME (RT4)  
@@ -595,19 +617,19 @@ Move cursor to edit position.
 
 ### 18-6. TASK (RT6)  
 
-Turn clockwise, you will see 'Save?'.  Then turn one more, PiFMS saves the sound data and shows you 'SAVE'.  
-Turn anti-clockwise, you will see 'Copy?'.  Then turn one more, PiFMS copies the selected program name to the name to save and shows you 'COPY'.  
+Turn clockwise, you will see 'Save?'.  Then turn one more, PiFM+S saves the sound data and shows you 'SAVE'.  
+Turn anti-clockwise, you will see 'Copy?'.  Then turn one more, PiFM+S copies the selected program name to the name to save and shows you 'COPY'.  
 
 
 ## 19. LOAD
-You can load a sound data into PiFMS to play it.  
+You can load a sound data into PiFM+S to play it.  
 　
 ### 19-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/12_load.jpg) 
 
 ### 19-2. BANK (RT2)  
 
-You can choose a bank number to load a sound.  PiFMS has banks from 0 to 9.  
+You can choose a bank number to load a sound.  PiFM+S has banks from 0 to 9.  
 	
 ### 19-3. SOND (RT3)  
 
@@ -615,7 +637,7 @@ SOND is a list of sound programs in the BANK-bank.  You can choose a program to 
 	
 ### 19-4. NAME (RT4)  
 
-You can enter a text to search sound names.  PiFMS filters program files by the text (partial match, needs more than 2 characters).  You can see the filtered sound list in the SOND line.  
+You can enter a text to search sound names.  PiFM+S filters program files by the text (partial match, needs more than 2 characters).  You can see the filtered sound list in the SOND line.  
 
 ### 19-5. CURS (RT5)  
 
@@ -624,13 +646,13 @@ Move cursor to edit position.
 ### 19-6. TASK (RT6)  
 
 You can execute the search task or the load task.  
-Turn anti-clockwise, you can filter the sound programs by the search text.  Turn once, you will see 'Search?'.  Turn more, PiFMS executes the filter process, then shows you 'SEARCH'.  
-Turn clockwise, you can load a program selected in the SOND.  Turn once, you will see 'Load?'.  Turn more, PiFMS load the program selected, then shows you 'LOAD'.  
+Turn anti-clockwise, you can filter the sound programs by the search text.  Turn once, you will see 'Search?'.  Turn more, PiFM+S executes the filter process, then shows you 'SEARCH'.  
+Turn clockwise, you can load a program selected in the SOND.  Turn once, you will see 'Load?'.  Turn more, PiFM+S load the program selected, then shows you 'LOAD'.  
 
 
 ## 20. SAMPLING
-PiFMS has a mic to sample sounds.  You can make your original wave shape data with the mic.  
-This is a toy-sampler in an experimental level.  You CAN NOT get whole wave shape data recorded.  PiFMS Toy-Sampler extracts a very short span of the recorded wave shape and makes wave shape data for the PiFMS operators.   
+PiFM+S has a mic to sample sounds.  You can make your original wave shape data with the mic.  
+This is a toy-sampler in an experimental level.  You CAN NOT get whole wave shape data recorded.  PiFM+S Toy-Sampler extracts a very short span of the recorded wave shape and makes wave shape data for the PiFM+S operators.   
 　
 ### 20-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/13_sampling.jpg) 
@@ -657,6 +679,6 @@ Move cursor to edit position.
 
 ### 20-7. TASK (RT7)  
 
-Turn clockwise, you will see 'Sample?'.  Then turn one more, PiFMS shows you 'SAMPLING', and starts sampling sound after the WAIT time.  A LED of the RT7 guides you with flashing it.    
-Turn clockwise, you will see 'Save?'.  Then turn one more, PiFMS saves the wave shape data and shows you 'SAVE'.  
+Turn clockwise, you will see 'Sample?'.  Then turn one more, PiFM+S shows you 'SAMPLING', and starts sampling sound after the WAIT time.  A LED of the RT7 guides you with flashing it.    
+Turn clockwise, you will see 'Save?'.  Then turn one more, PiFM+S saves the wave shape data and shows you 'SAVE'.  
   

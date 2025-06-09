@@ -56,7 +56,8 @@ circuit pythonでプログラムしています。
 # Wave Synthesis
 ![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
 
-音色の波形合成には3つの方法があります。  
+　音色の波形合成には3つの方法があります。  
+
 (1) FM合成（FM Synthesis）  
 　4オペレーター、11アルゴリズムのFM方式による波形合成です。金属的な音色の合成に適しています。  
 

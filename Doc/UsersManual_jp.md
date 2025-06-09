@@ -2,14 +2,16 @@
 
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)  
 ## 1. 機能
-　Pico FM SynthesizerはUSB MIDIデバイスとして動作するシンセサイザーです。Pico FM Synthesizerを以降、「本機」または「PiFMS」と略す場合があります。  
+　Pico FM SynthesizerはUSB MIDIデバイスとして動作するシンセサイザーです。Pico FM Synthesizerを以降、「本機」または「PiFM+S」と略す場合があります。  
+
+### 1-1. 機能ブロック  
 　以下の機能を持っています。  
 
 |分類|機能|説明|
 |---|---|---|
 |波形|基本波形|6種類の基本波形|
 ||サンプリング波形|サンプラーで作成した波形（個数上限なし）|
-|波形変調|FM変調|4オペレーター、8アルゴリズム|
+|波形変調|FM変調|4オペレーター、11アルゴリズム|
 |||波形変形エンベロープ|
 ||加算合成|8オシレーター|
 |VCO|発音|12ボイス|
@@ -37,7 +39,9 @@
 |SMP|サンプラー|
 |USB|USBケーブルおよびポート|
 |UMI|USB MIDI IN|
-|FMWG|FM変調アルゴリズム|
+|FMWG|FM波形合成|
+|ALG|FM合成アルゴリズム|
+|ADWG|加算波形合成|
 |ADSR|エンベロープジェネレーター|
 |LFO|Low Frequency Oscillator|
 |FLT|フィルター|
@@ -46,8 +50,24 @@
 |8Encoders|8個のロータリーエンコーダー|
 |OLED|ディスプレイ|　
 
+### 1-2. 波形合成
+![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  
+
+　音色の波形合成には3つの方法があります。  
+
+(1) FM合成（FM Synthesis）  
+　4オペレーター、11アルゴリズムのFM方式による波形合成です。金属的な音色の合成に適しています。  
+
+(2) 加算合成（Additive Synthesis）  
+　最大8個のサイン波を加算して波形を合成します。管楽器や弦楽器のようにいくつかの倍音で形成されているような音色の合成に適しています。  
+　FM合成の4オペレーターも加えると最大で12個のサイン波を加算合成できます。  
+
+(3) FM＋加算合成  
+　FM合成した音色と加算合成した音色を加算して波形合成できます。それぞれの特長を合わせた波形合成ができます。  
+  
+
 ## 2. 外観
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
+![PiFM+S](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMSynth.jpg)  
 
 1) ロータリーエンコーダー  
 
@@ -74,7 +94,7 @@
 
 	作成した音色やサンプリングした波形を保存できます。  
 
-![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
+![PiFM+S](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_components.jpg)  
 
 ## 3. 注意事項
 　USB OTGケーブルと通常のUSBケーブルの両方を同時に接続している状態では、OTGケーブル側から電源を供給しないで下さい。  
@@ -83,21 +103,21 @@
 ![Block Diagram](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/00_splush.jpg)   
 
 ### 4-1. USBデバイスモード
-1) PiFMS（本機）を用意し、ロータリーエンコーダーのスライドスイッチを1にします。  
+1) PiFM+S（本機）を用意し、ロータリーエンコーダーのスライドスイッチを1にします。  
 2) USBホストとなるパソコンなどを用意します。  
-3) PiFMSとパソコンを接続するUSBケーブルを用意します。PiFMS側はRapsberry Pi PICO2WのMicro USB-Bオスです。  
-4) PiFMSのUSBコネクタとパソコンをUSBケーブルで接続します。  
-5) MIDI音源の電源を入れます。パソコンからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
+3) PiFM+Sとパソコンを接続するUSBケーブルを用意します。PiFM+S側はRapsberry Pi PICO2WのMicro USB-Bオスです。  
+4) PiFM+SのUSBコネクタとパソコンをUSBケーブルで接続します。  
+5) MIDI音源の電源を入れます。パソコンからUSBケーブルで電源が供給されると、PiFM+Sが起動してOLED画面に「**PiFM Synth**」と表示されます。  
 6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
 　この画像は、Macと接続したものです。  
 ![Connect to Mac](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_to_mac.jpg)
 
 ### 4-2. USBホストモード
-1) PiFMS（本機）を用意し、ロータリーエンコーダーのスライドスイッチを0にします。  
+1) PiFM+S（本機）を用意し、ロータリーエンコーダーのスライドスイッチを0にします。  
 2) USBデバイスとなるUSB MIDIキーボードなどを用意します。  
-3) PiFMSとUSB MIDIキーボードを接続するUSBケーブルを用意します。  
-4) PiFMSのOTGケーブルのUSBコネクタとUSB MIDIキーボードをUSBケーブルで接続します。  
-5) OTGケーブルの電源供給用USBケーブルを5VのACアダプターに接続します。OTGケーブルからUSBケーブルで電源が供給されると、PiFMSが起動してOLED画面に「**PiFM Synth**」と表示されます。  
+3) PiFM+SとUSB MIDIキーボードを接続するUSBケーブルを用意します。  
+4) PiFM+SのOTGケーブルのUSBコネクタとUSB MIDIキーボードをUSBケーブルで接続します。  
+5) OTGケーブルの電源供給用USBケーブルを5VのACアダプターに接続します。OTGケーブルからUSBケーブルで電源が供給されると、PiFM+Sが起動してOLED画面に「**PiFM Synth**」と表示されます。  
 6) OLED画面が「**SOUND MAIN**」という演奏用画面になると演奏できます。  
 　この画像は、KORG nanoKEY2と接続したものです。  
 ![Connect to OTG](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/usb_otg.jpg)
