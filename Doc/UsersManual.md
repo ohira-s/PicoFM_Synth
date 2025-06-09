@@ -380,7 +380,6 @@ A sine wave consists of 3 parameters (FREQ, DETU and LEVL).  There are 4 columns
 
 ### 12-2. FREQ (RT2/RT5)  
 
-	発信の1周期内に含めるサイン波の数（整数倍）を設定します。  
 You can edit the number of sine waves in an oscillation cycle.  FREQ=1 means sin(x) and FREQ=2 means sin(2x).  
 
 ### 12-3. DETU (RT3/RT6)  
