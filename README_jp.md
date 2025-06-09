@@ -14,6 +14,7 @@ USBデバイスとしてもホストとしても動作します。演奏にはDA
 |USB|USBケーブルおよびポート|
 |UMI|USB MIDI IN|
 |FMWG|FM波形合成|
+|ALG|FM合成アルゴリズム|
 |ADWG|加算波形合成|
 |ADSR|エンベロープジェネレーター|
 |LFO|Low Frequency Oscillator|

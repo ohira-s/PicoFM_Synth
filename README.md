@@ -13,6 +13,7 @@ This synthesizer works with FM wave generator, synthio, sound sampler and I2S DA
 |USB|USB cable and port|
 |UMI|USB MIDI IN|
 |FMWG|Frequency Modulation Wave Generator|
+|ALG|FM Synthesis Algorithm|
 |ADWG|Additive Synthesis Wave Generator|
 |ADSR|Envelope Generator|
 |LFO|Low Frequency Oscillator|
