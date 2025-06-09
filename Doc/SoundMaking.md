@@ -144,7 +144,7 @@ You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 
 #### 2-2-3. LEVL  
 
 You can edit the output level of the oscillator.  Bigger number, you will get larger output.  
-You should make less or equal than 255 for total of the audio output operators.   
+When ADJS parameter is OFF, you should make less or equal than 255 for total of the audio output operators.  Never mind this when ADJS is ON.   
 
 ### 2-3. Clarinet Sound
 The following settings is for clarinet sound made by the additive wave synthesis only.  

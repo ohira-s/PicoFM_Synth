@@ -211,6 +211,12 @@ You can change the unison mode, value is from 0 to 9.
 0 is for Not-Unison mode.  PiFM+S plays one tone for a note.  
 In case of from 1 to 9, PiFM+S plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
 PiFM+S can play 6 notes maximum in the unison mode.    
+	
+6) ADJS:ON  
+
+Sum of audio output levels of both the FM Synthesis and the Additive Synthesis should be less or equal than 255.  However it is so hard to keep this rule during making sound.  
+When you set ADJS (ADJuSt output levels) to 'ON', PiFM+S will automatically adjust the sum of audio output levels to 255 in keeping each level ratio.  This is the internal process, so the output levels you entered are never changed.  
+In case of ADJS OFF, wave form exceeding the maximum output level will be clipped.  Normally you will get distorted sound.  
 
 
 ## 7. ALGORITHM
@@ -338,7 +344,7 @@ You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 
 ### 10-7. LEVL (RT6)  
 
 You can edit the output level of the operator.  Bigger number, you will get larger output.  
-You should make less or equal than 255 for total of the audio output operators.   
+When ADJS parameter is OFF, you should make less or equal than 255 for total of the audio output operators.  Never mind this when ADJS is ON.   
 
 ### 10-8. FDBK (RT7)  
 
@@ -389,8 +395,7 @@ You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 
 ### 12-4. LEVL (RT4/RT7)  
 
 You can edit the output level of the oscillator.  Bigger number, you will get larger output.  
-You should make less or equal than 255 for total of the audio output operators.   
-
+When ADJS parameter is OFF, you should make less or equal than 255 for total of the audio output operators.  Never mind this when ADJS is ON.   
 
 ## 13. OPERATOR ENVELOPE
 You can edit the envelopes for the operator waves.  This envelope is not for the VCA.  The operator envelope is used in a process to reform one cycle wave shape in the operator.  
