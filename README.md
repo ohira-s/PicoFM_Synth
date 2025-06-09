@@ -57,8 +57,8 @@ PICO is programmed with circuit python.
 There are 3 sound synthesis methods in Pico FM Synthesizer.  
 
 (1) FM Synthesis  
-Frequency Modulation with 4 operators and 11 algorithms is suitable for synthesis metallic sounds.   
-　
+Frequency Modulation with 4 operators and 11 algorithms is suitable for synthesis metallic sounds.    
+
 (2) Additive Synthesis  
 Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
 
