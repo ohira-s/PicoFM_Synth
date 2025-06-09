@@ -114,6 +114,9 @@
 #     0.3.0: 06/06/2025
 #           Additive Waves Generator is available.
 #
+#     0.3.1: 06/09/2025
+#           Audio output levels adjuster is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -921,9 +924,9 @@ class MIDI_class:
 # CLASS: Wave shape generator with FM synthesis
 ################################################
 class FM_Waveshape_class:
-    OSCILLATOR_MAX      = 4					# 4 operators
+    OPERATOR_MAX        = 4					# 4 operators
     OSC_LEVEL_MAX       = 255.0				# Oscillator output level for user (LEVEL: 0..255)
-    OSC_MODULATION_MAX  = 50.0				# Mosulation oscillator internal output level (LEVEL: 0..25.0)
+    OSC_MODULATION_MAX  = 50.0				# Modulation oscillator internal output level (LEVEL: 0..25.0)
     OSC_FREQ_RESOLUTION = 100.0				# Oscillator frequency resolution (FREQ: 1..51200 --> 512.00, fraction makes NON-integer overtone)
     
     SAMPLE_SIZE     = 512					# Sampling size
@@ -941,6 +944,24 @@ class FM_Waveshape_class:
     WAVE_SINE_ABS    = 4
     WAVE_SINE_PLUS   = 5
     WAVE_WHITE_NOISE = 6
+    
+    # Audio output operators for each algorithm
+    AUDIO_OUTPUT_OPERATOR = [
+        (1,),
+        (1,),
+        (0,1,2,3),
+        (3,),
+        (3,),
+        (1,3),
+        (0,3),
+        (0,2,3),
+        (1,2,3),
+        (2,3),
+        (1,2,3)
+    ]
+
+    # Additive synthesis
+    SINE_OSCILLATOR_MAX = 8		# Number of sine wave oscillators
 
     def __init__(self):
         self._algorithm = [(self.fm_algorithm0, (0,1)), (self.fm_algorithm1, (0,1)), (self.fm_algorithm2, (0,1,2,3)), (self.fm_algorithm3, (0,1,2,3)), (self.fm_algorithm4, (0,1,2,3)), (self.fm_algorithm5, (0,1,2,3)), (self.fm_algorithm6, (0,1,2,3)), (self.fm_algorithm7, (0,1,2,3)), (self.fm_algorithm8, (0,1,2,3)), (self.fm_algorithm9, (0,1,2,3)), (self.fm_algorithm10, (0,1,2,3))]
@@ -950,7 +971,7 @@ class FM_Waveshape_class:
             self.wave_sampling1, self.wave_sampling2, self.wave_sampling3, self.wave_sampling4
         ]
         self._oscillators = []
-        for osc in list(range(FM_Waveshape_class.OSCILLATOR_MAX)):
+        for osc in list(range(FM_Waveshape_class.OPERATOR_MAX)):
             self._oscillators.append({'waveshape': 0, 'frequency': 1, 'freq_decimal': 0, 'feedback': 0, 'amplitude': 1, 'adsr': [],
                                       'start_level': 1.0, 'attack_time': 0, 'decay_time': 0,
                                       'sustain_level': 1.0, 'release_time': 0, 'end_level': 1.0})
@@ -960,6 +981,9 @@ class FM_Waveshape_class:
     
         # Sampling wave names
         self._sampling_file = ['', '', '', '']
+        
+        # Output levels adjusted
+        self._adjust_output_level = 1.0
 
     # Set and get an sampling file name
     def sampling_file(self, wave_no, name=None):
@@ -970,7 +994,7 @@ class FM_Waveshape_class:
 
     # Set and Get an oscillator
     def oscillator(self, osc_num, specs = None):
-        if osc_num < 0 or osc_num >= FM_Waveshape_class.OSCILLATOR_MAX:
+        if osc_num < 0 or osc_num >= FM_Waveshape_class.OPERATOR_MAX:
             return None
         
         if specs is None:
@@ -1296,7 +1320,7 @@ class FM_Waveshape_class:
     # Calculate an operator output level
     def operator_level(self, level, audio_operator = False):
         if audio_operator:
-            return level / FM_Waveshape_class.OSC_LEVEL_MAX * FM_Waveshape_class.SAMPLE_VOLUME_f
+            return level * self._adjust_output_level / FM_Waveshape_class.OSC_LEVEL_MAX * FM_Waveshape_class.SAMPLE_VOLUME_f
         
         return level / FM_Waveshape_class.OSC_LEVEL_MAX * FM_Waveshape_class.OSC_MODULATION_MAX
 
@@ -1754,9 +1778,32 @@ class FM_Waveshape_class:
         wave = np.array(wave1 + wave2 + wave3)
         return wave
 
+    # Addjust the sum of the audio output levels to the maximum volume
+    def adjust_output_levels(self, algorithm, audio_output_level_adjust):
+        audio_operators = FM_Waveshape_class.AUDIO_OUTPUT_OPERATOR[algorithm]
+#        print('AUDIO OPERATORS:', algorithm, audio_operators)
+        if audio_output_level_adjust and len(audio_operators) > 0:
+            sum_audio_level = 0
+            for osc in audio_operators:
+                sum_audio_level += self._oscillators[osc]['amplitude']
+
+            if SynthIO is not None:
+                for osc in list(range(FM_Waveshape_class.SINE_OSCILLATOR_MAX)):
+                    dataset = SynthIO.additivewave_parameter(osc)
+                    sum_audio_level += dataset['amplitude']
+
+            self._adjust_output_level = 1.0 if sum_audio_level == 0 else (255.0 / sum_audio_level)
+#            print('AUDIO LEVEL ADJUSTER:', self._adjust_output_level, sum_audio_level)
+
+        else:
+            self._adjust_output_level = 1.0
+
     # Make a waveshape of an algorithm
-    def fm_algorithm(self, algorithm):
+    def fm_algorithm(self, algorithm, audio_output_level_adjust = True):
         if algorithm >= 0 and algorithm < len(self._algorithm):
+            # Addjust the sum of the audio output levels to the maximum volume
+            self.adjust_output_levels(algorithm, audio_output_level_adjust)
+            
             # Generate wave with the algorithm
             if self._algorithm[algorithm] is not None:
                 algo = self._algorithm[algorithm]
@@ -1764,7 +1811,7 @@ class FM_Waveshape_class:
 
                 # Additive waves
                 if SynthIO is not None:
-                    for oscillator in list(range(8)):
+                    for oscillator in list(range(FM_Waveshape_class.SINE_OSCILLATOR_MAX)):
                         dataset = SynthIO.additivewave_parameter(oscillator)
                         if dataset['amplitude'] > 0:
                             amp = self.operator_level(dataset['amplitude'], True)
@@ -1859,18 +1906,19 @@ class SynthIO_class:
         # Parameter attributes
         self._params_attr = {
             'SOUND': {
-                'BANK'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
-                'SOUND'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
-                'SOUND_NAME' : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
-                'AMPLITUDE'  : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'LFO_SCALE_A': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VIBR'       : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'LFO_RATE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'LFO_SCALE_B': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VOLUME'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
-                'UNISON'     : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
-                'CURSOR'     : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
+                'BANK'        : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
+                'SOUND_NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_A'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'LFO_RATE_B'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
+                'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
             'OSCILLATORS': {
@@ -1977,18 +2025,19 @@ class SynthIO_class:
         self._synth_params = {
             # SOUND
             'SOUND': {
-                'BANK'       : 0,
-                'SOUND'      : 0,
-                'SOUND_NAME' : 'NO NAME',
-                'AMPLITUDE'  : 0,
-                'LFO_RATE_A' : 4.0,
-                'LFO_SCALE_A': 1.80,
-                'VIBR'       : 0,
-                'LFO_RATE_B' : 4.0,
-                'LFO_SCALE_B': 1.80,
-                'VOLUME'     : 5,
-                'UNISON'     : 0,
-                'CURSOR'     : 0
+                'BANK'        : 0,
+                'SOUND'       : 0,
+                'SOUND_NAME'  : 'NO NAME',
+                'AMPLITUDE'   : 0,
+                'LFO_RATE_A'  : 4.0,
+                'LFO_SCALE_A' : 1.80,
+                'VIBR'        : 0,
+                'LFO_RATE_B'  : 4.0,
+                'LFO_SCALE_B' : 1.80,
+                'VOLUME'      : 5,
+                'UNISON'      : 0,
+                'ADJUST_LEVEL': 1,
+                'CURSOR'      : 0
             },
             
             # OSCILLATORS
@@ -2287,7 +2336,7 @@ class SynthIO_class:
             return attr['VIEW'].format(value)
 
     # Generate a wave shape of the current wave parameters
-    def generate_wave_shape(self):
+    def generate_wave_shape(self, audio_output_level_adjust = True):
         fm_params = self.wave_parameter()
         algo = -1
         for parm in fm_params:
@@ -2298,7 +2347,7 @@ class SynthIO_class:
                 FM_Waveshape.oscillator(parm['oscillator'], parm)
 
         if algo >= 0:
-            self._wave_shape = FM_Waveshape.fm_algorithm(algo)
+            self._wave_shape = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust)
 
 #        Application.show_OLED_waveshape()
         return self._wave_shape
@@ -2589,7 +2638,7 @@ class SynthIO_class:
     def setup_synthio(self):
         self.mixer_voice_level()
         self.generate_sound()
-        self.generate_wave_shape()
+        self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
         self.generate_filter_adsr()
         self.generate_filter()
         self._synth.envelope = self._envelope_vca
@@ -2865,7 +2914,7 @@ class Application_class:
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'VOLUME', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'UNISON', 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None}
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'ADJUST_LEVEL', 'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_ALGORITHM, 'EDITOR': [
@@ -3133,19 +3182,18 @@ class Application_class:
     # Parameter attributes
     DISP_PARAMETERS = {
         'SOUND': {
-            'BANK'       : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
-            'SOUND'      : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
-#            'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}, PAGE_LOAD: {'label': '', 'x':  54, 'y': 19, 'w': 74}, PAGE_SAVE: {'label': '', 'x':  54, 'y': 19, 'w': 74}},
-            'SOUND_NAME' : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}},
-            'VOLUME'     : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
-            'UNISON'     : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
-            'AMPLITUDE'  : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
-            'LFO_RATE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
-            'LFO_SCALE_A': {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
-            'VIBR'       : {PAGE_SOUND_MODULATION: {'label': 'VIBR:', 'x':  30, 'y': 28, 'w': 98}},
-            'LFO_RATE_B' : {PAGE_SOUND_MODULATION: {'label': 'ViRT:', 'x':  30, 'y': 37, 'w': 98}},
-            'LFO_SCALE_B': {PAGE_SOUND_MODULATION: {'label': 'ViSC:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'     : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
+            'BANK'        : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
+            'SOUND'       : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
+            'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}},
+            'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
+            'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
+            'ADJUST_LEVEL': {PAGE_SOUND_MAIN: {'label': 'ADJS:', 'x':  30, 'y': 55, 'w': 74}},
+            'LFO_RATE_A'  : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
+            'LFO_SCALE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
+            'VIBR'        : {PAGE_SOUND_MODULATION: {'label': 'VIBR:', 'x':  30, 'y': 28, 'w': 98}},
+            'LFO_RATE_B'  : {PAGE_SOUND_MODULATION: {'label': 'ViRT:', 'x':  30, 'y': 37, 'w': 98}},
+            'LFO_SCALE_B' : {PAGE_SOUND_MODULATION: {'label': 'ViSC:', 'x':  30, 'y': 46, 'w': 98}},
+            'CURSOR'      : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
         
         'OSCILLATORS': {
@@ -3407,7 +3455,7 @@ class Application_class:
     # Splush screen
     def splush_screen(self):
         display.fill(1)
-        display.text('PiFM Synth', 5, 15, 0, 2)
+        display.text('PiFM+S', 30, 15, 0, 2)
         display.text('(C) 2025 S.Ohira', 15, 35, 0)
         display.text('SW=0:usbHOST/1:DEVICE', 2, 55, 0)
         display.show()
