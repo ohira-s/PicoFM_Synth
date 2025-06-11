@@ -120,6 +120,9 @@
 #     0.3.2: 06/10/2025
 #           Minor bug fixed.
 #
+#     0.3.3: 06/11/2025
+#           Improve the editor response.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -281,7 +284,8 @@ async def get_8encoder():
                 Application.EDITOR_MODE = True
                 SynthIO.audio_pause()
 
-            await asyncio.sleep(0.01)
+#            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
             
             if not on_change:
                 for rt in list(range(8)):
@@ -297,7 +301,8 @@ async def get_8encoder():
                         Application.EDITOR_MODE = True
                         SynthIO.audio_pause()
 
-                    await asyncio.sleep(0.01)
+#                    await asyncio.sleep(0.01)
+                    await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
                     
                     if on_change:
                         break
@@ -3466,7 +3471,7 @@ class Application_class:
         time.sleep(2)
 
     # Display a page
-    def show_OLED_page(self, page_no=None):
+    def show_OLED_page(self, update_parms = None, page_no=None):
 #        print('SHOW OLED page')
 #        SynthIO.mixer_voice_level(0.0)
         
@@ -3476,10 +3481,14 @@ class Application_class:
         
         # Show the page
         page_no = page_no % len(Application_class.PAGES)
-        display.fill(0)
-        label = Application_class.PAGE_LABELS[page_no]
-        if len(label) > 0:
-            display.text(label, 0, 1, 1)
+        
+        # All refresh
+        if update_parms is None:            
+            # Clear display and show the page label
+            display.fill(0)
+            label = Application_class.PAGE_LABELS[page_no]
+            if len(label) > 0:
+                display.text(label, 0, 1, 1)
         
         # ALGORITHM custom page
         if   page_no == Application_class.PAGE_ALGORITHM:
@@ -3501,67 +3510,70 @@ class Application_class:
             # Oscillators
             if category == 'OSCILLATORS':
                 for parm in Application_class.DISP_PARAMETERS[category].keys():
-                    for page in Application_class.DISP_PARAMETERS[category][parm].keys():
-                        # The page to show
-                        if page == page_no:
-                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
-                            display.show_message(disp['label'], 0, disp['y'], 40, 9, 1)
-                            
-                            # Algorithm
-                            if parm == 'algorithm':
-                                data = SynthIO.get_formatted_parameter(category, parm, -1)
-                                display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
-#                                print('===DISP algorithm:', data)
-                            
-                            # Other parameters
-                            else:
-                                for oscillator in list(range(4)):
-                                    data = SynthIO.get_formatted_parameter(category, parm, oscillator)
-                                    if oscillator < 3:
-                                        data = data + '|'
-                                    display.show_message(data, disp['x'] + oscillator * 24, disp['y'], disp['w'], 9, 1)
-#                                    print('DISP OSC:', oscillator, data)
+                    if update_parms is None or parm in update_parms:
+                        for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                            # The page to show
+                            if page == page_no:
+                                disp = Application_class.DISP_PARAMETERS[category][parm][page]
+                                display.show_message(disp['label'], 0, disp['y'], 40, 9, 1)
+                                
+                                # Algorithm
+                                if parm == 'algorithm':
+                                    data = SynthIO.get_formatted_parameter(category, parm, -1)
+                                    display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
+#                                    print('===DISP algorithm:', data)
+                                
+                                # Other parameters
+                                else:
+                                    for oscillator in list(range(4)):
+                                        data = SynthIO.get_formatted_parameter(category, parm, oscillator)
+                                        if oscillator < 3:
+                                            data = data + '|'
+                                        display.show_message(data, disp['x'] + oscillator * 24, disp['y'], disp['w'], 9, 1)
+#                                        print('DISP OSC:', oscillator, data)
 
             # Additive Wave
             elif category == 'ADDITIVEWAVE':
                 for parm in Application_class.DISP_PARAMETERS[category].keys():
-                    for page in Application_class.DISP_PARAMETERS[category][parm].keys():
-                        # The page to show
-                        if page == page_no:
-                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
-                            display.show_message(disp['label'], 0, disp['y'],      40, 9, 1)
-                            display.show_message(disp['label'], 0, disp['y'] + 27, 40, 9, 1)
-                            
-                            for oscillator in list(range(8)):
-                                data = SynthIO.get_formatted_parameter(category, parm, oscillator)
-                                if oscillator < 6:
-                                    data = data + '|'
-                                    
-                                if oscillator % 2 == 0:
-                                    display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'],      disp['w'], 9, 1)
-                                else:
-                                    display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'] + 27, disp['w'], 9, 1)
-                                                                        
-#                                print('DISP ADD:', oscillator, data)
+                    if update_parms is None or parm in update_parms:
+                        for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                            # The page to show
+                            if page == page_no:
+                                disp = Application_class.DISP_PARAMETERS[category][parm][page]
+                                display.show_message(disp['label'], 0, disp['y'],      40, 9, 1)
+                                display.show_message(disp['label'], 0, disp['y'] + 27, 40, 9, 1)
+                                
+                                for oscillator in list(range(8)):
+                                    data = SynthIO.get_formatted_parameter(category, parm, oscillator)
+                                    if oscillator < 6:
+                                        data = data + '|'
+                                        
+                                    if oscillator % 2 == 0:
+                                        display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'],      disp['w'], 9, 1)
+                                    else:
+                                        display.show_message(data, disp['x'] + int(oscillator/2) * 24, disp['y'] + 27, disp['w'], 9, 1)
+                                                                            
+#                                    print('DISP ADD:', oscillator, data)
 
             # Others
             else:
                 for parm in Application_class.DISP_PARAMETERS[category].keys():
-                   for page in Application_class.DISP_PARAMETERS[category][parm].keys():
-                        if page == page_no:                            
-                            disp = Application_class.DISP_PARAMETERS[category][parm][page]
-                            
-                            # Show label
-                            if len(disp['label']) > 0:
-                                display.show_message(disp['label'], 0, disp['y'], 30, 9, 1)
-                            
-                            # Show data
-                            data = SynthIO.get_formatted_parameter(category, parm)
-#                            print('SHOW:', category, parm, data)
-                            display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
-                            
-#                            if category == 'SAVE':
-#                                print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
+                    if update_parms is None or parm in update_parms:
+                       for page in Application_class.DISP_PARAMETERS[category][parm].keys():
+                            if page == page_no:                            
+                                disp = Application_class.DISP_PARAMETERS[category][parm][page]
+                                
+                                # Show label
+                                if len(disp['label']) > 0:
+                                    display.show_message(disp['label'], 0, disp['y'], 30, 9, 1)
+                                
+                                # Show data
+                                data = SynthIO.get_formatted_parameter(category, parm)
+#                                print('SHOW:', category, parm, data)
+                                display.show_message(data, disp['x'], disp['y'], disp['w'], 9, 1)
+                                
+#                                if category == 'SAVE':
+#                                    print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
 
         # WAVE SHAPE custom page
         if page_no == Application_class.PAGE_WAVE_SHAPE:
@@ -3591,7 +3603,8 @@ class Application_class:
             for amp in waveshape:
                 tm += 1
                 x = int(tm * w / FM_Waveshape_class.SAMPLE_SIZE)
-                y = int(amp * h / max_amp) + cy
+#                y = int(amp * h / max_amp) + cy
+                y = cy - int(amp * h / max_amp)
                 if tm == 0:
                     x0 = x
                     y0 = y
@@ -3771,14 +3784,12 @@ class Application_class:
                         else:
                             if data_type == SynthIO_class.TYPE_INT:
                                 inc = inc * inc_magni
-                            
-#                        self.show_OLED_page()
 
                         # Update the parameter to be incremented
                         if inc is not None:
 #                            print('INCREMENT:', inc, category, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
-                            self.show_OLED_page()
+                            self.show_OLED_page([parameter])
 
                             # Tasks after updated a parameter
                             dataset = SynthIO.synthio_parameter(category)
@@ -3792,13 +3803,13 @@ class Application_class:
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
                                     SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
                                     time.sleep(0.5)
-                                    self.show_OLED_page()
+                                    self.show_OLED_page(['BANK', 'SOUND', 'SOUND_NAME', 'SAVE_SOUND'])
 #                                    print('SAVE SOUND FILE:', dataset['BANK'], dataset['SOUND'])
 
                                 elif save_sound == 'COPY':
                                     sound_name = SynthIO.get_sound_name_of_file(dataset['BANK'], dataset['SOUND'])
                                     SynthIO.synthio_parameter('SAVE', {'SOUND_NAME': sound_name, 'SAVE_SOUND': 0})
-                                    self.show_OLED_page()
+                                    self.show_OLED_page(['SOUND_NAME', 'SAVE_SOUND'])
 
                             # Load a sound file page
                             elif category == 'LOAD':
@@ -3824,13 +3835,13 @@ class Application_class:
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': ''})
                                     SynthIO.synthio_parameter('SAVE', {'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
-                                    self.show_OLED_page()
+                                    self.show_OLED_page(['LOAD_SOUND', 'BANK', 'SOUND', 'SOUND_NAME'])
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILESl:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
-                                    self.show_OLED_page()
+                                    self.show_OLED_page(['LOAD_SOUND', 'SOUND', 'SOUND_NAME'])
 
                             # Sampling page
                             elif category == 'SAMPLING':
@@ -3858,7 +3869,7 @@ class Application_class:
                                         ADC_Mic.save_samplig_file(dataset['NAME'], SynthIO.wave_shape())
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAVE': 0})
-                                        self.show_OLED_page()
+                                        self.show_OLED_page(['SAVE'])
 
                                 # Sound sampler (sampling or save)
                                 elif parameter == 'SAMPLE':                                    
@@ -3897,20 +3908,18 @@ class Application_class:
                                         Encoder_obj.led(6, [0x00, 0x00, 0x00])
                                         Encoder_obj.i2c_unlock()
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
-                                        self.show_OLED_page()
+                                        self.show_OLED_page(['SAMPLE'])
 
                                     # Save the current wave sampled
                                     elif sampling == 'SAVE':
                                         ADC_Mic.save_samplig_file(dataset['NAME'])
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
-                                        self.show_OLED_page()
+                                        self.show_OLED_page(['SAMPLE'])
 
                             # Sound parameter pages
                             else:
                                 SynthIO.setup_synthio()
-                            
-#                            self.show_OLED_page()
 
 ################# End of Applicatio  Class Definition #################
 
