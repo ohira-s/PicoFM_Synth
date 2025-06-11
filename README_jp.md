@@ -92,4 +92,14 @@ UNDER CONSTRUCTION...
 
 - font5x8.bin
 - libフォルダー  
-- SYNTHフォルダー  
+
+3) SDカードに以下のフォルダーを作成します。  
+
+- SYNTH/  
+- SYNTH/SOUND/  
+- SYNTH/SOUND/BANK0/ .. SYNTH/SOUND/BANK9/  
+- SYNTH/WAVE/  
+
+4) SDカードのSYNTH/SOUND/BANK0にPFMS000.jsonをコピーします。  
+
+	※それ以外のPFMSxxx.jsonはコピーしてもしなくても構いません。  

@@ -90,4 +90,14 @@ UNDER CONSTRUCTION...
 
 - font5x8.bin
 - lib folder.  
-- SYNTH folder.  
+
+3) Make following folders in your SD card.  
+
+- SYNTH/  
+- SYNTH/SOUND/  
+- SYNTH/SOUND/BANK0/ .. SYNTH/SOUND/BANK9/  
+- SYNTH/WAVE/  
+
+4) Copy PFMS000.json into SYNTH/SOUND/BANK0/ folder in your SD card.  
+
+	※Copy the other PFMSxxx.json files if you prefer to.  
