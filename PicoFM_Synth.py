@@ -1,14 +1,16 @@
 ############################################################################
 # USB MIDI synthio FM Sound Module
 # FUNCTION:
-#   4 operators FM synthesizer as a USB MIDI host device.
+#   4 operators FM synthesis and 8 oscillators additive wave synthesis
+#   synthesizer as USB MIDI host or device mode.
 #
 # HARDWARE:
-#   CONTROLER  : Raspberry Pi PICO2/2W.
+#   CONTROLLER : Raspberry Pi PICO2/2W.
 #                Additional USB works as a USB-MIDI host and power supply
 #                via USB-OTG cable.
 #                On board USB works as a USB-MIDI device and PC connection.
-#   SYNTHESIZER: synthio, 16 polyphonic voices with 4 operators FM sound.
+#   SYNTHESIZER: synthio, 12 polyphonic voices with 4 operators FM sound
+#                and 8 oscillators additive waves sound.
 #   OLED       : SSD1306 (128x64) as a display.
 #   INPUT      : 8 rotary encoders for M5Stack (8Encoder)
 #
