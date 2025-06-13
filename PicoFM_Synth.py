@@ -125,6 +125,9 @@
 #     0.3.3: 06/11/2025
 #           Improve the editor response.
 #
+#     0.3.4: 06/13/2025
+#           Improve the editor opeartions.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -627,7 +630,7 @@ class M5Stack_8Encoder_class:
             self._i2c.readfrom_into(self._i2c_address, bytes_read)
             v = v | (bytes_read[0] << shift)
             shift += 8
-            time.sleep(0.01)
+#            time.sleep(0.01)
 
         return M5Stack_8Encoder_class.__bits_to_int(v, 32)
 
@@ -729,16 +732,18 @@ class MIDI_class:
             # Device mode
             if self._raw_midi_host is None:
                 print('NOT Found USB MIDI device.')
-            
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += ' [DEVICE]'
+
             # Host mode
             else:
                 print('Found USB MIDI device.')
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += ' [HOST]'
 
         self._init = False
         if self._raw_midi_host is None:
             self._usb_midi_host = None
             self._usb_host_mode = False
-            print('TURN ON WITH USB MIDI device mode.')
+            print('TURN ON WITH USB MIDI DEVICE MODE.')
             return None
 
         self._usb_midi_host = adafruit_midi.MIDI(midi_in=self._raw_midi_host)  
@@ -775,7 +780,7 @@ class MIDI_class:
 
             except Exception as e:
                 print('CHANGE TO DEVICE MODE:', e)
-
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] = Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN].replace('[HOST]', '[DISCON]')
                 self._usb_host_mode = False
                 midi_msg = self._usb_midi.receive()
                 
@@ -2362,8 +2367,11 @@ class SynthIO_class:
 #        Application.show_OLED_waveshape()
         return self._wave_shape
 
-    # GET waveshape
-    def wave_shape(self):
+    # GET/SET waveshape
+    def wave_shape(self, ws=None):
+        if ws is not None:
+            self._wave_shape = np.array(ws, dtype=np.int16)
+            
         return self._wave_shape
 
     # Generate the Sound
@@ -2704,7 +2712,8 @@ class SynthIO_class:
                 max_files = len(SynthIO_class.VIEW_SOUND_FILES)
                 next_value = (data_value + direction) % max_files
                 while next_value != data_value and len(SynthIO_class.VIEW_SOUND_FILES[next_value]) < 5:
-                    next_value = (next_value + direction) % max_files
+                    next_value = (next_value + (1 if delta > 0 else -1)) % max_files
+#                    next_value = (next_value + direction) % max_files
                         
                 data_value = next_value if len(SynthIO_class.VIEW_SOUND_FILES[next_value]) >= 5 else -1
 
@@ -3837,7 +3846,7 @@ class Application_class:
 #                                    SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0})
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': ''})
                                     SynthIO.synthio_parameter('SAVE', {'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
-                                    self.show_OLED_page(['LOAD_SOUND', 'BANK', 'SOUND', 'SOUND_NAME'])
+                                    self.show_OLED_page()
 
                                 elif load_sound == 'SEARCH' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
