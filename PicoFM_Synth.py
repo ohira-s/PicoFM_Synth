@@ -3032,28 +3032,30 @@ class Application_class:
     PAGE_OSCILLTOR_WAVE2   = 4
     PAGE_OSCILLTOR_WAVE3   = 5
     PAGE_OSCILLTOR_WAVE4   = 6
-    PAGE_WAVE_SHAPE        = 7
-    PAGE_OSCILLTOR_ADSR1   = 8
-    PAGE_OSCILLTOR_ADSR2   = 9
-    PAGE_OSCILLTOR_ADSR3   = 10
-    PAGE_OSCILLTOR_ADSR4   = 11
-    PAGE_FILTER            = 12
-    PAGE_FILTER_ADSR_RANGE = 13
-    PAGE_FILTER_ADSR       = 14
-    PAGE_VCA               = 15
-    PAGE_SAVE              = 16
-    PAGE_LOAD              = 17
-    PAGE_SAMPLING          = 18
-    PAGE_SAMPLING_WAVES    = 19
-    PAGE_ADDITIVE_WAVE1    = 20
-    PAGE_ADDITIVE_WAVE2    = 21
-    PAGE_ADDITIVE_WAVE3    = 22
-    PAGE_ADDITIVE_WAVE4    = 23
+    PAGE_WAVE_SHAPE1       = 7
+    PAGE_WAVE_SHAPE2       = 8
+    PAGE_WAVE_SHAPE3       = 9
+    PAGE_OSCILLTOR_ADSR1   = 10
+    PAGE_OSCILLTOR_ADSR2   = 11
+    PAGE_OSCILLTOR_ADSR3   = 12
+    PAGE_OSCILLTOR_ADSR4   = 13
+    PAGE_FILTER            = 14
+    PAGE_FILTER_ADSR_RANGE = 15
+    PAGE_FILTER_ADSR       = 16
+    PAGE_VCA               = 17
+    PAGE_SAVE              = 18
+    PAGE_LOAD              = 19
+    PAGE_SAMPLING          = 20
+    PAGE_SAMPLING_WAVES    = 21
+    PAGE_ADDITIVE_WAVE1    = 22
+    PAGE_ADDITIVE_WAVE2    = 23
+    PAGE_ADDITIVE_WAVE3    = 24
+    PAGE_ADDITIVE_WAVE4    = 25
 
     # Direct page access with the 8encoders push switches
     PAGE_DIRECT_ACCESS = [
         [PAGE_SOUND_MAIN],																		# BT1
-        [PAGE_OSCILLTOR_WAVE1, PAGE_ADDITIVE_WAVE1, PAGE_OSCILLTOR_ADSR1, PAGE_WAVE_SHAPE],		# BT2
+        [PAGE_OSCILLTOR_WAVE1, PAGE_ADDITIVE_WAVE1, PAGE_OSCILLTOR_ADSR1, PAGE_WAVE_SHAPE1],	# BT2
         [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],								# BT3
         [PAGE_VCA, PAGE_SOUND_MODULATION],														# BT4
         [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],													# BT5
@@ -3224,7 +3226,27 @@ class Application_class:
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'sustain_additive', 'OSCILLATOR': 3}
         ]},
 
-        {'PAGE': PAGE_WAVE_SHAPE, 'EDITOR': [
+        {'PAGE': PAGE_WAVE_SHAPE1, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE2, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE3, 'EDITOR': [
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
@@ -3318,7 +3340,9 @@ class Application_class:
         PAGE_OSCILLTOR_WAVE2  : 'OSCW: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_WAVE3  : 'OSCW: 1 | 2 |[3]| 4  ',
         PAGE_OSCILLTOR_WAVE4  : 'OSCW: 1 | 2 | 3 |[4] ',
-        PAGE_WAVE_SHAPE       : '              FM+WAVE',
+        PAGE_WAVE_SHAPE1      : '              ATTACK',
+        PAGE_WAVE_SHAPE2      : '              DECAY',
+        PAGE_WAVE_SHAPE3      : '              SUSTAIN',
         PAGE_OSCILLTOR_ADSR1  : 'OSCA:[1]| 2 | 3 | 4  ',
         PAGE_OSCILLTOR_ADSR2  : 'OSCA: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_ADSR3  : 'OSCA: 1 | 2 |[3]| 4  ',
@@ -3426,14 +3450,14 @@ class Application_class:
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
             'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
-            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}},
-            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
+            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}},
+            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE2: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE3: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
             'SAMPLE': {PAGE_SAMPLING: {'label': 'TASK:', 'x':  30, 'y': 55, 'w': 98}},
             'WAVE1' : {PAGE_SAMPLING_WAVES: {'label': 'WAV1:', 'x':  30, 'y': 10, 'w': 98}},
             'WAVE2' : {PAGE_SAMPLING_WAVES: {'label': 'WAV2:', 'x':  30, 'y': 19, 'w': 98}},
             'WAVE3' : {PAGE_SAMPLING_WAVES: {'label': 'WAV3:', 'x':  30, 'y': 28, 'w': 98}},
             'WAVE4' : {PAGE_SAMPLING_WAVES: {'label': 'WAV4:', 'x':  30, 'y': 37, 'w': 98}},
-            'SAVE'  : {PAGE_WAVE_SHAPE: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}}
+            'SAVE'  : {PAGE_WAVE_SHAPE1: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}}
         },
         
         'ADDITIVEWAVE': {
@@ -3725,11 +3749,12 @@ class Application_class:
 #                                    print('SAVE:', parm, disp['x'], disp['y'], disp['w'], disp['label'], data)
 
         # WAVE SHAPE custom page
-        if page_no == Application_class.PAGE_WAVE_SHAPE:
-#            print('DISPWAVE SHAPE')
-#            self.show_OLED_waveshape()
-            self.show_OLED_waveshape(None, 128, 32, 0, 31, False)
-#            SynthIO.mixer_voice_level(0.4)
+        if   page_no == Application_class.PAGE_WAVE_SHAPE1:
+            self.show_OLED_waveshape(SynthIO.wave_shape(0), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE2:
+            self.show_OLED_waveshape(SynthIO.wave_shape(1), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE3:
+            self.show_OLED_waveshape(SynthIO.wave_shape(2), 128, 32, 0, 31, False)
 
         display.show()
 #        SynthIO.mixer_voice_level(0.4)
