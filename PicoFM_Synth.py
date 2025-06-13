@@ -130,7 +130,7 @@
 #
 #     0.4.0: 06/13/2025
 #           The wave shape envelope has been obsoleted.
-#           The oscillator output level envelope is new arrive.
+#           The oscillator output level envelope is new arrival.
 #           The output level of oscillators can be controlled along with VCA
 #           envelope phases (ATTACK, DECAY, SUSTAIN+RELEASE).
 #
@@ -4044,7 +4044,15 @@ class Application_class:
                                     print('WAVE SHAPE SAVE:', SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']])
                                     if SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']] == 'SAVE':
 #                                        print('SAVE THE CURRENT WAVE SHAPE:', dataset['NAME'])
-                                        ADC_Mic.save_samplig_file(dataset['NAME'], SynthIO.wave_shape())
+                                        if   Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE2:
+                                            wave = 1
+                                        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE3:
+                                            wave = 2
+                                        else:
+                                            wave = 0
+                                        
+                                        # Save a wave table in VCA envelope wave tables
+                                        ADC_Mic.save_samplig_file(dataset['NAME'], SynthIO.wave_shape(wave))
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAVE': 0})
                                         self.show_OLED_page(['SAVE'])
