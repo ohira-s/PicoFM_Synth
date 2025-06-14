@@ -27,28 +27,27 @@ The FM wave generator is my original program.  It has 4 oscillators (operators),
 
 Specifications are as below.  
 
-|CATEGORY|FUNCTION|DESCRIPTION|
+|CATEGORY|FUNCTION|DESCRIPTIONS|
 |---|---|---|
-|Waves|Basic waves|6 kinds of waves line sine.|
-||Sampled waves|Waves you sampled.|
-|Waveshape Modulation|Frequency Modulation|4 operators and 11 algorithms|
-|||Envelope to form the waves.|
+|Wave shape|Basic waves|6 kinds of mathematic wave shapes.|
+||Sampling waves|Wave shapes by PiFM+S built-in toy-sampler.|
+|Wave shape Synthesis|FM(Frequency Modulation)|4 operators, 11 algorithms.|
 ||Additive Synthesis|8 oscillators|
-|VCO|Voices|12 voices polyphonic|
-||Control|LFO vibrate|
-|||Envelope|
-|Filter|Type|LPF, HPF, BPF, NOTCH|
-||Control|LFO modulation.|
-|||Envelope modulation.|
+||Envelope|Control oscillator output level.|
+|VCO|Note-ON/OFF|12 voices polyphonic.|
+||LFO|Tremolo|
+|||Vibrate|
+|VCF|Filer types|LPF, HPF, BPF, NOTCH|
+||LFO|Frequency and/or Q-factor modulation.|
+||Envelope|Frequency and/or Q-factor modulation.|
 |||Note-On velocity.|
-|VCA|Control| Envelope |
+|VCA|Envelope|Control note volume.|
 |||Note-On velocity.|
-|Toy Sampler|Input|Mic|
-||Editor|Noise reduction|
+|Toy sampler|Input|Built-in mic.|
 |File|Sound|SAVE, LOAD|
-||FM sound waves|SAVE|
-||Sampled waves|SAVE|
-|Output|DAC|Audio output via PCM5102A|
+||FM modulated wave|Save as the wave shape data.|
+||File|Save as the wave shape data.|
+|Audio Output|DAC|PCM5102A.|
 
 PICO is programmed with circuit python.  
 
