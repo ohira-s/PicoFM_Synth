@@ -92,34 +92,24 @@ You can choose an algorithm on the 'SOUND MAIN' page.　
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)
 
-### 1-4. Reform
-You can make your sounds with the operators and the algorithms.  In addition, PiFM+S has an envelope to reform wave shape.  The envelope has following shape.  
+### 1-4. Output Level Envelope
+You can edit the envelopes for the FM synthesis operators' output levels and the Additive synthesis oscillators' output levels.  The envelope value is from 0.0 to 1.0.  The output will be 0 if the envelope is 0.0,  and will be the output level if the envelope is 1.0.    
+This envelope works along the VCA envelope transition.  There are 3 parameters (AT, DC, ST).  AT is the envelope value at note-on.  DC is it at VCA decay beginning.  ST is it at VCA sustain beginning.  
 
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.png)  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr1.png)  
 
-The envelope value changes between 0.0 and 1.0.  
-1st example: Envelope value is 1.0 (not changed).  
-2nd example: Envelope value is changed along time.  
+The parameters are only 3 points' values, however PiFM+S calculates the other 4 points' values.  Therefore the envelope has 7 points.  PiFM+S generates 7 wave shapes to play sound.  
+An example of 7 wave shapes is as below.  
 
-|Envelope Settings|Reformed Wave Shape|
-|---|---|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_00.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_01.jpg)|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_10.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_11.jpg)|  
-
-In the 2nd example, the envelope shape and the original wave shape are as below.　The envelope value getting smaller, the wave shape also getting smaller.    
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_02.jpg)  
-
-### 1-5. Reuse Wave Shapes
-You can save wave shapes you made with the FM Wave Generator.  
-![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
-　
-The wave shapes saved can be used as operator wave shape.  Only one operator can oscillate a wave shape made with 4 operators.  
-
-![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
-
-So you can more modulate it.  
-
-![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
+|Envelope Transition|Name|Wave Shape|
+|---|---|---|
+|AT:Note-On|ATTACK0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape1.jpg)|
+|complement 1|ATTACK1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape2.jpg)|
+|complement 2|ATTACK2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape3.jpg)|
+|DC:DECAY|DECAY0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape4.jpg)|
+|complement 1|DECAY1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape5.jpg)|
+|complement 2|DECAY2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape6.jpg)|
+|ST:SUSTAIN|SUSTAIN|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape7.jpg)|
 
 ## 2. Additive Wave Synthesis
 PiFM+S has the Additive Wave Synthesis adding to the FM Wave Synthesis.  
@@ -178,10 +168,22 @@ Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and 
 (3) FM+Additive Synthesis  
 You can mixture sounds made by the FM synthesis and the Additive synthesis.
 
-## 4. Filter
+## 4. Reuse Wave Shapes
+You can save wave shapes you made with the Wave Generator.  
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
+　
+The wave shapes saved can be used as operator wave shape.  Only one operator can oscillate a wave shape made with the FM synthesis and the Additive synthesis.  
+
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
+
+So you can more modulate it.  
+
+![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
+
+## 5. Filter
 The sounds made with the FMWG can be used as music instruments.  However you can apply the PiFM+S filter to the sound.
 　
-### 4-1. Filter Types
+### 5-1. Filter Types
 |Abbr.|Filter|Descriptions|
 |---|---|---|
 |PASS|Pass Through|No filter is applied.|
@@ -190,153 +192,153 @@ The sounds made with the FMWG can be used as music instruments.  However you can
 |BPF|Band Path Filter|Reduce both high and low sounds.|
 |NOTCH|Notch Filter|Reduces a certain range of sounds.|
 
-### 4-2. PASS
+### 5-2. PASS
 There is no parameter.  
 
-### 4-3. LPF
+### 5-3. LPF
 'FREQ' is cut off frequency.  Reduce high sounds more than FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 　
-### 4-4. HPF
+### 5-4. HPF
 'FREQ' is cut off frequency.  Reduce low sounds less than FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 4-5. BPF
+### 5-5. BPF
 'FREQ' is cut off frequency.  Reduce both high and low sounds far from FREQ.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 4-6. NOTCH
+### 5-6. NOTCH
 'FREQ' is cut off frequency.  Reduce sounds arouond FREQ.  
 'RESO' is resonance (Q-factor).  
 
 
-## 5. Change Filter Specs
+## 6. Change Filter Specs
 You can change filter specs along time from note-on.  
 　
-### 5-1. Filter Modulation
+### 6-1. Filter Modulation
 PiFM+S filter has a LFO to modulate filter cut off frequency.   
 
-#### 5-1-1. MODU  
+#### 6-1-1. MODU  
 
 Turn on/off the filter modulation with the LFO.  
 
-#### 5-1-2. LFOr  
+#### 6-1-2. LFOr  
 
 LFO speed.  
 
-#### 5-1-3. LFOf  
+#### 6-1-3. LFOf  
 
 Maximum fluctuation of the cut off frequency by the LFO.  
 　
-### 5-2. Filter Envelope
+### 6-2. Filter Envelope
 PiFM+S filter envelope can change both the cut off frequency and the resonance value of the filter along time after MIDI note-on.  The filter envelope has following parameters.  
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
 
-#### 5-2-1. INTV 
+#### 6-2-1. INTV 
 
 The filter envelope of PiFM+S has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
 	
-#### 5-2-2. FQmx 
+#### 6-2-2. FQmx 
 
 Maximum fluctuation of the cut off frequency by the filter envelope.  
 
-#### 5-2-3. FQrv  
+#### 6-2-3. FQrv  
 
 Turn off: Positive envelope for the cut off frequency.  
 Turn on: Negative envelope for the cut off frequency.    
 	
-#### 5-2-4. Qfmx  
+#### 6-2-4. Qfmx  
 
 Maximum fluctuation of the resonance by the filter envelope.  
 
-#### 5-2-5. Qfrv  
+#### 6-2-5. Qfrv  
 
 Turn off: Positive envelope for the resonance.  
 Turn on: Negative envelope for the resonance.    
 　
-#### 5-2-6. VELO  
+#### 6-2-6. VELO  
 
 You can edit the ratio which MIDI Note-ON velocity affects to the filter envelope.  0.0 is to ignore the velocity.  Larger value (up to 5.0), you will get larger envelope.  
 
-#### 5-2-6. StLv  
+#### 6-2-6. StLv  
 
 Start level (0.0 .. 1.0) of the envelope.  You will get the FREQ cut off frequency and RESO resonance values if the level is zero. And get FREQ\+FQmx and RESO\+Qfmx values if the level is 1.0.  
 	
-#### 5-2-7. ATCK  
+#### 6-2-7. ATCK  
 
 Attack time (INTV unit times) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately.  
 
-#### 5-2-8. DECY  
+#### 6-2-8. DECY  
 
 Decay time (INTV unit times) to sweep the envelope to the sustain level from 1.0.  Zero means immediately.  
 
-#### 5-2-9. SuLv  
+#### 6-2-9. SuLv  
 
 Sustain level (0.0 .. 1.0) after the decay process.  
 
-#### 5-2-10. SuRs  
+#### 6-2-10. SuRs  
 
 Release time (INTV unit times) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
 
-#### 5-2-11. EdLv  
+#### 6-2-11. EdLv  
 
 End level (0.0 .. 1.0).  
 
 
-## 6. Change Note Volume
+## 7. Change Note Volume
 PiFM+S VCA envelope can change each note volume along time after MIDI note-on.  In addition, PiFM+S can apply tremolo and vibrate effect to notes.  
 The VCA envelope has following parameters.
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 
-### 6-1. VCA Envelope
+### 7-1. VCA Envelope
 
-#### 6-1-1. ATCK 
+#### 7-1-1. ATCK 
 
 Attack time in seconds.  
 	
-#### 6-1-2. DECY  
+#### 7-1-2. DECY  
 
 Decay time in seconds.  
 	
-#### 6-1-3. SuLv  
+#### 7-1-3. SuLv  
 
 Sustain level from 0.0 to 1.0.  
 
-#### 6-1-4. RELS  
+#### 7-1-4. RELS  
 
 Release time in seconds.  
 
-#### 6-1-5. KEYS  
+#### 7-1-5. KEYS  
 
 Key scale sensitivity from -9 to +9.  
 0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
 
-### 6-2. Tremolo
+### 7-2. Tremolo
 
-#### 6-2-1. TREM  
+#### 7-2-1. TREM  
 
 Turn on the tremolo.
 	
-#### 6-2-2. TrRT  
+#### 7-2-2. TrRT  
 
 Set the speed of the tremolo.  
 	
-#### 6-2-3. TrSC 
+#### 7-2-3. TrSC 
 
 Set the effect depth of the tremolo.  
 
-### 6-3. Vibrate
+### 7-3. Vibrate
 
-#### 6-3-1. VIBR  
+#### 7-3-1. VIBR  
 
 Turn on the vibrate.
 
-#### 6-3-2. ViRT  
+#### 7-3-2. ViRT  
 
 Set the speed of the vibrate.  
 
-#### 6-3-3. ViSC  
+#### 7-3-3. ViSC  
 
 Set the effect depth of the vibrate.  
