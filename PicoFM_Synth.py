@@ -612,13 +612,17 @@ class M5Stack_8Encoder_class:
         return int(bytes_read[0])
 
     def reset_rotary_value(self, rotary=None):
-        if rotary is None:
-            for rt in list(range(8)):
-                self._i2c.writeto(self._i2c_address, bytearray([0x40 + rt, 0x01]))
-                time.sleep(0.01)
+        try:
+            if rotary is None:
+                for rt in list(range(8)):
+                    self._i2c.writeto(self._i2c_address, bytearray([0x40 + rt, 0x01]))
+                    time.sleep(0.01)
 
-        else:
-            self._i2c.writeto(self._i2c_address, bytearray([0x40 + rotary, 0x01]))
+            else:
+                self._i2c.writeto(self._i2c_address, bytearray([0x40 + rotary, 0x01]))
+
+        except:
+            pass
 
     def get_rotary_value(self, rotary):
         v = 0
@@ -661,16 +665,26 @@ class M5Stack_8Encoder_class:
 
     def get_button(self, button):
         bytes_read = bytearray(1)
-        self._i2c.writeto(self._i2c_address, bytearray([0x50 + button]))
-        self._i2c.readfrom_into(self._i2c_address, bytes_read)
-#        print('BUTTON', button + 1, '=', bytes_read[0] == 0)
+        
+        try:
+            self._i2c.writeto(self._i2c_address, bytearray([0x50 + button]))
+            self._i2c.readfrom_into(self._i2c_address, bytes_read)
+#            print('BUTTON', button + 1, '=', bytes_read[0] == 0)
+
+        except:
+            pass
+
         return bytes_read[0] == 0
 
     # Turn on a LED in colro(R,G,B)
     def led(self, led_num, color=[0x00, 0x00, 0x00]):
-        base = [0x70 + led_num * 3]
-        self._i2c.writeto(self._i2c_address, bytearray(base + color))
-        time.sleep(0.01)
+        try:
+            base = [0x70 + led_num * 3]
+            self._i2c.writeto(self._i2c_address, bytearray(base + color))
+#            time.sleep(0.01)
+
+        except:
+            pass
 
 ################# End of 8Encoder Class Definition #################
 
@@ -3081,22 +3095,26 @@ class Application_class:
     PAGE_WAVE_SHAPE1       = 7
     PAGE_WAVE_SHAPE2       = 8
     PAGE_WAVE_SHAPE3       = 9
-    PAGE_OSCILLTOR_ADSR1   = 10
-    PAGE_OSCILLTOR_ADSR2   = 11
-    PAGE_OSCILLTOR_ADSR3   = 12
-    PAGE_OSCILLTOR_ADSR4   = 13
-    PAGE_FILTER            = 14
-    PAGE_FILTER_ADSR_RANGE = 15
-    PAGE_FILTER_ADSR       = 16
-    PAGE_VCA               = 17
-    PAGE_SAVE              = 18
-    PAGE_LOAD              = 19
-    PAGE_SAMPLING          = 20
-    PAGE_SAMPLING_WAVES    = 21
-    PAGE_ADDITIVE_WAVE1    = 22
-    PAGE_ADDITIVE_WAVE2    = 23
-    PAGE_ADDITIVE_WAVE3    = 24
-    PAGE_ADDITIVE_WAVE4    = 25
+    PAGE_WAVE_SHAPE4       = 10
+    PAGE_WAVE_SHAPE5       = 11
+    PAGE_WAVE_SHAPE6       = 12
+    PAGE_WAVE_SHAPE7       = 13
+    PAGE_OSCILLTOR_ADSR1   = 14
+    PAGE_OSCILLTOR_ADSR2   = 15
+    PAGE_OSCILLTOR_ADSR3   = 16
+    PAGE_OSCILLTOR_ADSR4   = 17
+    PAGE_FILTER            = 18
+    PAGE_FILTER_ADSR_RANGE = 19
+    PAGE_FILTER_ADSR       = 20
+    PAGE_VCA               = 21
+    PAGE_SAVE              = 22
+    PAGE_LOAD              = 23
+    PAGE_SAMPLING          = 24
+    PAGE_SAMPLING_WAVES    = 25
+    PAGE_ADDITIVE_WAVE1    = 26
+    PAGE_ADDITIVE_WAVE2    = 27
+    PAGE_ADDITIVE_WAVE3    = 28
+    PAGE_ADDITIVE_WAVE4    = 29
 
     # Direct page access with the 8encoders push switches
     PAGE_DIRECT_ACCESS = [
@@ -3302,6 +3320,46 @@ class Application_class:
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
         ]},
 
+        {'PAGE': PAGE_WAVE_SHAPE4, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE5, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE6, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
+        {'PAGE': PAGE_WAVE_SHAPE7, 'EDITOR': [
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAVE',   'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
+        ]},
+
         {'PAGE': PAGE_FILTER, 'EDITOR': [
             {'CATEGORY': 'FILTER', 'PARAMETER': 'TYPE',       'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'FREQUENCY',  'OSCILLATOR': None},
@@ -3386,9 +3444,13 @@ class Application_class:
         PAGE_OSCILLTOR_WAVE2  : 'OSCW: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_WAVE3  : 'OSCW: 1 | 2 |[3]| 4  ',
         PAGE_OSCILLTOR_WAVE4  : 'OSCW: 1 | 2 | 3 |[4] ',
-        PAGE_WAVE_SHAPE1      : '              ATTACK',
-        PAGE_WAVE_SHAPE2      : '              DECAY',
-        PAGE_WAVE_SHAPE3      : '              SUSTAIN',
+        PAGE_WAVE_SHAPE1      : '              ATTACK0',
+        PAGE_WAVE_SHAPE2      : '              ATTACK1',
+        PAGE_WAVE_SHAPE3      : '              ATTACK2',
+        PAGE_WAVE_SHAPE4      : '              DECAY0',
+        PAGE_WAVE_SHAPE5      : '              DECAY1',
+        PAGE_WAVE_SHAPE6      : '              DECAY2',
+        PAGE_WAVE_SHAPE7      : '              SUSTAIN',
         PAGE_OSCILLTOR_ADSR1  : 'OSCA:[1]| 2 | 3 | 4  ',
         PAGE_OSCILLTOR_ADSR2  : 'OSCA: 1 |[2]| 3 | 4  ',
         PAGE_OSCILLTOR_ADSR3  : 'OSCA: 1 | 2 |[3]| 4  ',
@@ -3496,14 +3558,14 @@ class Application_class:
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
             'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
-            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}},
-            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE2: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE3: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
+            'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE4: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE5: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE6: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE7: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}},
+            'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE2: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE3: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE4: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE5: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE6: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE7: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
             'SAMPLE': {PAGE_SAMPLING: {'label': 'TASK:', 'x':  30, 'y': 55, 'w': 98}},
             'WAVE1' : {PAGE_SAMPLING_WAVES: {'label': 'WAV1:', 'x':  30, 'y': 10, 'w': 98}},
             'WAVE2' : {PAGE_SAMPLING_WAVES: {'label': 'WAV2:', 'x':  30, 'y': 19, 'w': 98}},
             'WAVE3' : {PAGE_SAMPLING_WAVES: {'label': 'WAV3:', 'x':  30, 'y': 28, 'w': 98}},
             'WAVE4' : {PAGE_SAMPLING_WAVES: {'label': 'WAV4:', 'x':  30, 'y': 37, 'w': 98}},
-            'SAVE'  : {PAGE_WAVE_SHAPE1: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}}
+            'SAVE'  : {PAGE_WAVE_SHAPE1: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE4: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE5: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE6: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}, PAGE_WAVE_SHAPE7: {'label': 'SAVE:', 'x':  30, 'y': 19, 'w': 50}}
         },
         
         'ADDITIVEWAVE': {
@@ -3798,8 +3860,16 @@ class Application_class:
         if   page_no == Application_class.PAGE_WAVE_SHAPE1:
             self.show_OLED_waveshape(SynthIO.wave_shape(0), 128, 32, 0, 31, False)
         elif page_no == Application_class.PAGE_WAVE_SHAPE2:
-            self.show_OLED_waveshape(SynthIO.wave_shape(3), 128, 32, 0, 31, False)
+            self.show_OLED_waveshape(SynthIO.wave_shape(1), 128, 32, 0, 31, False)
         elif page_no == Application_class.PAGE_WAVE_SHAPE3:
+            self.show_OLED_waveshape(SynthIO.wave_shape(2), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE4:
+            self.show_OLED_waveshape(SynthIO.wave_shape(3), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE5:
+            self.show_OLED_waveshape(SynthIO.wave_shape(4), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE6:
+            self.show_OLED_waveshape(SynthIO.wave_shape(5), 128, 32, 0, 31, False)
+        elif page_no == Application_class.PAGE_WAVE_SHAPE7:
             self.show_OLED_waveshape(SynthIO.wave_shape(6), 128, 32, 0, 31, False)
 
         display.show()
@@ -4087,13 +4157,21 @@ class Application_class:
 
                                 # Save the current wave shape
                                 elif parameter == 'SAVE':
-                                    print('WAVE SHAPE SAVE:', SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']])
+#                                    print('WAVE SHAPE SAVE:', SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']])
                                     if SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']] == 'SAVE':
 #                                        print('SAVE THE CURRENT WAVE SHAPE:', dataset['NAME'])
                                         if   Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE2:
                                             wave = 1
                                         elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE3:
                                             wave = 2
+                                        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE4:
+                                            wave = 3
+                                        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE5:
+                                            wave = 4
+                                        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE6:
+                                            wave = 5
+                                        elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_WAVE_SHAPE7:
+                                            wave = 6
                                         else:
                                             wave = 0
                                         
