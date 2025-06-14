@@ -134,6 +134,9 @@
 #           The output level of oscillators can be controlled along with VCA
 #           envelope phases (ATTACK, DECAY, SUSTAIN+RELEASE).
 #
+#     0.4.1: 06/14/2025
+#           The wave shape envelope got transiting more smoothly.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -892,12 +895,6 @@ class MIDI_class:
 
                     # Play the note
                     filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
-#                    self.notes[midi_note_number] = synthio.Note(
-#                        frequency=synthio.midi_to_hz(midi_msg.note) + unison_hz,
-#                        filter=init_filter,
-#                        envelope=note_env,
-#                        waveform=SynthIO.wave_shape()
-#                    )
 
                     # Copy the wave shape to a note waveform as python list slice
                     wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
@@ -908,7 +905,9 @@ class MIDI_class:
                         waveform=wave_shape
                     )
                     self.notes[midi_note_number].waveform[:] = SynthIO.wave_shape(0)
-                    self.notes_phase[midi_note_number] = synthio.EnvelopeState.ATTACK
+                    
+                    # Wave shape switch status
+                    self.notes_phase[midi_note_number] = {'wave': 0, 'envelope': None, 'attack1': attack_level / 3, 'attack2': attack_level / 3 * 2, 'decay1': (attack_level - sustain_level) / 3 * 2 + sustain_level, 'decay2': (attack_level - sustain_level) / 3 + sustain_level}
 
                     # Tremolo
                     if self.synthIO.lfo_sound_amplitude() is not None:
@@ -965,17 +964,35 @@ class MIDI_class:
             if self.notes[midi_note_number] is not None:
                 note = self.notes[midi_note_number]
                 env = SynthIO.synth().note_info(note)
-                if self.notes_phase[midi_note_number] != env[0]:
-                    self.notes_phase[midi_note_number] = env[0]
+                wave = self.notes_phase[midi_note_number]['wave']
+#                print('ENV PHASE:', midi_note_number, env, self.notes_phase[midi_note_number])
+                
+                if self.notes_phase[midi_note_number]['envelope'] != env[0]:
+                    self.notes_phase[midi_note_number]['envelope'] = env[0]
+#                    print('ENV PHASE:', midi_note_number, env)
                     if   env[0] == synthio.EnvelopeState.DECAY:
-                        wave = 1
+                        wave = 3
                     elif env[0] == synthio.EnvelopeState.SUSTAIN:
-                        wave = 2
+                        wave = 6
                     else:
                         wave = 0
+                        
+                if   env[0] == synthio.EnvelopeState.ATTACK:
+                    if   env[1] >= self.notes_phase[midi_note_number]['attack2']:
+                        wave = 2
+                    elif env[1] >= self.notes_phase[midi_note_number]['attack1']:
+                        wave = 1
+                
+                elif env[0] == synthio.EnvelopeState.DECAY:
+                    if   env[1] <  self.notes_phase[midi_note_number]['decay2']:
+                        wave = 5
+                    elif env[1] <  self.notes_phase[midi_note_number]['decay1']:
+                        wave = 4
 
+                if wave != self.notes_phase[midi_note_number]['wave']:
                     note.waveform[:] = SynthIO.wave_shape(wave)
-#                    print('WAVE:', self.notes_phase[midi_note_number], note.waveform)
+                    self.notes_phase[midi_note_number]['wave'] = wave
+#                    print('WAVE:', env, self.notes_phase[midi_note_number], note.waveform)
 
     # Receive MIDI events
     def receive_midi_events(self, midi_msg=None):
@@ -1417,10 +1434,22 @@ class FM_Waveshape_class:
         
         operator = SynthIO.wave_parameter(op_num)
         if   phase == 1:
-            factor = operator['decay_factor']
+            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 + operator['attack_additive']
         
         elif phase == 2:
-            factor = operator['sustain_factor']
+            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 * 2 + operator['attack_additive']
+
+        elif phase == 3:
+            factor = operator['decay_additive']
+
+        elif phase == 4:
+            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 + operator['decay_additive']
+
+        elif phase == 5:
+            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 * 2 + operator['decay_additive']
+            
+        elif phase == 6:
+            factor = operator['sustain_additive']
         
         else:
             factor = operator['attack_factor']
@@ -1956,13 +1985,25 @@ class FM_Waveshape_class:
                             # Wave shape envelope for the additive synthsis works every two oscillators
                             operator = SynthIO.wave_parameter(oscillator//2)
                             if   phase == 1:
-                                factor = operator['decay_additive']
+                                factor = (operator['decay_additive'] - operator['attack_additive']) / 3 + operator['attack_additive']
                             
                             elif phase == 2:
+                                factor = (operator['decay_additive'] - operator['attack_additive']) / 3 * 2 + operator['attack_additive']
+
+                            elif phase == 3:
+                                factor = operator['decay_additive']
+
+                            elif phase == 4:
+                                factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 + operator['decay_additive']
+
+                            elif phase == 5:
+                                factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 * 2 + operator['decay_additive']
+                                
+                            elif phase == 6:
                                 factor = operator['sustain_additive']
                             
                             else:
-                                factor = operator['attack_additive']
+                                factor = operator['attack_factor']
 
 #                            print('ADD WAVE', oscillator, dataset, amp)
                             addwave = self.wave_sine(None, amp * factor, dataset['frequency'] + dataset['freq_decimal'] / 100)
@@ -2157,7 +2198,7 @@ class SynthIO_class:
         }
 
         # synthio related objects for internal use
-        self._wave_shape     = [None, None, None]
+        self._wave_shape     = [None, None, None, None, None, None, None]
         self._lfo_sound_amp  = None
         self._lfo_sound_bend = None
         self._lfo_filter     = None
@@ -2497,10 +2538,15 @@ class SynthIO_class:
             else:
                 FM_Waveshape.oscillator(parm['oscillator'], parm)
 
+        # Make wave shapes along the VCA envelope phases
         if algo >= 0:
             self._wave_shape[0] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 0)
             self._wave_shape[1] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 1)
             self._wave_shape[2] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 2)
+            self._wave_shape[3] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 3)
+            self._wave_shape[4] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 4)
+            self._wave_shape[5] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 5)
+            self._wave_shape[6] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 6)
 
 #        Application.show_OLED_waveshape()
         return self._wave_shape
@@ -3752,9 +3798,9 @@ class Application_class:
         if   page_no == Application_class.PAGE_WAVE_SHAPE1:
             self.show_OLED_waveshape(SynthIO.wave_shape(0), 128, 32, 0, 31, False)
         elif page_no == Application_class.PAGE_WAVE_SHAPE2:
-            self.show_OLED_waveshape(SynthIO.wave_shape(1), 128, 32, 0, 31, False)
+            self.show_OLED_waveshape(SynthIO.wave_shape(3), 128, 32, 0, 31, False)
         elif page_no == Application_class.PAGE_WAVE_SHAPE3:
-            self.show_OLED_waveshape(SynthIO.wave_shape(2), 128, 32, 0, 31, False)
+            self.show_OLED_waveshape(SynthIO.wave_shape(6), 128, 32, 0, 31, False)
 
         display.show()
 #        SynthIO.mixer_voice_level(0.4)
