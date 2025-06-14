@@ -427,13 +427,21 @@ The envelope value (0.0 .. 1.0) of the Additive synthesis oscillator output leve
 
 
 ## 13. WAVE SHAPE
-You will see the current wave shape before filtered as a graph.  
+You can see the current wave shapes as graphs.  There are 7 wave shapes along the operator & oscillator envelope.  
 You can also save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.  
 
 ### 13-1. OLED Display
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
+|Envelope Transition|Name|Wave Shape|
+|---|---|---|
+|AT:Note-On|ATTACK0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape1.jpg)|
+|complement 1|ATTACK1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape2.jpg)|
+|complement 2|ATTACK2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape3.jpg)|
+|DC:DECAY|DECAY0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape4.jpg)|
+|complement 1|DECAY1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape5.jpg)|
+|complement 2|DECAY2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape6.jpg)|
+|ST:SUSTAIN|SUSTAIN|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape7.jpg)|
 
-The wave shape you will see is the FM wave generator's output before filtered.  
+The wave shape you will see is the Wave generator's output before filtered.  
 	
 ### 13-2. NAME (RT1)  
 
