@@ -453,7 +453,7 @@ Move the cursor to edit position.
 
 ### 13-4. SAVE (RT3)  
 
-You can save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.	
+You can save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.  	
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
