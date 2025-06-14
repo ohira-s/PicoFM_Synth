@@ -11,9 +11,9 @@
 |---|---|---|
 |波形|基本波形|6種類の基本波形|
 ||サンプリング波形|サンプラーで作成した波形（個数上限なし）|
-|波形変調|FM変調|4オペレーター、11アルゴリズム|
-|||波形変形エンベロープ|
+|波形合成|FM合成|4オペレーター、11アルゴリズム|
 ||加算合成|8オシレーター|
+||合成制御|出力エンベロープ|
 |VCO|発音|12ボイス|
 ||VCO制御|LFOトレモロ|
 ||VCO制御|LFOビブラート|
@@ -366,24 +366,119 @@
 	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
 
 
-## 11. WAVE SHAPE
-　現在の設定でFM変調された波形を表示します。また、その波形をサンプリング波形としてSDカードに保存できます。保存した波形はオシレーターの波形に利用できるため、音色作成のバリエーションが広がります。  
+## 11. ADDITIVE SYNTHESIS
+　「ADDW:」で始まる画面で、8個のサイン波発信器の発信パラメータを設定します。  
+　ADDITIVE SYNTHESISは加算波形合成の仕組みで、最大8個のサイン波を加算合成して波形を作り出します。最終的にFM合成された波形に加算されて、音色の元になる波形となります。  
+　
+### 11-1. OLED画面
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave.jpg) 　
+
+　FREQ, DETU, LEVLの3つで1つのサイン波を出力します。画面上のA, B, C, D列（オシレーターグループ）にはそれぞれ2つのサイン波の設定があり、最大で8個のサイン波を合成できます。  
+
+### 11-2. ADDW (RT8)  
+
+	オシレーターグループの切り替えはRT8で行います。[n]で表示されている記号のオペレーターが編集対象となります。  
+	先頭行に[A]とある場合はオシレーターグループAのパラメータ編集画面です。そこでRT8を右に回すと[B]となり、オシレーターグループBの編集画面になります。  
+
+### 11-3. FREQ (RT2/RT5)  
+
+	発信の1周期内に含めるサイン波の数（整数倍）を設定します。  
+
+### 11-4. DETU (RT3/RT6)  
+
+	発信の1周期内に含めるサイン波の数（小数部.00〜.99）を設定します。    
+
+### 11-5. LEVL (RT4/RT7)  
+
+	サイン波の出力振幅レベルを設定します。数値が大きいほど大きな出力となります。ADJSパラメーターをOFFにしているとき、オーディオ出力用のオペレーター群の合計は255以下にする必要があります。ONのときは自動調整されるので気にする必要はありません。  
+
+### 11-6. スライドスイッチ  
+
+	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
+
+
+## 12. OPERATOR/OSCILLATOR ENVELOPE
+　「OSCA:」で始まる画面で、FM合成の4個のオペレーターと加算合成の8個のオシレーターの出力レベルのエンベロープを設定します。出力レベルはオペレーターとオシレーターの出力（LEVL）の値に対して0.0〜1.0の範囲で設定する倍率です。0.0で出力は0になり、1.0で設定した出力値で出力されます。  
+　このエンベロープはVCAのエンベロープは別のものですが、VCAエンベロープの変化と同期して動作します。VCAエンベロープのスタート時点、ディケイに移行する時点、サスティーンに移行する時点の3ヶ所（AT, DC, ST）での出力レベルを指定します。  
+![OPR/OSC ENVELOPE](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr1.png)  
+
+　各オペレーターとオシレーターに付き設定するパラメーターは3ヶ所ですが、内部では中間の4ヶ所が補完されて合計7ヶ所の倍率設定となります。その結果、エンベロープに沿って7個の波形が合成され、ノートオン後のVCAエンベロープの動きに沿って最も近い位置の波形が再生されます。  
+
+　以下は出力レベルのエンベロープによる波形変化の例です。  
+
+|エンベロープ位置|名称|再生波形の例|
+|---|---|---|
+|AT:ノートオン|ATTACK0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape1.jpg)|
+|ATTACK補完1|ATTACK1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape2.jpg)|
+|ATTACK補完2|ATTACK2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape3.jpg)|
+|DC:ディケイ開始|DECAY0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape4.jpg)|
+|DECAY補完1|DECAY1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape5.jpg)|
+|DECAY補完2|DECAY2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape6.jpg)|
+|ST:サスティーン開始|SUSTAIN|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape7.jpg)|
+　
+### 12-1. OLED画面
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
+
+　設定対象のFM合成オペレーターと加算合成オシレーターの切り替えはRT8で行います。先頭行に[1]とある場合はオペレーター1とオシレーターA列のパラメータ編集画面です。そこでRT8を右に回すと[2]となり、オペレーター2とオシレーターB列の編集画面になります。  
+　4個のオペレーターは個々に設定できますが、8個の加算合成オシレーターは2個ずつグループ化されて同じ設定になります。  
+　[4]の状態でRT8を右に回すと次の画面に移動します。  
+
+### 12-2. OSCA (RT8)  
+
+	オペレーター＆オシレーターグループの切り替えをします。[n]で表示されている番号nのオペレーター＆オシレーターグループが編集対象となります。  
+	
+### 12-3. ATfm (RT2)  
+
+	FM合成オペレーター出力エンベロープの最初の倍率（ATTACK0）を0.0〜1.0で設定します。1.0でオペレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+### 12-4. DCfm (RT3)  
+
+	FM合成オペレーター出力エンベロープのディケイ開始時の倍率（DECAY0）を0.0〜1.0で設定します。1.0でオペレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+### 12-5. STfm (RT4)  
+
+	FM合成オペレーター出力エンベロープのサスティーン開始時の倍率（SUSTAIN0）を0.0〜1.0で設定します。1.0でオペレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+### 12-6. ATad (RT5)  
+
+	加算合成オシレーター出力エンベロープの最初の倍率（ATTACK0）を0.0〜1.0で設定します。1.0でオシレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+### 12-7. DCad (RT6)  
+
+	加算合成オシレーター出力エンベロープのディケイ開始時の倍率（DECAY0）を0.0〜1.0で設定します。1.0でオシレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+### 12-8. STad (RT7)  
+
+	加算合成オシレーター出力エンベロープのサスティーン開始時の倍率（SUSTAIN）を0.0〜1.0で設定します。1.0でオシレーターの出力レベルと同じ大きさとなり、レベルを0.0にすると出力はなくなります。  
+
+
+## 13. WAVE SHAPE
+　現在の設定で合成された波形群を表示します。波形合成用エンベロープによって生成された7個の波形が順番に表示されます。  
+　また、その波形をサンプリング波形としてSDカードに保存できます。保存した波形はオシレーターの波形に利用できるため、音色作成のバリエーションが広がります。  
 　保存されるのは波形データであり、音色データではありません。音色はSAVE画面で保存します。  
 
-### 11-1. OLED画面
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
+### 13-1. OLED画面
+|エンベロープ位置|名称|画面表示|
+|---|---|---|
+|AT:ノートオン|ATTACK0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape1.jpg)|
+|ATTACK補完1|ATTACK1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape2.jpg)|
+|ATTACK補完2|ATTACK2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape3.jpg)|
+|DC:ディケイ開始|DECAY0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape4.jpg)|
+|DECAY補完1|DECAY1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape5.jpg)|
+|DECAY補完2|DECAY2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape6.jpg)|
+|ST:サスティーン開始|SUSTAIN|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape7.jpg)|
 
-　この波形はFM変調直後のものであり、実際にシンセサイザーが出力する波形ではありません。シンセサイザーが出す音は、さらにFILTERとVCAで変調された波形になります。
+　この波形は波形合成直後のものであり、実際にシンセサイザーが出力する波形ではありません。シンセサイザーが出す音は、さらにFILTERとVCAで変調された波形になります。
 	
-### 11-2. NAME (RT1)  
+### 13-2. NAME (RT1)  
 
 	FM変調された波形を保存する名前を設定します。  
 
-### 11-3. CURS (RT2)  
+### 13-3. CURS (RT2)  
 
 	増減する実数値の桁位置を設定します。  
 
-### 11-4. SAVE (RT3)  
+### 13-4. SAVE (RT3)  
 
 	FM変調された波形をサンプリング波形として保存します。
 	RT3を右に回すと「Save?」と確認表示が出ます。さらにRT3を右に回すと実際に保存が行われます。  
@@ -392,88 +487,6 @@
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
-
-
-## 12. ADDITIVE SYNTHESIS
-　「ADDW:」で始まる画面で、8個のサイン波発信器の発信パラメータを設定します。  
-　ADDITIVE SYNTHESISは加算波形合成の仕組みで、最大8個のサイン波を加算合成して波形を作り出します。最終的にFM合成された波形に加算されて、音色の元になる波形となります。  
-　
-### 12-1. OLED画面
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave.jpg) 　
-
-　FREQ, DETU, LEVLの3つで1つのサイン波を出力します。画面上のA, B, C, D列にはそれぞれ2つのサイン波の設定があり、最大で8個のサイン波を合成できます。  
-
-### 12-2. FREQ (RT2/RT5)  
-
-	発信の1周期内に含めるサイン波の数（整数倍）を設定します。  
-
-### 12-3. DETU (RT3/RT6)  
-
-	発信の1周期内に含めるサイン波の数（小数部.00〜.99）を設定します。    
-
-### 12-4. LEVL (RT4/RT7)  
-
-	サイン波の出力振幅レベルを設定します。数値が大きいほど大きな出力となります。ADJSパラメーターをOFFにしているとき、オーディオ出力用のオペレーター群の合計は255以下にする必要があります。ONのときは自動調整されるので気にする必要はありません。  
-
-### 12-5. スライドスイッチ  
-
-	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
-
-
-## 13. OPERATOR ENVELOPE
-　「OSCA:」で始まる画面で、4個のオペレーターの波形合成用エンベロープを設定します。
-　波形合成用エンベロープとVCAのエンベロープは別のものです。VCAエンベロープは1音符の出力ボリュームの変化を表しますが、波形合成用エンベロープはFM変調で波形を合成するときにのみ使用されます。各オペレーターの1周期の基本波形に対して適用され、基本波形1周期の振幅をエンベロープの形に整形します。  
-　波形合成用エンベロープがない（全域で1.0）場合に矩形波である波形と、そこに波形合成用エンベロープを設定した結果の波形を比較すると以下のようになります。  
-
-|エンベロープ|波形|
-|---|---|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_00.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_01.jpg)|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_10.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_11.jpg)|  
-
-　適用したエンベロープと元の矩形波を図にすると以下の通りです。エンベロープが0に近づくと波形も0に近づきます。  
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_02.jpg)  
-
-　波形合成用エンベロープは以下のパラメータと形状を持っています。  
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.png)  
-　
-### 13-1. OLED画面
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
-
-　4オペレーターの切り替えはRT8で行います。先頭行に[1]とある場合はオペレーター1のパラメータ編集画面です。そこでRT8を右に回すと[2]となり、オペレーター2の編集画面になります。  
-　[4]の状態でRT8を右に回すと次の画面に移動します。  
-
-### 13-2. OSCA (RT8)  
-
-	オペレーターの切り替えをします。[n]で表示されている番号nのオペレーターが編集対象となります。  
-	
-### 13-3. StLv (RT2)  
-
-	エンベロープの最初のレベル（スタートレベル）を0.0〜1.0で設定します。
-	レベル1.0で基本波形と同じ振幅となり、レベルを0.0にすると波のそのタイミングでは振幅がなくなります。  
-	
-### 13-4. ATCK (RT3)  
-
-	スタートレベルから1.0にまでスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
-
-### 13-5. DECY (RT4)  
-
-	アタック完了後にサスティーンレベルまでスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
-
-### 13-6. SuLv (RT5)  
-
-	ディケイが完了するレベル（サスティーンレベル）を0.0〜1.0で設定します。  
-
-### 13-7. SuRs (RT6)  
-
-	サスティーンレベルからエンドレベルにスイープする長さを設定します。0〜511で、0は即座に移行することを表します。  
-
-### 13-8. EdLv (RT7)  
-
-	最終的なレベルを0.0〜1.0で設定します。  
-
-### 13-9. スライドスイッチ  
-
-	スライドスイッチが0のときは上記数値を1ずつ増減します。1のときは5ずつ増減します。  
 
 
 ## 14. FILTER

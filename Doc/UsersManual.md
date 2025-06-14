@@ -11,9 +11,9 @@ Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host
 |---|---|---|
 |Wave shape|Basic waves|6 kinds of mathematic wave shapes.|
 ||Sampling waves|Wave shapes by PiFM+S built-in toy-sampler.|
-|Wave shape Modulation|FM(Frequency Modulation)|4 operators, 11 algorithms.|
-||Envelope|An envelope generator to shape a wave.|
+|Wave shape Synthesis|FM(Frequency Modulation)|4 operators, 11 algorithms.|
 ||Additive Synthesis|8 oscillators|
+||Envelope|Control oscillator output level.|
 |VCO|Note-ON/OFF|12 voices polyphonic.|
 ||LFO|Tremolo|
 |||Vibrate|
@@ -307,7 +307,7 @@ You can edit the oscillator parameters of the 4 operators.
 
 ### 10-2. OSCW (RT8)  
 
-You can change the operator to edit by rotating RT8.  The top line is the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
+You can change the operator to edit by rotating RT8.  The top line on the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators2.jpg) 　
 	
@@ -350,98 +350,105 @@ When ADJS parameter is OFF, you should make less or equal than 255 for total of 
 
 For operators with feedback function, you can edit the feedback level to modulate own-self.  
 For operators without feedback function, you can edit the phase shift level of wave shape.  The value from 0 to 255 corresponds to from 0 to 99 percent of phase shift.   
+　
+## 11. ADDITIVE WAVE SYNTHESIS
+Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
+
+### 11-1. OLED画面
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave.jpg) 　
+
+A sine wave consists of 3 parameters (FREQ, DETU and LEVL).  There are 4 columns (Oscillator Group A, B, C, D) and each column has 2 sine waves.  So you can add 8 sine waves maximum.  
+
+### 11-2. ADDW (RT8)  
+
+You can change the oscillators to edit by rotating RT8.  The top line on the OLED display shows you the current oscillator group name.  '[A]' means that the 1st and 2nd oscillators are the target to edit.  In this case turn RT8 clockwise, you will get '[B]'.  
+
+### 11-3. FREQ (RT2/RT5)  
+
+You can edit the number of sine waves in an oscillation cycle.  FREQ=1 means sin(x) and FREQ=2 means sin(2x).  
+
+### 11-4. DETU (RT3/RT6)  
+
+You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 and DETU=15 means sin(2.15x).  
+
+### 11-5. LEVL (RT4/RT7)  
+
+You can edit the output level of the oscillator.  Bigger number, you will get larger output.  
+When ADJS parameter is OFF, you should make less or equal than 255 for total of the audio output operators.  Never mind this when ADJS is ON.   
+
+## 12. OPERATOR/OSCILLATOR ENVELOPE  
+You can edit the envelopes for the FM synthesis operators' output levels and the Additive synthesis oscillators' output levels.  The envelope value is from 0.0 to 1.0.  The output will be 0 if the envelope is 0.0,  and will be the output level if the envelope is 1.0.    
+This envelope works along the VCA envelope transition.  There are 3 parameters (AT, DC, ST).  AT is the envelope value at note-on.  DC is it at VCA decay beginning.  ST is it at VCA sustain beginning.  
+![OPR/OSC ENVELOPE](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr1.png)  
+
+The parameters are only 3 points' values, however PiFM+S calculates the other 4 points' values.  Therefore the envelope has 7 points.  PiFM+S generates 7 wave shapes to play sound.  
+An example of 7 wave shapes is as below.  
+
+|Envelope Transition|Name|Wave Shape|
+|---|---|---|
+|AT:Note-On|ATTACK0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape1.jpg)|
+|complement 1|ATTACK1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape2.jpg)|
+|complement 2|ATTACK2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape3.jpg)|
+|DC:DECAY|DECAY0|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape4.jpg)|
+|complement 1|DECAY1|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape5.jpg)|
+|complement 2|DECAY2|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape6.jpg)|
+|ST:SUSTAIN|SUSTAIN|![ATTACK0](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape7.jpg)|
+　
+### 12-1. OLED Display
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
+
+### 12-2. OSCA (RT8)  
+
+You can change the operator & oscillator to edit by rotating RT8.  The top line on the OLED display shows you the current operator & oscillator group number.  '[1]' means that the 1st operator and A group oscillators is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
+	
+### 12-3. ATfm (RT2)  
+
+The envelope value (0.0 .. 1.0) of the FM operator output level at Note-On.  No output during envelope is zero.  
+	
+### 12-4. DCfm (RT3)  
+
+The envelope value (0.0 .. 1.0) of the FM operator output level at VCA decay beginning.  No output during envelope is zero.  
+
+### 12-5. STfm (RT4)  
+
+The envelope value (0.0 .. 1.0) of the FM operator output level at VCA sustain beginning.  No output during envelope is zero.  
+
+### 12-6. ATad (RT5)  
+
+The envelope value (0.0 .. 1.0) of the Additive synthesis oscillator output level at Note-On.  No output during envelope is zero.  
+
+### 12-7. DCad (RT6)  
+
+The envelope value (0.0 .. 1.0) of the Additive synthesis oscillator output level at VCA decay beginning.  No output during envelope is zero.  
+
+### 12-8. STad (RT7)  
+
+The envelope value (0.0 .. 1.0) of the Additive synthesis oscillator output level at VCA sustain beginning.  No output during envelope is zero.  
 
 
-## 11. WAVE SHAPE
+## 13. WAVE SHAPE
 You will see the current wave shape before filtered as a graph.  
 You can also save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.  
 
-### 11-1. OLED Display
+### 13-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/07_waveshape.jpg)  
 
 The wave shape you will see is the FM wave generator's output before filtered.  
 	
-### 11-2. NAME (RT1)  
+### 13-2. NAME (RT1)  
 
 You can enter a wave shape name to save.  
 
-### 11-3. CURS (RT2)  
+### 13-3. CURS (RT2)  
 
 Move the cursor to edit position.  
 
-### 11-4. SAVE (RT3)  
+### 13-4. SAVE (RT3)  
 
 You can save the wave shape into a SD card like sampling wave shapes.  The saved wave shapes can be used for the operator's wave shape.	
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse.jpg)  
 
 ![Algorithm](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_wave_reuse_diagram.jpg)  
-　
-## 12. ADDITIVE WAVE SYNTHESIS
-Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and string instruments.  You can use 12 sine waves maximum by using 4 operators in the FM synthesis as 4 sine wave generators.  
-
-### 12-1. OLED画面
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave.jpg) 　
-
-A sine wave consists of 3 parameters (FREQ, DETU and LEVL).  There are 4 columns (A, B, C, D) and each column has 2 sine waves.  So you can add 8 sine waves maximum.  
-
-### 12-2. FREQ (RT2/RT5)  
-
-You can edit the number of sine waves in an oscillation cycle.  FREQ=1 means sin(x) and FREQ=2 means sin(2x).  
-
-### 12-3. DETU (RT3/RT6)  
-
-You can edit the fraction part of the number of waves, from .00 to .99.  FREQ=2 and DETU=15 means sin(2.15x).  
-
-### 12-4. LEVL (RT4/RT7)  
-
-You can edit the output level of the oscillator.  Bigger number, you will get larger output.  
-When ADJS parameter is OFF, you should make less or equal than 255 for total of the audio output operators.  Never mind this when ADJS is ON.   
-
-## 13. OPERATOR ENVELOPE
-You can edit the envelopes for the operator waves.  This envelope is not for the VCA.  The operator envelope is used in a process to reform one cycle wave shape in the operator.  
-Here are samples.  The first one is without operator envelope.  The second one has an envelope.    
-
-|Operator Envelope|Output Wave Shape|
-|---|---|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_00.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_01.jpg)|
-|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_10.jpg)|![Envelope](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_11.jpg)|  
-
-The reform works as below.  No wave outputs during envelope is zero.      
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_02.jpg)  
-
-The operator envelope has following parameters.  
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_osc_adsr.png)  
-　
-### 13-1. OLED Display
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/08_osc_adsr.jpg) 　
-
-### 13-2. OSCA (RT8)  
-
-You can change the operator to edit by rotating RT8.  The top line is the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
-	
-### 13-3. StLv (RT2)  
-
-Start level (0.0 .. 1.0) of the envelope.  No wave outputs during envelope is zero.  
-	
-### 13-4. ATCK (RT3)  
-
-Attack time (0..511) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately. 	 
-
-### 13-5. DECY (RT4)  
-
-Decay time (0..511) to sweep the envelope to the sustain level from 1.0.  Zero means immediately. 	 
-
-### 13-6. SuLv (RT5)  
-
-Sustain level (0.0 .. 1.0) after the decay process.  
-
-### 13-7. SuRs (RT6)  
-
-Release time (0..511) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
-
-### 13-8. EdLv (RT7)  
-
-End level (0.0 .. 1.0).  
 
 
 ## 14. FILTER
