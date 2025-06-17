@@ -234,54 +234,55 @@ Maximum fluctuation of the cut off frequency by the LFO.
 PiFM+S filter envelope can change both the cut off frequency and the resonance value of the filter along time after MIDI note-on.  The filter envelope has following parameters.  
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_flt_adsr.png)  
-
-#### 6-2-1. INTV 
-
-The filter envelope of PiFM+S has a it's own time unit to change the envelope value.  The value is from 10 to 50 for the general instruments.	  
 	
-#### 6-2-2. FQmx 
+#### 6-2-1. FQmx (RT1)  
 
 Maximum fluctuation of the cut off frequency by the filter envelope.  
 
-#### 6-2-3. FQrv  
+#### 6-2-2. FQrv (RT2)  
 
 Turn off: Positive envelope for the cut off frequency.  
 Turn on: Negative envelope for the cut off frequency.    
 	
-#### 6-2-4. Qfmx  
+#### 6-2-3. Qfmx (RT3)  
 
 Maximum fluctuation of the resonance by the filter envelope.  
 
-#### 6-2-5. Qfrv  
+#### 6-2-4. Qfrv (RT4)  
 
 Turn off: Positive envelope for the resonance.  
 Turn on: Negative envelope for the resonance.    
-　
-#### 6-2-6. VELO  
+
+#### 6-2-5. VELO (RT5)  
 
 You can edit the ratio which MIDI Note-ON velocity affects to the filter envelope.  0.0 is to ignore the velocity.  Larger value (up to 5.0), you will get larger envelope.  
 
-#### 6-2-6. StLv  
+#### 6-2-6. KEYS (RT6)  
+
+Key scale sensitivity from -9 to +9.  
+0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
+	
+#### 6-2-7. StLv (RT2)  
 
 Start level (0.0 .. 1.0) of the envelope.  You will get the FREQ cut off frequency and RESO resonance values if the level is zero. And get FREQ\+FQmx and RESO\+Qfmx values if the level is 1.0.  
 	
-#### 6-2-7. ATCK  
+#### 6-2-8. ATCK (RT3)  
 
-Attack time (INTV unit times) to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately.  
+Attack time in second to sweep the envelope to envelope=1.0 from the start level.  Zero means immediately.  
 
-#### 6-2-8. DECY  
+#### 6-2-9. DECY (RT4)  
 
-Decay time (INTV unit times) to sweep the envelope to the sustain level from 1.0.  Zero means immediately.  
+Decay time in second to sweep the envelope to the sustain level from 1.0.  Zero means immediately.  
 
-#### 6-2-9. SuLv  
+#### 6-2-10. SuLv (RT5)  
 
 Sustain level (0.0 .. 1.0) after the decay process.  
 
-#### 6-2-10. SuRs  
+#### 6-2-11. SuRs (RT6)  
 
-Release time (INTV unit times) to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
+Release time in second to sweep the envelope to the end level from the sustain level.  Zero means immediately.  
 
-#### 6-2-11. EdLv  
+#### 6-2-12. EdLv (RT7)  
 
 End level (0.0 .. 1.0).  
 
