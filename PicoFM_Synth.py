@@ -331,6 +331,9 @@ async def get_8encoder():
                             M5Stack_8Encoder_class.status['button'][rt] = True
                             M5Stack_8Encoder_class.status['on_change']['button'][rt] = True
                             on_change = True
+                            if change and Application.EDITOR_MODE == False:
+                                Application.EDITOR_MODE = True
+                                SynthIO.audio_pause()
 #                            print('TURN ON:', rt)
                             break
                         
@@ -1063,6 +1066,8 @@ class MIDI_class:
                 self.notes_stack.remove(midi_note_number)
                 self.synthIO.filter_release(self.filters[midi_note_number])
                 del self.filters[midi_note_number]
+                
+        self.synthesizer.release_all()
         
 
 ################# End of MIDI Class Definition #################
