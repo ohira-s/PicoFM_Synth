@@ -3575,7 +3575,7 @@ class Application_class:
             'LFO_RATE'       : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
             'LFO_FQMAX'      : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
             'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
-            'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y':  1, 'w': 98}},
+            'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y':  1, 'w': 30}},
             'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 10, 'w': 98}},
             'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 19, 'w': 98}},
             'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 28, 'w': 98}},
