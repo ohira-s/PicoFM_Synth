@@ -137,6 +137,10 @@
 #     0.4.1: 06/14/2025
 #           The wave shape envelope got transiting more smoothly.
 #
+#     0.5.0: 06/17/2025
+#           The filter envelope got working under millisecond unit.
+#           The filter key sensitivity is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -690,6 +694,38 @@ class M5Stack_8Encoder_class:
 
 
 ###################################
+# CLASS: supervisor.ticks related
+###################################
+class Ticks:
+    _TICKS_PERIOD = const(1<<29)
+    _TICKS_MAX = const(_TICKS_PERIOD-1)
+    _TICKS_HALFPERIOD = const(_TICKS_PERIOD//2)
+
+    @classmethod
+    def add(cls, ticks, delta):
+        # Add a delta to a base number of ticks, performing wraparound at 2**29ms.
+        return (ticks + delta) % _TICKS_PERIOD
+
+    @classmethod
+    def diff(cls, ticks1, ticks2):
+        # Compute the signed difference between two ticks values, assuming that they are within 2**28 ticks
+        diff = (ticks1 - ticks2) & _TICKS_MAX
+        diff = ((diff + _TICKS_HALFPERIOD) & _TICKS_MAX) - _TICKS_HALFPERIOD
+        return diff
+
+    @classmethod
+    def less(cls, ticks1, ticks2):
+        # Return true iff ticks1 is less than ticks2, assuming that they are within 2**28 ticks
+        return cls.ticks_diff(ticks1, ticks2) < 0
+    
+    @classmethod
+    def ms(cls):
+        return supervisor.ticks_ms()
+
+################# End of Thicks Class Definition #################
+
+
+###################################
 # CLASS: USB MIDI
 ###################################
 class MIDI_class:
@@ -711,9 +747,9 @@ class MIDI_class:
         # USB MIDI HOST port
         h = usb_host.Port(usb_midi_host_port[0], usb_midi_host_port[1])
         if supervisor.runtime.usb_connected:
-            print('USB<host>!')
+            print('USB:host')
         else:
-            print('!USB<host>')
+            print('USB:device')
 
         # For receiving and treating MIDI events
         self.notes = {}						# {note number: Note object}
@@ -864,7 +900,7 @@ class MIDI_class:
                         del self.filters[stop_note]
 
                     # Generate a filter for the note, then store the filter number
-                    self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity)
+                    self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity, midi_note_number)
 #                    print('NOTE FILTER:', self.filters[midi_msg.note], self.synthIO.filter(self.filters[midi_note_number]))
                     init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
 
@@ -1439,7 +1475,7 @@ class FM_Waveshape_class:
         
         return level / FM_Waveshape_class.OSC_LEVEL_MAX * FM_Waveshape_class.OSC_MODULATION_MAX
 
-    # SOS
+    # Calculate an operator output level in a phase
     def operator_output_level(self, op_num, phase=0, audio_operator = False):
         level = self.operator_level(self._oscillators[op_num]['amplitude'], audio_operator)
         
@@ -2155,18 +2191,18 @@ class SynthIO_class:
                 'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'ADSR_INTERVAL'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   1, 'MAX':  1000, 'VIEW': '{:5d}'},
+                'FILTER_KEYSENSE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':  -9, 'MAX':     9, 'VIEW': '{:+2d}'},
                 'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'ADSR_FQ_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0, 'VIEW': '{:3.1f}'},
+                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:3.1f}'},
                 'ADSR_Qf_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
-                'DECAY_TIME'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
-                'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 99, 'VIEW': '{:3d}'},
-                'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0, 'VIEW': '{:3.1f}'},
+                'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
+                'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
+                'DECAY_TIME'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
+                'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
+                'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
+                'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
+                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:3.1f}'},
                 'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5}
             },
 
@@ -2329,7 +2365,7 @@ class SynthIO_class:
                 'MODULATION'     : 0,
                 'LFO_RATE'       : 1.20,
                 'LFO_FQMAX'      : 1000,
-                'ADSR_INTERVAL'  : 10,
+                'FILTER_KEYSENSE': 0,
                 'ADSR_FQMAX'     : 1000,
                 'ADSR_FQ_REVS'   : 0,
                 'ADSR_QfMAX'     : 0.0,
@@ -2341,7 +2377,10 @@ class SynthIO_class:
                 'SUSTAIN_RELEASE': 50,
                 'END_LEVEL'      : 0.0,
                 'ADSR_VELOCITY'  : 0.0,
-                'CURSOR'         : 0
+                'CURSOR'         : 0,
+                
+                # Internal data
+                'TIME_SPAN'      : 0.0		# Sum of ATTACK_TIME, DECAY_TIME, SUSTAIN_RELEASE
             },
             
             # VCA
@@ -2601,7 +2640,7 @@ class SynthIO_class:
     def lfo_sound_bend(self):
         return self._lfo_sound_bend
 
-    # Generate the Filter
+    # Generate and/or Update a Filter
     def generate_filter(self, update=False):
 
         # Update the filte LFO value
@@ -2619,30 +2658,21 @@ class SynthIO_class:
 #            print('FILTER VELOCITY:', self.filter_storage[v]['VELOCITY'], self._synth_params['FILTER']['ADSR_VELOCITY'], adsr_velocity)
             
             # Starting filters
-            if   self.filter_storage[v]['DURATION'] == 0:
+            if   self.filter_storage[v]['START_TIME'] == 0:
                 if len(self._filter_adsr) > 0:
-                    monotonic = int(time.monotonic() * 1000) % 10000
                     self.filter_storage[v]['TIME'] = 0
-#                    print('ADD INTERVAL0:', v, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'], monotonic)
-                    self.filter_storage[v]['DURATION'] = monotonic
+                    self.filter_storage[v]['START_TIME'] = Ticks.ms()
                     offset = self.get_filter_adsr(0, adsr_velocity)
-#                    print('  OFFSET TIM0:', offset, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'])
             
             # Working filters
             elif self.filter_storage[v]['TIME'] >= 0:
-                adsr_interval = self._synth_params['FILTER']['ADSR_INTERVAL']
-                interval = self.filter_storage[v]['DURATION']
+                interval = self.filter_storage[v]['START_TIME']
                 if interval >= 0 and len(self._filter_adsr) > 0:
-                    monotonic = int(time.monotonic() * 1000) % 10000
-                    delta_mono = (monotonic - interval) % 10000
-#                    print('TIME:', monotonic, interval, delta_mono, adsr_interval)
-                    if delta_mono >= adsr_interval:
+                    tick_time = Ticks.ms()
+                    delta_ticks = Ticks.diff(tick_time, interval)
+                    if delta_ticks > 0:
+                        self.filter_storage[v]['TIME'] += (delta_ticks / 1000.0)
                         offset = self.get_filter_adsr(self.filter_storage[v]['TIME'], adsr_velocity)
-                        self.filter_storage[v]['TIME'] += int(delta_mono / adsr_interval)
-#                        print('ADD INTERVALW:', v, self.filter_storage[v]['TIME'], self.filter_storage[v]['DURATION'], monotonic, adsr_interval)
-                        self.filter_storage[v]['DURATION'] = monotonic
-                        offset = self.get_filter_adsr(self.filter_storage[v]['TIME'], adsr_velocity)
-#                        print('  OFFSET TIMW:', v, offset, self.filter_storage[v]['TIME'], delta_mono, adsr_interval, int(delta_mono / adsr_interval))
 
 #            print('RET get_offset_by_adsr:', offset)
             return offset
@@ -2676,13 +2706,13 @@ class SynthIO_class:
         # Generate a filter
         for v in list(range(len(self.filter_storage))):
             if   ftype == SynthIO_class.FILTER_PASS:
-                self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'DURATION': 0, 'VELOCITY': 127}
+                self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
                 
             elif ftype == SynthIO_class.FILTER_LPF:
 
                 # Make new filter
                 if self.filter_storage[v]['FILTER'] is None:
-                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1, 'VELOCITY': 127}
+                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
                     delta = update_filter_lfo()
                     offset = get_offset_by_adsr(v)
                     self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
@@ -2711,7 +2741,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_HPF:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1, 'VELOCITY': 127}
+                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -2725,7 +2755,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_BPF:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'DURATION': -1, 'VELOCITY': 127}
+                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -2739,7 +2769,7 @@ class SynthIO_class:
             elif ftype == SynthIO_class.FILTER_NOTCH:
                 if self.filter_storage[v] is None:
                     if update == False:
-                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'DURATION': -1, 'VELOCITY': 127}
+                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
                 else:
                     # Update filter LFO
                     delta = update_filter_lfo()
@@ -2751,16 +2781,25 @@ class SynthIO_class:
 #                    print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
 
     # Get the filter
-    def filter(self, voice=None, velocity=127):
+    def filter(self, voice=None, velocity=127, note_number=60):
         # Get a vacant filter number
         if voice is None:
             for flt in list(range(len(self.filter_storage))):
                 if self.filter_storage[flt] is not None:
                     if self.filter_storage[flt]['TIME'] < 0:
                         self.filter_storage[flt]['TIME'] = 0
-                        self.filter_storage[flt]['DURATION'] = 0
-                        self.filter_storage[flt]['VELOCITY'] = velocity
-#                        print('SET FILTER VELOCITY:', velocity)
+                        self.filter_storage[flt]['START_TIME'] = 0
+                        keys = self._synth_params['FILTER']['FILTER_KEYSENSE']
+                        if keys == 0:
+                            magni = 1.0
+                            
+                        elif keys > 0:  # 0.1 --- 1.0
+                            magni = 1.0 - keys * (128 - note_number) / 1280
+                            
+                        else:           # 1.0 --- 0.1
+                            magni = 1.0 + keys * note_number / 1280
+
+                        self.filter_storage[flt]['VELOCITY'] = int(velocity * magni)
                         return flt
                     
             return -1
@@ -2771,7 +2810,7 @@ class SynthIO_class:
     def filter_release(self, voice):
 #        print('RELEASE FILTER:', voice, self.filter_storage[voice])
         self.filter_storage[voice]['TIME'] = -1
-        self.filter_storage[voice]['DURATION'] = -1
+        self.filter_storage[voice]['START_TIME'] = -1
         self.filter_storage[voice]['FILTER'] = None
 
     # Get the filter LFO
@@ -2790,16 +2829,24 @@ class SynthIO_class:
                 adsr = 0.0
                 
             return adsr
-            
+
+
         # Generate filter ADSR
+        FILTER_STEPS = 126
+        FILTER_STEPS3 = int(FILTER_STEPS / 3)
         self._filter_adsr = []
         filter_params = self.synthio_parameter('FILTER')
 #        print('FILTER PARAMS:', filter_params.keys())
-        
+                
+        # Update the filter time span
+        filter_params['TIME_SPAN'] = filter_params['ATTACK_TIME'] + filter_params['DECAY_TIME'] + filter_params['SUSTAIN_RELEASE']
+        filter_step = filter_params['TIME_SPAN'] / FILTER_STEPS
+#        print('FILTER TIME SPAN:', filter_params['TIME_SPAN'], filter_step)
+
         # Attack
         start = filter_params['START_LEVEL']
         self._filter_adsr.append(start)
-        duration = filter_params['ATTACK_TIME']
+        duration = FILTER_STEPS3 if filter_step <= 0.0 else int(filter_params['ATTACK_TIME'] / filter_step)
         if duration > 0:
             for tm in list(range(1, duration + 1)):
                 adsr = calc_linear(tm, duration, start, 1.0)
@@ -2808,7 +2855,9 @@ class SynthIO_class:
             start = adsr
                 
         # Decay to Sustain
-        duration = filter_params['DECAY_TIME'] - 1
+        start = 1.0
+        self._filter_adsr.append(start)
+        duration = FILTER_STEPS3 if filter_step <= 0.0 else int(filter_params['DECAY_TIME'] / filter_step)
         sustain  = filter_params['SUSTAIN_LEVEL']
         if duration > 0:
             for tm in list(range(1, duration + 1)):
@@ -2816,6 +2865,7 @@ class SynthIO_class:
                 self._filter_adsr.append(adsr)
                 
             start = adsr
+            self._filter_adsr.append(sustain)
 
         # No decay
         else:
@@ -2823,7 +2873,7 @@ class SynthIO_class:
             start = sustain
 
         # Sustain Release
-        duration = filter_params['SUSTAIN_RELEASE']
+        duration = FILTER_STEPS3 if filter_step <= 0.0 else int(filter_params['SUSTAIN_RELEASE'] / filter_step)
         end_level = filter_params['END_LEVEL']
         if duration > 0:
             for tm in list(range(0, duration)):
@@ -2837,15 +2887,21 @@ class SynthIO_class:
     def get_filter_adsr(self, interval=None, adsr_velocity=1.0):
         if interval is None:
             return self._filter_adsr
-        
+
+        filter_params = self.synthio_parameter('FILTER')
+        if filter_params['TIME_SPAN'] > 0.0:
+            interval = int((interval / filter_params['TIME_SPAN']) * len(self._filter_adsr))
+        else:
+            interval = 0
+
         if 0 <= interval and interval < len(self._filter_adsr):
-            offset_freq = int(self._filter_adsr[interval] * adsr_velocity * self.synthio_parameter('FILTER')['ADSR_FQMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_FQ_REVS'] == 0 else -1))
-            offset_qfac = int(self._filter_adsr[interval] * adsr_velocity * self.synthio_parameter('FILTER')['ADSR_QfMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_Qf_REVS'] == 0 else -1))
+            offset_freq = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_FQMAX'] * (1 if filter_params['ADSR_FQ_REVS'] == 0 else -1))
+            offset_qfac = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_QfMAX'] * (1 if filter_params['ADSR_Qf_REVS'] == 0 else -1))
             return (offset_freq, offset_qfac)
 
         if interval >= len(self._filter_adsr):
-            offset_freq = int(self._filter_adsr[-1] * adsr_velocity * self.synthio_parameter('FILTER')['ADSR_FQMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_FQ_REVS'] == 0 else -1))
-            offset_qfac = int(self._filter_adsr[-1] * adsr_velocity * self.synthio_parameter('FILTER')['ADSR_QfMAX'] * (1 if self.synthio_parameter('FILTER')['ADSR_Qf_REVS'] == 0 else -1))
+            offset_freq = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_FQMAX'] * (1 if filter_params['ADSR_FQ_REVS'] == 0 else -1))
+            offset_qfac = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_QfMAX'] * (1 if filter_params['ADSR_Qf_REVS'] == 0 else -1))
             return (offset_freq, offset_qfac)
         
         return (0, 0.0)
@@ -3371,13 +3427,13 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_FILTER_ADSR_RANGE, 'EDITOR': [
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_INTERVAL', 'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQMAX',    'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQ_REVS',  'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_QfMAX',    'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_Qf_REVS',  'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_VELOCITY', 'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',        'OSCILLATOR': None}
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQMAX',      'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQ_REVS',    'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_QfMAX',      'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_Qf_REVS',    'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_VELOCITY',   'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'FILTER_KEYSENSE', 'OSCILLATOR': None},
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',          'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_FILTER_ADSR, 'EDITOR': [
@@ -3514,24 +3570,24 @@ class Application_class:
             'LFO_RATE'       : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
             'LFO_FQMAX'      : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
             'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
-            'ADSR_INTERVAL'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'INTV:', 'x':  30, 'y':  1, 'w': 40}},
-            'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y': 10, 'w': 98}},
-            'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 19, 'w': 98}},
-            'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 28, 'w': 98}},
-            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 37, 'w': 98}},
-            'ADSR_VELOCITY'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'VELO:', 'x':  30, 'y': 46, 'w': 98}},
+            'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y':  1, 'w': 98}},
+            'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 10, 'w': 98}},
+            'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 19, 'w': 98}},
+            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 28, 'w': 98}},
+            'ADSR_VELOCITY'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'VELO:', 'x':  30, 'y': 37, 'w': 98}},
+            'FILTER_KEYSENSE': {PAGE_FILTER_ADSR_RANGE: {'label': 'KEYS:', 'x':  30, 'y': 46, 'w': 40}},
             'START_LEVEL'    : {PAGE_FILTER_ADSR: {'label': 'StLv:', 'x':  30, 'y':  1, 'w': 30}},
-            'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATad:', 'x':  30, 'y': 10, 'w': 98}},
-            'DECAY_TIME'     : {PAGE_FILTER_ADSR: {'label': 'DCad:', 'x':  30, 'y': 19, 'w': 98}},
+            'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
+            'DECAY_TIME'     : {PAGE_FILTER_ADSR: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
             'SUSTAIN_LEVEL'  : {PAGE_FILTER_ADSR: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
-            'SUSTAIN_RELEASE': {PAGE_FILTER_ADSR: {'label': 'STad:', 'x':  30, 'y': 37, 'w': 98}},
+            'SUSTAIN_RELEASE': {PAGE_FILTER_ADSR: {'label': 'SuRs:', 'x':  30, 'y': 37, 'w': 98}},
             'END_LEVEL'      : {PAGE_FILTER_ADSR: {'label': 'EdLv:', 'x':  30, 'y': 46, 'w': 98}}
             
         },
 
         'VCA': {
-            'ATTACK'  : {PAGE_VCA: {'label': 'ATad:', 'x':  30, 'y': 10, 'w': 98}},
-            'DECAY'   : {PAGE_VCA: {'label': 'DCad:', 'x':  30, 'y': 19, 'w': 98}},
+            'ATTACK'  : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
+            'DECAY'   : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
             'SUSTAIN' : {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
             'RELEASE' : {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 37, 'w': 98}},
             'KEYSENSE': {PAGE_VCA: {'label': 'KEYS:', 'x':  30, 'y': 46, 'w': 98}},
@@ -3934,6 +3990,13 @@ class Application_class:
 
         # Search sound files just moving into the LOAD page
         elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_LOAD:
+            # File loading splush
+            display.fill(0)
+            display.text('[LOAD]', 30, 15, 1, 2)
+            display.text('Searching files.', 15, 35, 1)
+            display.show()
+
+            # Search files
             dataset = SynthIO.synthio_parameter('LOAD')
             finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
             if finds > 0:
@@ -4229,7 +4292,8 @@ class Application_class:
 
                             # Sound parameter pages
                             else:
-                                SynthIO.setup_synthio()
+                                if parameter != 'CURSOR':
+                                    SynthIO.setup_synthio()
 
 ################# End of Applicatio  Class Definition #################
 
