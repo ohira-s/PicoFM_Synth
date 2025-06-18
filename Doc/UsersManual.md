@@ -155,8 +155,8 @@ There are the following parameter pages.  'BT4x2' means that press BT4 twice.
 |FILTER ENVELOPE|Filter envelope basic settings.|BT3x2|
 |FILTER ADSR|Envelope for the filter.|BT3x3|
 |VCA|Envelope for the VCA.|BT4|
-|SAVE|Save the current sound parameters.|BT7|
-|LOAD|Load a sound parameters.|BT6|
+|SAVE|Save the current sound parameters.|BT6|
+|LOAD|Load a sound parameters.|BT7|
 |SAMPLING|Sample sound to generate wave shape data.|BT5|
 
 

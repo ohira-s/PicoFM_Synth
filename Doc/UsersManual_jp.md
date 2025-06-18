@@ -157,8 +157,8 @@
 |FILTER ENVELOPE|フィルターエンベロープの全体設定をします。|BT3x2|
 |FILTER ADSR|フィルターエンベロープのADRSを設定します。|BT3x3|
 |VCA|VCAのエンベロープを設定します。|BT4|
-|SAVE|音色を保存します。|BT7|
-|LOAD|音色を読み込みます。|BT6|
+|SAVE|音色を保存します。|BT6|
+|LOAD|音色を読み込みます。|BT7|
 |SAMPLING|音をサンプリングして保存します。|BT5|
 
 
