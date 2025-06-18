@@ -17,6 +17,7 @@ Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host
 |VCO|Note-ON/OFF|12 voices polyphonic.|
 ||LFO|Tremolo|
 |||Vibrate|
+||MIDI IN|Pitch Bend|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
@@ -166,15 +167,15 @@ You can see the current sound information and edit the FM algorithm.
 ### 6-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)  
 
-1) BANK:0  
+### 6-2. BANK:0  
 
 PiFM+S has 10 sound data banks from 0 to 9.  You can see the current sound bank number.  
 	
-2) SOUND:001 Piano  
+### 6-3. SOUND:001 Grand Piano  
 
 Each sound bank can be saved 1000 sounds from 000 to 999.  You can see the current sound number and its instrument name.  
 	
-3) ALGO:1:<1>+2  
+### 6-4. ALGO:1:<1>+2 (RT4) 
 
 You can see the FM algorithm of the current sound.  
 On this page, FM algorithms are shown with something like an expression.  For istance, '<1>\+2' or '<1>\*2'.  
@@ -201,22 +202,22 @@ PiFM+S has 11 algorithms.
 |9|<1>\*(2\*3+4)|
 |10|<1>\*(2+3+4)|
 	
-4) VOLM:5  
+### 6-5. VOLM:5 (RT5) 
 
 You can change the master volume from 1 to 9.  
 	
-5) UNIS:1  
+### 6-6. UNIS:1 (RT6) 
 
 You can change the unison mode, value is from 0 to 9.  
 0 is for Not-Unison mode.  PiFM+S plays one tone for a note.  
 In case of from 1 to 9, PiFM+S plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
 PiFM+S can play 6 notes maximum in the unison mode.    
-	
-6) ADJS:ON  
 
-Sum of audio output levels of both the FM Synthesis and the Additive Synthesis should be less or equal than 255.  However it is so hard to keep this rule during making sound.  
-When you set ADJS (ADJuSt output levels) to 'ON', PiFM+S will automatically adjust the sum of audio output levels to 255 in keeping each level ratio.  This is the internal process, so the output levels you entered are never changed.  
-In case of ADJS OFF, wave form exceeding the maximum output level will be clipped.  Normally you will get distorted sound.  
+### 6-7. PBND: 2 (RT7) 
+
+You can set a PITCH BEND pitch.  PiFM+S will change notes pitches playing when it receives the PITCH BEND event via MIDI-IN.  
+If PBND is 2 and PiFM+S plays a C4 note, PiFM+S changes the pitch from C4 to D4 when it receives the PITCH BEND + event.  And changes from C4 to A3# when it receives the PITCH BEND - event.  
+Set 0 to PBEND if you don't need the PITCH BEND.  
 
 
 ## 7. ALGORITHM
@@ -587,30 +588,36 @@ You can edit the VCA envelope for the audio output level.
 ### 17-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/10_vca.jpg) 
 
-### 17-2. ATCK (RT2)  
+### 17-2. ATCK (RT1)  
 
 Attack time in seconds.  
 	
-### 17-3. DECY (RT3)  
+### 17-3. DECY (RT2)  
 
 Decay time in seconds.  
 	
-### 17-4. SuLv (RT4)  
+### 17-4. SuLv (RT33)  
 
 Sustain level from 0.0 to 1.0.  
 
-### 17-5. RELS (RT5)  
+### 17-5. RELS (RT4)  
 
 Release time in seconds.  
 
-### 17-6. KEYS (RT6)  
+### 17-6. KEYS (RT5)  
 
 Key scale sensitivity from -9 to +9.  
 0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
 
-### 17-7. CURS (RT7)  
+### 17-7. CURS (RT6)  
 
 Move cursor to edit position.  
+
+### 17-8. ADJS (RT7) 
+
+Sum of audio output levels of both the FM Synthesis and the Additive Synthesis should be less or equal than 255.  However it is so hard to keep this rule during making sound.  
+When you set ADJS (ADJuSt output levels) to 'ON', PiFM+S will automatically adjust the sum of audio output levels to 255 in keeping each level ratio.  This is the internal process, so the output levels you entered are never changed.  
+In case of ADJS OFF, wave form exceeding the maximum output level will be clipped.  Normally you will get distorted sound.  
 
 
 ## 18. SAVE
