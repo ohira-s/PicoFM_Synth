@@ -145,6 +145,9 @@
 #           Made it larger (3072byte) that the buffer size for the audio mixer
 #           to reduce click noise from DAC.
 #
+#     0.5.2: 06/18/2025
+#           Pitch bend is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -217,7 +220,7 @@ import adafruit_midi
 from adafruit_midi.note_off import NoteOff
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.midi_message import MIDIUnknownEvent
-#from adafruit_midi.pitch_bend import PitchBend
+from adafruit_midi.pitch_bend import PitchBend
 #from adafruit_midi.program_change import ProgramChange
 import usb_host					# for USB HOST
 import usb.core
@@ -764,6 +767,7 @@ class MIDI_class:
         # For receiving and treating MIDI events
         self.notes = {}						# {note number: Note object}
         self.notes_phase = {}				# {note number: Note envelope phase}
+        self.notes_pitch = {}				# {note number: (Note frequency, Pitch bend frequency width}
         self.filters = {}					# {note number: filter number=voice}
         self.notes_stack = []				# [note1, note2,...]  contains only notes playing.
         self.synthIO = synthesizer
@@ -852,7 +856,8 @@ class MIDI_class:
                         midi_msg = self._usb_midi.receive()
 
 #                    print('MIDI MSG:', midi_msg, isinstance(midi_msg, MIDIUnknownEvent))                   
-                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
+#                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
+                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend):
                         break
                     
                     # Ignore unknown events (normally Active Sensing)
@@ -958,8 +963,10 @@ class MIDI_class:
 
                     # Copy the wave shape to a note waveform as python list slice
                     wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
+                    note_hz = synthio.midi_to_hz(midi_msg.note) + unison_hz
+                    self.notes_pitch[midi_note_number] = (note_hz, synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) + unison_hz - synthio.midi_to_hz(midi_msg.note) + unison_hz)
                     self.notes[midi_note_number] = synthio.Note(
-                        frequency=synthio.midi_to_hz(midi_msg.note) + unison_hz,
+                        frequency=self.notes_pitch[midi_note_number][0],
                         filter=init_filter,
                         envelope=note_env,
                         waveform=wave_shape
@@ -996,12 +1003,26 @@ class MIDI_class:
                             self.synthesizer.release(self.notes[midi_note_number])
                             del self.notes[midi_note_number]
                             del self.notes_phase[midi_note_number]
+                            del self.notes_pitch[midi_note_number]
                             self.notes_stack.remove(midi_note_number)
                             self.synthIO.filter_release(self.filters[midi_note_number])
                             del self.filters[midi_note_number]
 
 #                print('===NOTES :', self.notes)
 #                print('===VOICES:', self.notes_stack)
+
+                # Pitch bend
+                elif isinstance(midi_msg, PitchBend):
+                    if Application.EDITOR_MODE == True:
+                        Application.EDITOR_MODE = False
+                        self.synthIO.audio_pause(False)
+
+#                    print('PITCH BEND:', midi_msg)
+                    for midi_note_number in self.notes.keys():
+                        if self.notes[midi_note_number] is not None:
+                            pitch = int((midi_msg.pitch_bend - 8292) / 8292 * self.notes_pitch[midi_note_number][1])
+                            self.notes[midi_note_number].frequency = self.notes_pitch[midi_note_number][0] + pitch
+#                            print('NOTE FREQ:', midi_note_number, self.notes[midi_note_number].frequency)
 
                 # Not unison mode
                 if unison_heltz == 0:
@@ -2174,6 +2195,7 @@ class SynthIO_class:
                 'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
                 'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'PITCH_BEND'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':   12, 'VIEW': '{:1d}'},
                 'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
@@ -2293,6 +2315,7 @@ class SynthIO_class:
                 'VOLUME'      : 5,
                 'UNISON'      : 0,
                 'ADJUST_LEVEL': 1,
+                'PITCH_BEND'  : 2,
                 'CURSOR'      : 0
             },
             
@@ -3209,7 +3232,7 @@ class Application_class:
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'VOLUME', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'UNISON', 'OSCILLATOR': None},
-            {'CATEGORY': 'SOUND', 'PARAMETER': 'ADJUST_LEVEL', 'OSCILLATOR': None}
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'PITCH_BEND', 'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_ALGORITHM, 'EDITOR': [
@@ -3463,14 +3486,13 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_VCA, 'EDITOR': [
-            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'ATTACK',  'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'DECAY',   'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'SUSTAIN', 'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'RELEASE', 'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'KEYSENSE','OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'CURSOR',  'OSCILLATOR': None},
-            {'CATEGORY': None,  'PARAMETER': None,      'OSCILLATOR': None}
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'ADJUST_LEVEL', 'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_SAVE, 'EDITOR': [
@@ -3530,7 +3552,7 @@ class Application_class:
         PAGE_FILTER           : '               FILTER',
         PAGE_FILTER_ADSR_RANGE: '            F-ENV MOD',
         PAGE_FILTER_ADSR      : '           FILTER ENV',
-        PAGE_VCA              : 'VCA',
+        PAGE_VCA              : '                  VCA',
         PAGE_SAVE             : 'SAVE',
         PAGE_LOAD             : 'LOAD',
         PAGE_SAMPLING         : 'SAMPLING',
@@ -3548,7 +3570,8 @@ class Application_class:
             'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}},
             'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
             'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
-            'ADJUST_LEVEL': {PAGE_SOUND_MAIN: {'label': 'ADJS:', 'x':  30, 'y': 55, 'w': 74}},
+            'PITCH_BEND'  : {PAGE_SOUND_MAIN: {'label': 'PEND:', 'x':  30, 'y': 55, 'w': 74}},
+            'ADJUST_LEVEL': {PAGE_VCA: {'label': 'ADJS:', 'x':  30, 'y': 55, 'w': 74}},
             'AMPLITUDE'   : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A'  : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
             'LFO_SCALE_A' : {PAGE_SOUND_MODULATION: {'label': 'TrSC:', 'x':  30, 'y': 19, 'w': 98}},
@@ -3602,12 +3625,12 @@ class Application_class:
         },
 
         'VCA': {
-            'ATTACK'  : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
-            'DECAY'   : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
-            'SUSTAIN' : {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 28, 'w': 98}},
-            'RELEASE' : {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 37, 'w': 98}},
-            'KEYSENSE': {PAGE_VCA: {'label': 'KEYS:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'  : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
+            'ATTACK'  : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y':  1, 'w': 50}},
+            'DECAY'   : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 10, 'w': 98}},
+            'SUSTAIN' : {PAGE_VCA: {'label': 'SuLv:', 'x':  30, 'y': 19, 'w': 98}},
+            'RELEASE' : {PAGE_VCA: {'label': 'RELS:', 'x':  30, 'y': 28, 'w': 98}},
+            'KEYSENSE': {PAGE_VCA: {'label': 'KEYS:', 'x':  30, 'y': 37, 'w': 98}},
+            'CURSOR'  : {PAGE_VCA: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}}
         },
         
         'SAVE': {
