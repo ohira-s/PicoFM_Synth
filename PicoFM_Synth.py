@@ -141,6 +141,10 @@
 #           The filter envelope got working under millisecond unit.
 #           The filter key sensitivity is available.
 #
+#     0.5.1: 06/18/2025
+#           Made it larger (3072byte) that the buffer size for the audio mixer
+#           to reduce click noise from DAC.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -284,6 +288,9 @@ async def midi_in():
 ##########################################
 async def get_8encoder():
     while True:
+#        await asyncio.sleep(0.01)
+#        continue
+
         Encoder_obj.i2c_lock()
         on_change = False
         M5Stack_8Encoder_class.status['on_change']['switch'] = False
@@ -334,14 +341,14 @@ async def get_8encoder():
                             if change and Application.EDITOR_MODE == False:
                                 Application.EDITOR_MODE = True
                                 SynthIO.audio_pause()
-#                            print('TURN ON:', rt)
+
+                            await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
                             break
                         
                     else:
-#                        if M5Stack_8Encoder_class.status['button'][rt] == True:
-#                            print('TURN OFF:', rt)
                         M5Stack_8Encoder_class.status['button'][rt] = False
-
+                        await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
+                            
             Encoder_obj.i2c_unlock()
 
             # Do 8encoder tasks if something changed
@@ -2083,6 +2090,10 @@ class FM_Waveshape_class:
 # CLASS: synthio
 ################################################
 class SynthIO_class:
+    # DAC buffer size
+#    DAC_BUFFER = 2048
+    DAC_BUFFER = 3072
+    
     # Synthesize voices
     MAX_VOICES = 12
 
@@ -2139,7 +2150,7 @@ class SynthIO_class:
 
         # snthio buffer definitions to play sounds
         #   Smaller buffer is better due to avoid delay playing sounds.
-        self.mixer = audiomixer.Mixer(channel_count=1, sample_rate=FM_Waveshape_class.SAMPLE_RATE, buffer_size=2048)
+        self.mixer = audiomixer.Mixer(channel_count=1, sample_rate=FM_Waveshape_class.SAMPLE_RATE, buffer_size=SynthIO_class.DAC_BUFFER)
         self.audio.play(self.mixer)
         self.audio_pause()
         self.mixer.voice[0].play(self._synth)
@@ -3184,8 +3195,8 @@ class Application_class:
         [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],								# BT3
         [PAGE_VCA, PAGE_SOUND_MODULATION],														# BT4
         [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],													# BT5
-        [PAGE_LOAD],																			# BT6
-        [PAGE_SAVE],																			# BT7
+        [PAGE_SAVE],																			# BT6
+        [PAGE_LOAD],																			# BT7
         []																						# BT8
     ]
     
@@ -4286,7 +4297,8 @@ class Application_class:
                                         Encoder_obj.led(6, [0x00, 0x00, 0x00])
                                         Encoder_obj.i2c_unlock()
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
-                                        self.show_OLED_page(['SAMPLE'])
+#                                        self.show_OLED_page(['SAMPLE'])
+                                        self.show_OLED_page()
 
                                     # Save the current wave sampled
                                     elif sampling == 'SAVE':
