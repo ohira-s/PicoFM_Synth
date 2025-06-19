@@ -148,6 +148,9 @@
 #     0.5.2: 06/18/2025
 #           Pitch bend is available.
 #
+#     0.5.3: 06/19/2025
+#           Tremolo and/or Vibrate by the Modulation Wheel are available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -216,7 +219,7 @@ import audiobusio
 # MIDI
 import usb_midi					# for USB MIDI
 import adafruit_midi
-#from adafruit_midi.control_change import ControlChange
+from adafruit_midi.control_change import ControlChange
 from adafruit_midi.note_off import NoteOff
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.midi_message import MIDIUnknownEvent
@@ -234,6 +237,10 @@ i2s_data = board.GP11 # DIN on PCM5102	I2C SCL
 
 # Analog MIC
 from analogio import AnalogIn
+
+# PICO2 on board LED
+PICO2_LED = digitalio.DigitalInOut(board.GP25)
+PICO2_LED.direction = digitalio.Direction.OUTPUT
 
 ##########################################
 # MIDI IN in async task
@@ -856,10 +863,10 @@ class MIDI_class:
                         midi_msg = self._usb_midi.receive()
 
 #                    print('MIDI MSG:', midi_msg, isinstance(midi_msg, MIDIUnknownEvent))                   
-#                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
-                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend):
+#                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend):
+                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend) or isinstance(midi_msg, ControlChange):
                         break
-                    
+
                     # Ignore unknown events (normally Active Sensing)
                     if isinstance(midi_msg, MIDIUnknownEvent):
                         monotonic = int(time.monotonic() * 1000) % 10000
@@ -987,6 +994,22 @@ class MIDI_class:
 #                    self.synthesizer.envelope = SynthIO.vca_envelope()
                     self.synthesizer.press(self.notes[midi_note_number])
                     self.notes_stack.insert(0, midi_note_number)
+
+                # ControlChange
+                elif isinstance(midi_msg, ControlChange):
+#                    print('CONTROL CHANGE:', midi_msg)
+                    cc_mode = self.synthIO.generate_sound_lfo(midi_msg)
+                    if cc_mode != 0:
+                        for midi_note_number in self.notes.keys():
+                            if self.notes[midi_note_number] is not None:
+#                                print('MODULATION:', midi_note_number, cc_mode)
+                                if cc_mode & 0x01:
+                                    if self.synthIO.lfo_sound_amplitude() is not None:
+                                        self.notes[midi_note_number].amplitude = self.synthIO.lfo_sound_amplitude()
+                                    
+                                if cc_mode & 0x02:
+                                    if self.synthIO.lfo_sound_bend() is not None:
+                                        self.notes[midi_note_number].bend = self.synthIO.lfo_sound_bend()
 
                 # Note off
                 elif isinstance(midi_msg, NoteOff):
@@ -2137,6 +2160,7 @@ class SynthIO_class:
     
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
+    VIEW_OFF_MODULATION = ['OFF', 'ON', 'MODLT']
     VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+<2>*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+<2>*3+<4>', '8:<1>*(2+3)+<4>', '9:<1>*(2*3+4)', '10:<1>*(2+3+4)']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
@@ -2186,10 +2210,10 @@ class SynthIO_class:
                 'BANK'        : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'SOUND'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
-                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_MODULATION},
                 'LFO_RATE_A'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_MODULATION},
                 'LFO_RATE_B'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
@@ -2650,26 +2674,76 @@ class SynthIO_class:
             
         return self._wave_shape[phase]
 
-    # Generate the Sound
-    def generate_sound(self):
+    # Generate the Sound LFO
+    def generate_sound_lfo(self, control_change=None):
+        cc_mode = 0x00
+        
+        # Tremolo LFO: None
         if self._synth_params['SOUND']['AMPLITUDE'] == 0:
-            self._lfo_sound_amp = None
-            
-        else:
+            if control_change is None:
+                self._lfo_sound_amp = None
+
+        # Tremolo LFO: Always
+        elif self._synth_params['SOUND']['AMPLITUDE'] == 1:
             self._lfo_sound_amp = synthio.LFO(
                 rate=self._synth_params['SOUND']['LFO_RATE_A'],
                 scale=self._synth_params['SOUND']['LFO_SCALE_A'],
                 offset=1
             )
-
-        if self._synth_params['SOUND']['VIBR'] == 0:
-            self._lfo_sound_bend = None
             
+        # Tremolo LFO: By the Modulation Wheel
+        elif self._synth_params['SOUND']['AMPLITUDE'] == 2 and control_change is not None:
+            cc_mode = 0x01					# Change the tremlo depth by MIDI IN Controle Change
+            if control_change.value == 0:
+                self._lfo_sound_amp = None
+                
+            else:
+                if self._lfo_sound_amp is None:
+                    self._lfo_sound_amp = synthio.LFO(
+                        rate=self._synth_params['SOUND']['LFO_RATE_A'],
+                        scale=self._synth_params['SOUND']['LFO_SCALE_A'] * control_change.value / 127,
+                        offset=1
+                    )
+                    
+                else:
+                    self._lfo_sound_amp.scale = self._synth_params['SOUND']['LFO_SCALE_A'] * control_change.value / 127
+
         else:
+            self._lfo_sound_amp = None
+
+        # Vibrate LFO: None
+        if self._synth_params['SOUND']['VIBR'] == 0:
+            if control_change is None:
+                self._lfo_sound_bend = None
+            
+        # Vibrate LFO: Always
+        elif self._synth_params['SOUND']['VIBR'] == 1:
             self._lfo_sound_bend = synthio.LFO(
                 rate=self._synth_params['SOUND']['LFO_RATE_B'],
                 scale=self._synth_params['SOUND']['LFO_SCALE_B']
             )
+
+        # Vibrate LFO: By the Modulation Wheel
+        elif self._synth_params['SOUND']['VIBR'] == 2 and control_change is not None:
+            cc_mode |= 0x02					# Change the vibrate depth by MIDI IN Controle Change
+            if control_change.value == 0:
+                self._lfo_sound_bend = None
+                
+            else:
+                if self._lfo_sound_bend is None:
+                    self._lfo_sound_bend = synthio.LFO(
+                        rate=self._synth_params['SOUND']['LFO_RATE_B'],
+                        scale=self._synth_params['SOUND']['LFO_SCALE_B'] * control_change.value / 127,
+                        offset=0
+                    )
+                    
+                else:
+                    self._lfo_sound_bend.scale = self._synth_params['SOUND']['LFO_SCALE_B'] * control_change.value / 127
+
+        else:
+            self._lfo_sound_bend = None
+            
+        return cc_mode
 
     # Get the sound amplitude LFO
     def lfo_sound_amplitude(self):
@@ -2947,12 +3021,18 @@ class SynthIO_class:
 
     # Set up the synthio
     def setup_synthio(self):
+        # Start the setup
+        PICO2_LED.value = True
+
         self.mixer_voice_level()
-        self.generate_sound()
+        self.generate_sound_lfo()
         self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
         self.generate_filter_adsr()
         self.generate_filter()
         self._synth.envelope = self._envelope_vca
+
+        # End of the setup
+        PICO2_LED.value = False
 
     def view_value(self, category, parameter, oscillator=None):
         # Oscillator category parameter
@@ -4342,6 +4422,8 @@ class Application_class:
 ######### MAIN ##########
 #########################
 if __name__=='__main__':
+    # Turn on sign
+    PICO2_LED.value = True
 
     # I2C0: SSD1306 and 8Encoder are on the lines
     i2c0 = busio.I2C(board.GP1, board.GP0)		# I2C-0 (SCL, SDA)
@@ -4371,6 +4453,9 @@ if __name__=='__main__':
 
     # Create a MIDI object
     MIDI_obj = MIDI_class(SynthIO)
+
+    # End of the initialize process
+    PICO2_LED.value = False
 
     # Start the application with showing the editor top page.
     Application.start()
