@@ -274,7 +274,10 @@ You can edit tremolo and vibrate modulations to the VCO.
 
 ### 9-2. TREM (RT1)  
 
-Turn on the tremolo.
+Turn on the tremolo.  
+	- OFF: Disabled.  
+	- ON: Always ON.  
+	- MODLT: Enable with the modulation wheel.  
 	
 ### 9-3. TrRT (RT2)  
 
@@ -286,7 +289,10 @@ Set the effect depth of the tremolo.
 
 ### 9-5. VIBR (RT4)  
 
-Turn on the vibrate.
+Turn on the vibrate.  
+	- OFF: Disabled.  
+	- ON: Always ON.  
+	- MODLT: Enable with the modulation wheel.  
 
 ### 9-6. ViRT (RT5)  
 

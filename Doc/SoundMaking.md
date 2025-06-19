@@ -320,8 +320,11 @@ Key scale sensitivity from -9 to +9.
 
 #### 7-2-1. TREM  
 
-Turn on the tremolo.
-	
+Turn on the tremolo.  
+	- OFF: Disabled.  
+	- ON: Always ON.  
+	- MODLT: Enable with the modulation wheel.  
+
 #### 7-2-2. TrRT  
 
 Set the speed of the tremolo.  
@@ -334,7 +337,10 @@ Set the effect depth of the tremolo.
 
 #### 7-3-1. VIBR  
 
-Turn on the vibrate.
+Turn on the vibrate.  
+	- OFF: Disabled.  
+	- ON: Always ON.  
+	- MODLT: Enable with the modulation wheel.  
 
 #### 7-3-2. ViRT  
 
