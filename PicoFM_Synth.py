@@ -151,6 +151,9 @@
 #     0.5.3: 06/19/2025
 #           Tremolo and/or Vibrate by the Modulation Wheel are available.
 #
+#     0.5.4: 06/19/2025
+#           Treat Note-On with 0 velocity as Note-Off.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -897,103 +900,135 @@ class MIDI_class:
             unison_hz = 0
             while True:
                 # Note on
-                if isinstance(midi_msg, NoteOn):
+                if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
                     if Application.EDITOR_MODE == True:
                         Application.EDITOR_MODE = False
                         self.synthIO.audio_pause(False)
-                    
-                    # MIDI note number with the unison heltz (offset 1000)
-                    midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
-                    
-                    # The note is playing: stop the current note, then play new note
-#                    print('NOTE ON :', midi_msg.note, midi_msg.velocity, unison_hz, midi_note_number)
-                    if midi_note_number in self.notes:
-                        if self.notes[midi_note_number] is not None:
-                            self.synthesizer.release(self.notes[midi_note_number])
-                            self.notes_stack.remove(midi_note_number)
 
-                    # New note
-                    elif len(self.notes_stack) == SynthIO_class.MAX_VOICES:
-                        # Stop the oldest note if over max voices
-                        stop_note = self.notes_stack.pop()
-                        self.synthesizer.release(self.notes[stop_note])
-                        del self.notes[stop_note]
-                        self.synthIO.filter_release(self.filters[stop_note])
-                        del self.filters[stop_note]
-
-                    # Generate a filter for the note, then store the filter number
-                    self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity, midi_note_number)
-#                    print('NOTE FILTER:', self.filters[midi_msg.note], self.synthIO.filter(self.filters[midi_note_number]))
-                    init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
-
-                    # Note on velocity
-                    attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
-                    sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
+                    # Note On
+                    if isinstance(midi_msg, NoteOn) and midi_msg.velocity > 0:
+                        # MIDI note number with the unison heltz (offset 1000)
+                        midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
                         
-                    # VCA key senesitivity
-                    if   vca['KEYSENSE'] > 0:
-                        magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
-#                        print('VCA KEY SENSE+:', attack_level, magni)
-                        attack_level  = attack_level  + magni
-                        sustain_level = sustain_level + magni
-#                        print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
+                        # The note is playing: stop the current note, then play new note
+#                        print('NOTE ON :', midi_msg.note, midi_msg.velocity, unison_hz, midi_note_number)
+                        if midi_note_number in self.notes:
+                            if self.notes[midi_note_number] is not None:
+#                                print('REUSE NOTE:', midi_note_number)
+                                self.synthesizer.release(self.notes[midi_note_number])
+                                self.notes_stack.remove(midi_note_number)
+
+                        # New note
+                        elif len(self.notes_stack) == SynthIO_class.MAX_VOICES:
+                            # Stop the oldest note if over max voices
+                            stop_note = self.notes_stack.pop()
+#                            print('STOP THE OLDEST NOTE:', stop_note, self.notes[stop_note])
+                            if self.notes[stop_note] is not None:
+                                self.synthesizer.release(self.notes[stop_note])
+                                del self.notes[stop_note]
+                                self.synthIO.filter_release(self.filters[stop_note])
+                                del self.filters[stop_note]
+                            
+#                        else:
+#                            print('NEW NOTE:', midi_note_number)
+
+                        # Generate a filter for the note, then store the filter number
+                        self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity, midi_note_number)
+#                        print('NOTE FILTER:', self.filters[midi_msg.note], self.synthIO.filter(self.filters[midi_note_number]))
+                        init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
+
+                        # Note on velocity
+                        attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
+                        sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
+                            
+                        # VCA key senesitivity
+                        if   vca['KEYSENSE'] > 0:
+                            magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
+#                            print('VCA KEY SENSE+:', attack_level, magni)
+                            attack_level  = attack_level  + magni
+                            sustain_level = sustain_level + magni
+#                            print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
+                            
+                        elif vca['KEYSENSE'] < 0:
+                            magni = vca['KEYSENSE'] * midi_msg.note / 1280
+#                            print('VCA KEY SENSE-:', attack_level, magni)
+                            attack_level  = attack_level  + magni
+                            sustain_level = sustain_level + magni
+#                            print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
+
+                        # Adjust VCA ADSR ranges
+                        if   attack_level > 1.0:
+                            attack_level = 1.0
+                        elif attack_level < 0.0:
+                            attack_level = 0.0
+
+                        if   sustain_level > 1.0:
+                            sustain_level = 1.0
+                        elif sustain_level < 0.0:
+                            sustain_level = 0.0
+
+                        # Generate an ADSR for note
+                        note_env = synthio.Envelope(
+                                        attack_time=vca['ATTACK'],
+                                        decay_time=vca['DECAY'],
+                                        release_time=vca['RELEASE'],
+                                        attack_level=attack_level,
+                                        sustain_level=sustain_level
+                                    )
+
+                        # Play the note
+                        filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
+
+                        # Copy the wave shape to a note waveform as python list slice
+                        wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
+                        note_hz = synthio.midi_to_hz(midi_msg.note) + unison_hz
+                        self.notes_pitch[midi_note_number] = (note_hz, synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) + unison_hz - synthio.midi_to_hz(midi_msg.note) + unison_hz)
+                        self.notes[midi_note_number] = synthio.Note(
+                            frequency=self.notes_pitch[midi_note_number][0],
+                            filter=init_filter,
+                            envelope=note_env,
+                            waveform=wave_shape
+                        )
+                        self.notes[midi_note_number].waveform[:] = SynthIO.wave_shape(0)
                         
-                    elif vca['KEYSENSE'] < 0:
-                        magni = vca['KEYSENSE'] * midi_msg.note / 1280
-#                        print('VCA KEY SENSE-:', attack_level, magni)
-                        attack_level  = attack_level  + magni
-                        sustain_level = sustain_level + magni
-#                        print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
+                        # Wave shape switch status
+                        self.notes_phase[midi_note_number] = {'wave': 0, 'envelope': None, 'attack1': attack_level / 3, 'attack2': attack_level / 3 * 2, 'decay1': (attack_level - sustain_level) / 3 * 2 + sustain_level, 'decay2': (attack_level - sustain_level) / 3 + sustain_level}
 
-                    # Adjust VCA ADSR ranges
-                    if   attack_level > 1.0:
-                        attack_level = 1.0
-                    elif attack_level < 0.0:
-                        attack_level = 0.0
+                        # Tremolo
+                        if self.synthIO.lfo_sound_amplitude() is not None:
+                            self.notes[midi_note_number].amplitude=self.synthIO.lfo_sound_amplitude()
+                        
+                        # Vibrate
+                        if self.synthIO.lfo_sound_bend() is not None:
+                            self.notes[midi_note_number].bend=self.synthIO.lfo_sound_bend()
 
-                    if   sustain_level > 1.0:
-                        sustain_level = 1.0
-                    elif sustain_level < 0.0:
-                        sustain_level = 0.0
+#                        self.synthesizer.envelope = SynthIO.vca_envelope()
+                        self.synthesizer.press(self.notes[midi_note_number])
+                        self.notes_stack.insert(0, midi_note_number)
 
-                    # Generate an ADSR for note
-                    note_env = synthio.Envelope(
-                                    attack_time=vca['ATTACK'],
-                                    decay_time=vca['DECAY'],
-                                    release_time=vca['RELEASE'],
-                                    attack_level=attack_level,
-                                    sustain_level=sustain_level
-                                )
+                    # Note Off
+                    else:
+                        if Application.EDITOR_MODE == True:
+                            Application.EDITOR_MODE = False
+                            self.synthIO.audio_pause(False)
+                        
+                        # MIDI note number with the unison heltz (offset 1000)
+                        midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
 
-                    # Play the note
-                    filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
+#                        print('NOTE OFF:', midi_msg.note, midi_note_number)
+                        if midi_note_number in self.notes:
+                            if self.notes[midi_note_number] is not None:
+                                self.synthesizer.release(self.notes[midi_note_number])
+                                del self.notes[midi_note_number]
+                                del self.notes_phase[midi_note_number]
+                                del self.notes_pitch[midi_note_number]
+                                self.notes_stack.remove(midi_note_number)
+#                                print('STACK:', midi_note_number, len(self.notes_stack))
+                                self.synthIO.filter_release(self.filters[midi_note_number])
+                                del self.filters[midi_note_number]
 
-                    # Copy the wave shape to a note waveform as python list slice
-                    wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
-                    note_hz = synthio.midi_to_hz(midi_msg.note) + unison_hz
-                    self.notes_pitch[midi_note_number] = (note_hz, synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) + unison_hz - synthio.midi_to_hz(midi_msg.note) + unison_hz)
-                    self.notes[midi_note_number] = synthio.Note(
-                        frequency=self.notes_pitch[midi_note_number][0],
-                        filter=init_filter,
-                        envelope=note_env,
-                        waveform=wave_shape
-                    )
-                    self.notes[midi_note_number].waveform[:] = SynthIO.wave_shape(0)
-                    
-                    # Wave shape switch status
-                    self.notes_phase[midi_note_number] = {'wave': 0, 'envelope': None, 'attack1': attack_level / 3, 'attack2': attack_level / 3 * 2, 'decay1': (attack_level - sustain_level) / 3 * 2 + sustain_level, 'decay2': (attack_level - sustain_level) / 3 + sustain_level}
-
-                    # Tremolo
-                    if self.synthIO.lfo_sound_amplitude() is not None:
-                        self.notes[midi_note_number].amplitude=self.synthIO.lfo_sound_amplitude()
-                    
-                    # Vibrate
-                    if self.synthIO.lfo_sound_bend() is not None:
-                        self.notes[midi_note_number].bend=self.synthIO.lfo_sound_bend()
-
-#                    self.synthesizer.envelope = SynthIO.vca_envelope()
-                    self.synthesizer.press(self.notes[midi_note_number])
-                    self.notes_stack.insert(0, midi_note_number)
+#                        print('===NOTES :', self.notes)
+#                        print('===VOICES:', self.notes_stack)
 
                 # ControlChange
                 elif isinstance(midi_msg, ControlChange):
@@ -1010,29 +1045,6 @@ class MIDI_class:
                                 if cc_mode & 0x02:
                                     if self.synthIO.lfo_sound_bend() is not None:
                                         self.notes[midi_note_number].bend = self.synthIO.lfo_sound_bend()
-
-                # Note off
-                elif isinstance(midi_msg, NoteOff):
-                    if Application.EDITOR_MODE == True:
-                        Application.EDITOR_MODE = False
-                        self.synthIO.audio_pause(False)
-                    
-                    # MIDI note number with the unison heltz (offset 1000)
-                    midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
-
-#                    print('NOTE OFF:', midi_msg.note, midi_note_number)
-                    if midi_note_number in self.notes:
-                        if self.notes[midi_note_number] is not None:
-                            self.synthesizer.release(self.notes[midi_note_number])
-                            del self.notes[midi_note_number]
-                            del self.notes_phase[midi_note_number]
-                            del self.notes_pitch[midi_note_number]
-                            self.notes_stack.remove(midi_note_number)
-                            self.synthIO.filter_release(self.filters[midi_note_number])
-                            del self.filters[midi_note_number]
-
-#                print('===NOTES :', self.notes)
-#                print('===VOICES:', self.notes_stack)
 
                 # Pitch bend
                 elif isinstance(midi_msg, PitchBend):
