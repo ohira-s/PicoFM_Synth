@@ -157,6 +157,9 @@
 #     0.5.5: 06/20/2025
 #           Filter LFO by the Modulation Wheel are available.
 #
+#     0.5.6: 06/20/2025
+#           Fix a bug when choosing a filter in the filter storage.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -918,7 +921,7 @@ class MIDI_class:
 #                        print('NOTE ON :', midi_msg.note, midi_msg.velocity, unison_hz, midi_note_number)
                         if midi_note_number in self.notes:
                             if self.notes[midi_note_number] is not None:
-#                                print('REUSE NOTE:', midi_note_number)
+                                print('REUSE NOTE:', midi_note_number)
                                 self.synthesizer.release(self.notes[midi_note_number])
                                 self.notes_stack.remove(midi_note_number)
 
@@ -934,11 +937,12 @@ class MIDI_class:
                                 del self.filters[stop_note]
                             
 #                        else:
-#                            print('NEW NOTE:', midi_note_number)
+#z                            print('NEW NOTE:', midi_note_number)
 
                         # Generate a filter for the note, then store the filter number
                         self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity, midi_note_number)
 #                        print('NOTE FILTER:', self.filters[midi_msg.note], self.synthIO.filter(self.filters[midi_note_number]))
+#                        print('FILTERS NEW:', midi_note_number, self.filters)
                         init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
 
                         # Note on velocity
@@ -1030,6 +1034,7 @@ class MIDI_class:
 #                                print('STACK:', midi_note_number, len(self.notes_stack))
                                 self.synthIO.filter_release(self.filters[midi_note_number])
                                 del self.filters[midi_note_number]
+#                                print('FILTERS OFF:', midi_note_number, self.filters)
 
 #                        print('===NOTES :', self.notes)
 #                        print('===VOICES:', self.notes_stack)
@@ -2181,9 +2186,9 @@ class SynthIO_class:
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
     VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
-    VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVE', 'Save?', 'COPY', 'Copy?']
-    VIEW_LOAD_SOUND = ['----', 'Load?', 'LOAD', 'Load?', 'SEARCH', 'Search?']
-    VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Save?', 'SAVE', 'Save?']
+    VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVING', 'Save?', 'COPY', 'Copy?']
+    VIEW_LOAD_SOUND = ['----', 'Load?', 'LOADING', 'Load?', 'SEARCHING', 'Search?']
+    VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Save?', 'SAVING', 'Save?']
     VIEW_CURSOR_f3 = ['^  ', ' ^ ', '  ^']
     VIEW_CURSOR_f4 = ['^   ', ' ^  ', '  ^ ', '   ^']
     VIEW_CURSOR_f5 = ['^    ', ' ^   ', '  ^  ', '   ^ ', '    ^']
@@ -2846,12 +2851,16 @@ class SynthIO_class:
         
         # Generate a filter
         for v in list(range(len(self.filter_storage))):
+            if self.filter_storage[v] is not None:
+                if self.filter_storage[v]['TIME'] < 0:
+                    continue
+                
             if   ftype == SynthIO_class.FILTER_PASS:
                 self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
 
             # Generate to update a filter
             else:
-                # Get LF
+                # Keep the latest modulation value
                 if modulation != -1:
                     self._filter_modulation_value = modulation
                     
@@ -2920,6 +2929,7 @@ class SynthIO_class:
             return -1
         
         # Return the filter for the voice
+#        print('GET FILTER:', voice)
         return self.filter_storage[voice]
 
     def filter_release(self, voice):
@@ -4276,7 +4286,7 @@ class Application_class:
                             if   category == 'SAVE':
                                 save_sound = SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE_SOUND']]
 #                                print('TASK CATEGORY SAVE:', save_sound)
-                                if save_sound == 'SAVE':
+                                if save_sound == 'SAVING':
                                     SynthIO.synthio_parameter('SOUND', {'BANK': dataset['BANK'], 'SOUND': dataset['SOUND'], 'SOUND_NAME': dataset['SOUND_NAME']})
                                     SynthIO.synthio_parameter('SAVE',  {'SAVE_SOUND': 0})
                                     SynthIO.save_parameter_file(dataset['BANK'], dataset['SOUND'])
@@ -4292,7 +4302,7 @@ class Application_class:
                             # Load a sound file page
                             elif category == 'LOAD':
                                 load_sound = SynthIO_class.VIEW_LOAD_SOUND[dataset['LOAD_SOUND']]
-                                if   load_sound == 'LOAD':
+                                if   load_sound == 'LOADING':
                                     sound_name = SynthIO.get_sound_name_of_file(dataset['BANK'], dataset['SOUND'])
                                     load_file = (dataset['BANK'], dataset['SOUND'], sound_name)
                                     SynthIO.load_parameter_file(dataset['BANK'], dataset['SOUND'])
@@ -4315,7 +4325,7 @@ class Application_class:
                                     SynthIO.synthio_parameter('SAVE', {'BANK': load_file[0], 'SOUND': load_file[1], 'SOUND_NAME': load_file[2]})
                                     self.show_OLED_page()
 
-                                elif load_sound == 'SEARCH' or parameter == 'BANK':
+                                elif load_sound == 'SEARCHING' or parameter == 'BANK':
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILESl:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
@@ -4340,7 +4350,7 @@ class Application_class:
                                     SynthIO.setup_synthio()
 
                                 # Save the current wave shape
-                                elif parameter == 'SAVE':
+                                elif parameter == 'SAVING':
 #                                    print('WAVE SHAPE SAVE:', SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']])
                                     if SynthIO_class.VIEW_SAVE_SOUND[dataset['SAVE']] == 'SAVE':
 #                                        print('SAVE THE CURRENT WAVE SHAPE:', dataset['NAME'])
@@ -4406,7 +4416,7 @@ class Application_class:
                                         self.show_OLED_page()
 
                                     # Save the current wave sampled
-                                    elif sampling == 'SAVE':
+                                    elif sampling == 'SAVING':
                                         ADC_Mic.save_samplig_file(dataset['NAME'])
                                         time.sleep(0.5)
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
