@@ -154,6 +154,9 @@
 #     0.5.4: 06/19/2025
 #           Treat Note-On with 0 velocity as Note-Off.
 #
+#     0.5.5: 06/20/2025
+#           Filter LFO by the Modulation Wheel are available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -892,9 +895,10 @@ class MIDI_class:
     # Treat MIDI events
     def treat_midi_event(self, midi_msg, unison_heltz=0):
         # Upate working filters
-        self.synthIO.generate_filter(True)
+        self.synthIO.generate_filter(True, -1 if not isinstance(midi_msg, ControlChange) else midi_msg.value)
         vca = self.synthIO.synthio_parameter('VCA')
 
+        # MIDI IN exsists
         if midi_msg is not None:
 #            print('===>MIDI IN:', midi_msg)
             unison_hz = 0
@@ -1072,7 +1076,7 @@ class MIDI_class:
         # Filter LFO and ADSR (ADSlSr) modulation
         if len(self.filters) > 0:
             for note in self.notes.keys():
-#                print('UPDATE FILTER:', note, filters[note], SynthIO.filter(filters[note]))
+#                print('UPDATE NOTE FILTER:', note, self.filters[note], self.synthIO.filter(self.filters[note]))
                 self.notes[note].filter=self.synthIO.filter(self.filters[note])['FILTER']
 
         # Change the note wave shape according to the VCA envelope phase
@@ -2172,7 +2176,7 @@ class SynthIO_class:
     
     # View management
     VIEW_OFF_ON = ['OFF', 'ON']
-    VIEW_OFF_MODULATION = ['OFF', 'ON', 'MODLT']
+    VIEW_OFF_ON_MODULATION = ['OFF', 'ON', 'MODLT']
     VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+<2>*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+<2>*3+<4>', '8:<1>*(2+3)+<4>', '9:<1>*(2*3+4)', '10:<1>*(2+3+4)']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
@@ -2222,10 +2226,10 @@ class SynthIO_class:
                 'BANK'        : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'SOUND'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
                 'SOUND_NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
-                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_MODULATION},
+                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
                 'LFO_RATE_A'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_MODULATION},
+                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
                 'LFO_RATE_B'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'LFO_SCALE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
                 'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
@@ -2262,7 +2266,7 @@ class SynthIO_class:
                 'TYPE'           : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
                 'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX':   5.0, 'VIEW': '{:3.1f}'},
-                'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
                 'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'FILTER_KEYSENSE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':  -9, 'MAX':     9, 'VIEW': '{:+2d}'},
@@ -2329,6 +2333,7 @@ class SynthIO_class:
         self.filter_storage  = [None] * SynthIO_class.MAX_VOICES
 #        self.filter_storage  = [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
         self._filter_adsr    = []
+        self._filter_modulation_value = 0
         self._envelope_vca   = None
         
         # Set up the synthio with the current parameters
@@ -2766,12 +2771,23 @@ class SynthIO_class:
         return self._lfo_sound_bend
 
     # Generate and/or Update a Filter
-    def generate_filter(self, update=False):
+    def generate_filter(self, update=False, modulation=0):
 
         # Update the filte LFO value
-        def update_filter_lfo():
-            fqmax = self._synth_params['FILTER']['LFO_FQMAX']
-            return 0.0 if self._lfo_filter is None else self._lfo_filter.value / 1000.0 * fqmax
+        def update_filter_lfo(modulation):
+            # No LFO modulation
+            modlt = self._synth_params['FILTER']['MODULATION']
+            if self._lfo_filter is None or modlt == 0:
+#                print('MODULATION OFF')
+                return 0.0
+            
+            # Modulate always
+            if modlt == 1:
+                modulation = 127
+                
+            # Modulation
+#            print('MODULATION ON :', modlt, modulation, self._lfo_filter.value, 0.0 if self._lfo_filter is None else (self._lfo_filter.value * modulation / 127))
+            return 0.0 if self._lfo_filter is None else (self._lfo_filter.value * modulation / 127)
             
         # Get an offset value by filter voice's adsr
         def get_offset_by_adsr(v):
@@ -2806,6 +2822,7 @@ class SynthIO_class:
         ftype = self._synth_params['FILTER']['TYPE']
         freq  = self._synth_params['FILTER']['FREQUENCY']
         reso  = self._synth_params['FILTER']['RESONANCE']
+        modlt = self._synth_params['FILTER']['MODULATION']
         
         # Generate new LFO
         if update == False:
@@ -2813,17 +2830,16 @@ class SynthIO_class:
             if self._lfo_filter is not None:
                 self._synth.blocks.remove(self._lfo_filter)
                 
-            # Generate a modulator
-            if self._synth_params['FILTER']['MODULATION'] == 0:
+            # Never modulate
+            if modlt == 0:
                 self._lfo_filter = None
                 
+            # Generate a modulator LFO
             else:
-#                wave = np.array(np.sin(np.linspace(0, FM_Waveshape_class.PI2 * 1.0, FM_Waveshape_class.SAMPLE_SIZE, endpoint=False)) * 32000, dtype=np.int16)
                 self._lfo_filter = synthio.LFO(
                     rate=self._synth_params['FILTER']['LFO_RATE'],
                     scale=self._synth_params['FILTER']['LFO_FQMAX'],
                     offset=0,
-#                    waveform=wave
                 )
 
                 self._synth.blocks.append(self._lfo_filter)  # add lfo to global LFO runner to get it to tick
@@ -2832,78 +2848,52 @@ class SynthIO_class:
         for v in list(range(len(self.filter_storage))):
             if   ftype == SynthIO_class.FILTER_PASS:
                 self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
+
+            # Generate to update a filter
+            else:
+                # Get LF
+                if modulation != -1:
+                    self._filter_modulation_value = modulation
+                    
+                delta = update_filter_lfo(self._filter_modulation_value)
+                offset = get_offset_by_adsr(v)
                 
-            elif ftype == SynthIO_class.FILTER_LPF:
+                if ftype == SynthIO_class.FILTER_LPF:
+                    # Make new filter
+                    if self.filter_storage[v] is None:
+                        if update == False:
+                            self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
+#                            print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
-                # Make new filter
-                if self.filter_storage[v]['FILTER'] is None:
-                    self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                    delta = update_filter_lfo()
-                    offset = get_offset_by_adsr(v)
-                    self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                    print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
-
-                # Re-use or update the filters
-                else:
-                    # Update filter LFO
-                    delta = update_filter_lfo()
-
-                    # Update filter ADSR
-                    offset = get_offset_by_adsr(v)
-
-                    # Update a filter for a voice
-                    if delta + offset[0] != 0 or offset[1] != 0.0:
-#                        if v == 0:
-#                            print('FILTER LPF FREQ-->:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
+                    # Re-use or update the filters
+                    else:
+                        # Update a filter for a voice
                         self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                        if v == 0:
-#                            print('FILTER LPF FREQ<--:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, delta, offset, freq + delta + offset)
+#                        print('UPDATE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
-#                    else:
-#                        if v == 0:
-#                            print('===DELTA + OFFSET IS ZERO===', v, delta, offset, get_offset_by_adsr(v))
-
-            elif ftype == SynthIO_class.FILTER_HPF:
-                if self.filter_storage[v] is None:
-                    if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                else:
-                    # Update filter LFO
-                    delta = update_filter_lfo()
-
-                    # Update filter ADSR
-                    offset = get_offset_by_adsr(v)
-
-                    self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                    print('FILTER HPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
-                
-            elif ftype == SynthIO_class.FILTER_BPF:
-                if self.filter_storage[v] is None:
-                    if update == False:
-                        self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                else:
-                    # Update filter LFO
-                    delta = update_filter_lfo()
-
-                    # Update filter ADSR
-                    offset = get_offset_by_adsr(v)
-
-                    self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                    print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
-    
-            elif ftype == SynthIO_class.FILTER_NOTCH:
-                if self.filter_storage[v] is None:
-                    if update == False:
-                        self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq, reso), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                else:
-                    # Update filter LFO
-                    delta = update_filter_lfo()
-
-                    # Update filter ADSR
-                    offset = get_offset_by_adsr(v)
-
-                    self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset[0], reso + offset[1])
-#                    print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
+                elif ftype == SynthIO_class.FILTER_HPF:
+                    if self.filter_storage[v] is None:
+                        if update == False:
+                            self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
+                    else:
+                        self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1])
+#                        print('FILTER HPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
+                    
+                elif ftype == SynthIO_class.FILTER_BPF:
+                    if self.filter_storage[v] is None:
+                        if update == False:
+                            self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
+                    else:
+                        self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1])
+#                        print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
+        
+                elif ftype == SynthIO_class.FILTER_NOTCH:
+                    if self.filter_storage[v] is None:
+                        if update == False:
+                            self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
+                    else:
+                        self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset[0], reso + offset[1])
+#                        print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
 
     # Get the filter
     def filter(self, voice=None, velocity=127, note_number=60):
