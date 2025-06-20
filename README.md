@@ -38,10 +38,13 @@ Specifications are as below.
 ||LFO|Tremolo|
 |||Vibrate|
 ||MIDI IN|Pitch Bend|
+||Tremolo|
+||Vibrate|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
 |||Note-On velocity.|
+||MIDI IN|Frequency and/or Q-factor modulation.|
 |VCA|Envelope|Control note volume.|
 |||Note-On velocity.|
 |Toy sampler|Input|Built-in mic.|

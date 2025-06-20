@@ -18,10 +18,13 @@ Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host
 ||LFO|Tremolo|
 |||Vibrate|
 ||MIDI IN|Pitch Bend|
+||Tremolo|
+||Vibrate|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
 |||Note-On velocity.|
+||MIDI IN|Frequency and/or Q-factor modulation.|
 |VCA|Envelope|Control note volume.|
 |||Note-On velocity.|
 |Toy sampler|Input|Built-in mic.|
@@ -496,6 +499,9 @@ Resonanse (Q-factor) of the filter.
 ### 14-5. MODU (RT4)  
 
 Turn on or off the filter LFO modulation.  
+	- OFF: Disabled.  
+	- ON: Always ON.  
+	- MODLT: Enable with the modulation wheel.  
 
 ### 14-6. LFOr (RT5)  
 
