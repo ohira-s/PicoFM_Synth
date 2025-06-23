@@ -160,6 +160,9 @@
 #     0.5.6: 06/20/2025
 #           Fix a bug when choosing a filter in the filter storage.
 #
+#     0.5.7: 06/23/2025
+#           Portament is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -783,9 +786,10 @@ class MIDI_class:
         # For receiving and treating MIDI events
         self.notes = {}						# {note number: Note object}
         self.notes_phase = {}				# {note number: Note envelope phase}
-        self.notes_pitch = {}				# {note number: (Note frequency, Pitch bend frequency width}
+        self.notes_pitch = {}				# {note number: [Note frequency, Pitch bend frequency, Portament start frequency, Portament ratio]}
         self.filters = {}					# {note number: filter number=voice}
         self.notes_stack = []				# [note1, note2,...]  contains only notes playing.
+        self.latest_note_hz = None				# The latest noted playing
         self.synthIO = synthesizer
         self.synthesizer = synthesizer.synth()
 
@@ -838,12 +842,12 @@ class MIDI_class:
             # Device mode
             if self._raw_midi_host is None:
                 print('NOT Found USB MIDI device.')
-                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += ' [DEVICE]'
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'DEV'
 
             # Host mode
             else:
                 print('Found USB MIDI device.')
-                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += ' [HOST]'
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'HST'
 
         self._init = False
         if self._raw_midi_host is None:
@@ -858,13 +862,20 @@ class MIDI_class:
 #        self._usb_midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0], in_channel=0, midi_out=usb_midi.ports[1], out_channel=0)
         print('TURN ON WITH USB MIDI HOST MODE.')
         return self._usb_midi_host
-       
+        
+    # Set shifted frequency to a note in the pitch-bend or the portament 
+    def frequency_shift(self, note_num, start_freq, move_freq, ratio):
+        pitch = int(move_freq * ratio)
+        self.notes[note_num].frequency = start_freq + pitch
+
     # MIDI-IN via a port of the current mode
     def midi_in(self):            
         # MIDI-IN via USB
         if self._midi_in_usb:
             try:
-                start = int(time.monotonic() * 1000) % 10000
+#                start = int(time.monotonic() * 1000) % 10000
+                start = Ticks.ms()
+                portament_ms = start
                 while True:
                     if self._usb_host_mode:
                         midi_msg = self._usb_midi_host.receive()
@@ -876,10 +887,28 @@ class MIDI_class:
                     if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend) or isinstance(midi_msg, ControlChange):
                         break
 
+                    # The current ticks in ms
+                    now = Ticks.ms()
+
+                    # Portament
+                    if SynthIO._synth_params['SOUND']['PORTAMENT'] > 0.0:
+                        portament_diff = Ticks.diff(now, portament_ms) / 1000
+                        if portament_diff > 0:
+                            portament_ms = now
+#                            print('PORTAMENT DIFF:', portament_diff, SynthIO._synth_params['SOUND']['PORTAMENT'], portament_diff / SynthIO._synth_params['SOUND']['PORTAMENT'])
+                            for midi_note_number in self.notes.keys():
+                                if self.notes[midi_note_number] is not None:
+                                    if self.notes_pitch[midi_note_number][3] < 1.0:
+                                        self.notes_pitch[midi_note_number][3] += (portament_diff / SynthIO._synth_params['SOUND']['PORTAMENT'])
+                                        if self.notes_pitch[midi_note_number][3] > 1.0:
+                                            self.notes_pitch[midi_note_number][3] = 1.0
+                                        self.frequency_shift(midi_note_number, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
+#                                        print('PORTAMENT:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
+
                     # Ignore unknown events (normally Active Sensing)
                     if isinstance(midi_msg, MIDIUnknownEvent):
-                        monotonic = int(time.monotonic() * 1000) % 10000
-                        if (monotonic - start) % 10000 < 10:
+#                        monotonic = int(time.monotonic() * 1000) % 10000
+                        if Ticks.diff(now, start) < 100:
                             continue
                     
                     midi_msg = None
@@ -896,7 +925,7 @@ class MIDI_class:
         return None
 
     # Treat MIDI events
-    def treat_midi_event(self, midi_msg, unison_heltz=0):
+    def treat_midi_event(self, midi_msg, unison_heltz=0):                            
         # Upate working filters
         self.synthIO.generate_filter(True, -1 if not isinstance(midi_msg, ControlChange) else midi_msg.value)
         vca = self.synthIO.synthio_parameter('VCA')
@@ -921,7 +950,7 @@ class MIDI_class:
 #                        print('NOTE ON :', midi_msg.note, midi_msg.velocity, unison_hz, midi_note_number)
                         if midi_note_number in self.notes:
                             if self.notes[midi_note_number] is not None:
-                                print('REUSE NOTE:', midi_note_number)
+#                                print('REUSE NOTE:', midi_note_number)
                                 self.synthesizer.release(self.notes[midi_note_number])
                                 self.notes_stack.remove(midi_note_number)
 
@@ -989,10 +1018,26 @@ class MIDI_class:
 
                         # Copy the wave shape to a note waveform as python list slice
                         wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
-                        note_hz = synthio.midi_to_hz(midi_msg.note) + unison_hz
-                        self.notes_pitch[midi_note_number] = (note_hz, synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) + unison_hz - synthio.midi_to_hz(midi_msg.note) + unison_hz)
+                        
+                        # Note requencies [Original note heltz, Pitch-bend to, Potament from, Portament Ratio]
+                        original_hz = synthio.midi_to_hz(midi_msg.note)
+                        note_hz =  original_hz + unison_hz
+                        self.notes_pitch[midi_note_number] = [
+                            note_hz,
+                            synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) - original_hz,
+                            note_hz if self.latest_note_hz is None or SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else self.latest_note_hz,
+                            1.0 if self.latest_note_hz is None or SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else 0.0
+                        ]
+                        
+                        # Portament starting note heltz
+                        if unison_hz == 0:
+                            self.latest_note_hz = note_hz
+#                            print('PORTAMENT START HZ:', self.latest_note_hz)
+
+                        # Generate a note to play
                         self.notes[midi_note_number] = synthio.Note(
-                            frequency=self.notes_pitch[midi_note_number][0],
+                            frequency=self.notes_pitch[midi_note_number][2],
+#                            frequency=self.notes_pitch[midi_note_number][0],
                             filter=init_filter,
                             envelope=note_env,
                             waveform=wave_shape
@@ -1064,8 +1109,8 @@ class MIDI_class:
 #                    print('PITCH BEND:', midi_msg)
                     for midi_note_number in self.notes.keys():
                         if self.notes[midi_note_number] is not None:
-                            pitch = int((midi_msg.pitch_bend - 8292) / 8292 * self.notes_pitch[midi_note_number][1])
-                            self.notes[midi_note_number].frequency = self.notes_pitch[midi_note_number][0] + pitch
+#                            print('BEND:', midi_note_number, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][1], (midi_msg.pitch_bend - 8292) / 8292)
+                            self.frequency_shift(midi_note_number, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][1], (midi_msg.pitch_bend - 8292) / 8292)
 #                            print('NOTE FREQ:', midi_note_number, self.notes[midi_note_number].frequency)
 
                 # Not unison mode
@@ -2241,6 +2286,7 @@ class SynthIO_class:
                 'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'PITCH_BEND'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':   12, 'VIEW': '{:1d}'},
+                'PORTAMENT'   : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.00, 'VIEW': '{:4.2f}'},
                 'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
@@ -2362,6 +2408,7 @@ class SynthIO_class:
                 'UNISON'      : 0,
                 'ADJUST_LEVEL': 1,
                 'PITCH_BEND'  : 2,
+                'PORTAMENT'   : 0.0,
                 'CURSOR'      : 0
             },
             
@@ -3319,12 +3366,12 @@ class Application_class:
     PAGES = [
         {'PAGE': PAGE_SOUND_MAIN, 'EDITOR': [
             {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'VOLUME', 'OSCILLATOR': None},
             {'CATEGORY': 'SOUND', 'PARAMETER': 'UNISON', 'OSCILLATOR': None},
-            {'CATEGORY': 'SOUND', 'PARAMETER': 'PITCH_BEND', 'OSCILLATOR': None}
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'PITCH_BEND', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'PORTAMENT', 'OSCILLATOR': None},
+            {'CATEGORY': 'SOUND', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_ALGORITHM, 'EDITOR': [
@@ -3622,7 +3669,7 @@ class Application_class:
 
     # Page labels
     PAGE_LABELS = {
-        PAGE_SOUND_MAIN       : 'SOUND MAIN',
+        PAGE_SOUND_MAIN       : '       SOUND MAIN:',
         PAGE_ALGORITHM        : '',
         PAGE_SAMPLING_WAVES   : 'SAMPLING WAVES',
         PAGE_SOUND_MODULATION : '              VCO MOD',
@@ -3657,12 +3704,13 @@ class Application_class:
     # Parameter attributes
     DISP_PARAMETERS = {
         'SOUND': {
-            'BANK'        : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y': 10, 'w': 98}},
-            'SOUND'       : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 19, 'w': 18}},
-            'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 19, 'w': 74}},
-            'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 37, 'w': 74}},
-            'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 46, 'w': 74}},
-            'PITCH_BEND'  : {PAGE_SOUND_MAIN: {'label': 'PEND:', 'x':  30, 'y': 55, 'w': 74}},
+            'BANK'        : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y':  1, 'w': 10}},
+            'SOUND'       : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 10, 'w': 18}},
+            'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 10, 'w': 74}},
+            'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 19, 'w': 98}},
+            'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 28, 'w': 98}},
+            'PITCH_BEND'  : {PAGE_SOUND_MAIN: {'label': 'PEND:', 'x':  30, 'y': 37, 'w': 98}},
+            'PORTAMENT'   : {PAGE_SOUND_MAIN: {'label': 'PORT:', 'x':  30, 'y': 46, 'w': 98}},
             'ADJUST_LEVEL': {PAGE_VCA: {'label': 'ADJS:', 'x':  30, 'y': 55, 'w': 74}},
             'AMPLITUDE'   : {PAGE_SOUND_MODULATION: {'label': 'TREM:', 'x':  30, 'y':  1, 'w': 40}},
             'LFO_RATE_A'  : {PAGE_SOUND_MODULATION: {'label': 'TrRT:', 'x':  30, 'y': 10, 'w': 98}},
@@ -3670,7 +3718,7 @@ class Application_class:
             'VIBR'        : {PAGE_SOUND_MODULATION: {'label': 'VIBR:', 'x':  30, 'y': 28, 'w': 98}},
             'LFO_RATE_B'  : {PAGE_SOUND_MODULATION: {'label': 'ViRT:', 'x':  30, 'y': 37, 'w': 98}},
             'LFO_SCALE_B' : {PAGE_SOUND_MODULATION: {'label': 'ViSC:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'      : {PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
+            'CURSOR'      : {PAGE_SOUND_MAIN: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_SOUND_MODULATION: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}}
         },
         
         'OSCILLATORS': {
