@@ -17,9 +17,10 @@ Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host
 |VCO|Note-ON/OFF|12 voices polyphonic.|
 ||LFO|Tremolo|
 |||Vibrate|
+||Other Effects|Portament|
 ||MIDI IN|Pitch Bend|
-||Tremolo|
-||Vibrate|
+|||Tremolo|
+|||Vibrate|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
@@ -170,15 +171,12 @@ You can see the current sound information and edit the FM algorithm.
 ### 6-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/01_sound_main.jpg)  
 
-### 6-2. BANK:0  
+### 6-2. H:0 001 Grand Piano  
 
-PiFM+S has 10 sound data banks from 0 to 9.  You can see the current sound bank number.  
+"H:" means that PiFM+S works as a USB MIDI host.  "D:" is for a USB MIDI device.  
+The following text shows you the current sound.  The first 1 digit is the bank number.  The second 3 digits is the sound number.  The text is its instrument name.    
 	
-### 6-3. SOUND:001 Grand Piano  
-
-Each sound bank can be saved 1000 sounds from 000 to 999.  You can see the current sound number and its instrument name.  
-	
-### 6-4. ALGO:1:<1>+2 (RT4) 
+### 6-3. ALGO:1:<1>+2 (RT2) 
 
 You can see the FM algorithm of the current sound.  
 On this page, FM algorithms are shown with something like an expression.  For istance, '<1>\+2' or '<1>\*2'.  
@@ -205,22 +203,31 @@ PiFM+S has 11 algorithms.
 |9|<1>\*(2\*3+4)|
 |10|<1>\*(2+3+4)|
 	
-### 6-5. VOLM:5 (RT5) 
+### 6-4. VOLM:5 (RT3) 
 
 You can change the master volume from 1 to 9.  
 	
-### 6-6. UNIS:1 (RT6) 
+### 6-5. UNIS:1 (RT4) 
 
 You can change the unison mode, value is from 0 to 9.  
 0 is for Not-Unison mode.  PiFM+S plays one tone for a note.  
 In case of from 1 to 9, PiFM+S plays an original tone with another tone.  The other tone has a frequency adding UNIS(Hz) value to the original tone.  
 PiFM+S can play 6 notes maximum in the unison mode.    
 
-### 6-7. PBND: 2 (RT7) 
+### 6-6. PBND: 2 (RT5) 
 
 You can set a PITCH BEND pitch.  PiFM+S will change notes pitches playing when it receives the PITCH BEND event via MIDI-IN.  
 If PBND is 2 and PiFM+S plays a C4 note, PiFM+S changes the pitch from C4 to D4 when it receives the PITCH BEND + event.  And changes from C4 to A3# when it receives the PITCH BEND - event.  
-Set 0 to PBEND if you don't need the PITCH BEND.  
+Set 0 to PBND if you don't need the PITCH BEND.  
+
+### 6-7. PORT: 0.00 (RT6) 
+
+You can set a PORTAMENT time in second.  
+Set 0 to PORT if you don't need the PORTAMENT.  
+
+### 6-8. CURS (RT7)  
+
+Move the cursor to change the edit position.  
 
 
 ## 7. ALGORITHM
@@ -307,7 +314,7 @@ Set the effect depth of the vibrate.
 
 ### 9-8. CURS (RT7)  
 
-Move the cursor to change the edit position.
+Move the cursor to change the edit position.  
 
 ## 10. OPERATORS
 You can edit the oscillator parameters of the 4 operators.  

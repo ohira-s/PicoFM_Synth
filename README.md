@@ -37,9 +37,10 @@ Specifications are as below.
 |VCO|Note-ON/OFF|12 voices polyphonic.|
 ||LFO|Tremolo|
 |||Vibrate|
+||Other Effects|Portament|
 ||MIDI IN|Pitch Bend|
-||Tremolo|
-||Vibrate|
+|||Tremolo|
+|||Vibrate|
 |VCF|Filer types|LPF, HPF, BPF, NOTCH|
 ||LFO|Frequency and/or Q-factor modulation.|
 ||Envelope|Frequency and/or Q-factor modulation.|
