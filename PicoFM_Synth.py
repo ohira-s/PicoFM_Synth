@@ -842,12 +842,12 @@ class MIDI_class:
             # Device mode
             if self._raw_midi_host is None:
                 print('NOT Found USB MIDI device.')
-                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'DEV'
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'D:'
 
             # Host mode
             else:
                 print('Found USB MIDI device.')
-                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'HST'
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'H:'
 
         self._init = False
         if self._raw_midi_host is None:
@@ -916,7 +916,7 @@ class MIDI_class:
 
             except Exception as e:
                 print('CHANGE TO DEVICE MODE:', e)
-                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] = Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN].replace('[HOST]', '[DISCON]')
+                Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] = Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN].replace('H:', 'D:')
                 self._usb_host_mode = False
                 midi_msg = self._usb_midi.receive()
                 
@@ -3669,7 +3669,7 @@ class Application_class:
 
     # Page labels
     PAGE_LABELS = {
-        PAGE_SOUND_MAIN       : '       SOUND MAIN:',
+        PAGE_SOUND_MAIN       : '',
         PAGE_ALGORITHM        : '',
         PAGE_SAMPLING_WAVES   : 'SAMPLING WAVES',
         PAGE_SOUND_MODULATION : '              VCO MOD',
@@ -3704,9 +3704,9 @@ class Application_class:
     # Parameter attributes
     DISP_PARAMETERS = {
         'SOUND': {
-            'BANK'        : {PAGE_SOUND_MAIN: {'label': 'BANK:', 'x':  30, 'y':  1, 'w': 10}},
-            'SOUND'       : {PAGE_SOUND_MAIN: {'label': 'SOND:', 'x':  30, 'y': 10, 'w': 18}},
-            'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': ''     , 'x':  54, 'y': 10, 'w': 74}},
+            'BANK'        : {PAGE_SOUND_MAIN: {'label': '', 'x': 12, 'y': 1, 'w': 12}},
+            'SOUND'       : {PAGE_SOUND_MAIN: {'label': '', 'x': 24, 'y': 1, 'w': 24}},
+            'SOUND_NAME'  : {PAGE_SOUND_MAIN: {'label': '', 'x': 48, 'y': 1, 'w': 80}},
             'VOLUME'      : {PAGE_SOUND_MAIN: {'label': 'VOLM:', 'x':  30, 'y': 19, 'w': 98}},
             'UNISON'      : {PAGE_SOUND_MAIN: {'label': 'UNIS:', 'x':  30, 'y': 28, 'w': 98}},
             'PITCH_BEND'  : {PAGE_SOUND_MAIN: {'label': 'PEND:', 'x':  30, 'y': 37, 'w': 98}},
@@ -3723,7 +3723,7 @@ class Application_class:
         
         'OSCILLATORS': {
             'algorithm'    : {
-                PAGE_SOUND_MAIN: {'label': 'ALGO:', 'x':  30, 'y': 28, 'w': 98},
+                PAGE_SOUND_MAIN: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98},
                 PAGE_OSCILLTOR_WAVE1: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE2: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE3: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}, PAGE_OSCILLTOR_WAVE4: {'label': 'ALGO:', 'x':  30, 'y': 10, 'w': 98}
             },
             'oscillator'   : {},
