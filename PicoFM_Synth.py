@@ -166,6 +166,9 @@
 #     0.5.8: 06/23/2025
 #           Improve the editor response.
 #
+#     0.5.9: 06/23/2025
+#           Portament constant frequency mode is available adding to constant time mode.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -877,19 +880,35 @@ class MIDI_class:
                     now = Ticks.ms()
 
                     # Portament
-                    if SynthIO._synth_params['SOUND']['PORTAMENT'] > 0.0:
+                    portament_steps = SynthIO._synth_params['SOUND']['PORTAMENT']
+                    if portament_steps != 0.0:
                         portament_diff = Ticks.diff(now, portament_ms) / 1000
                         if portament_diff > 0:
                             portament_ms = now
 #                            print('PORTAMENT DIFF:', portament_diff, SynthIO._synth_params['SOUND']['PORTAMENT'], portament_diff / SynthIO._synth_params['SOUND']['PORTAMENT'])
                             for midi_note_number in self.notes.keys():
                                 if self.notes[midi_note_number] is not None:
-                                    if self.notes_pitch[midi_note_number][3] < 1.0:
-                                        self.notes_pitch[midi_note_number][3] += (portament_diff / SynthIO._synth_params['SOUND']['PORTAMENT'])
+                                    # Portament
+                                    if self.notes_pitch[midi_note_number][0] != self.notes_pitch[midi_note_number][2] and self.notes_pitch[midi_note_number][3] < 1.0:
+                                        
+                                        # Constant frequency mode
+                                        if portament_steps < 0:
+#                                            print('PORTAMENT C:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
+                                            portament_heltz = portament_diff * (-portament_steps) * 1000 + abs(self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2]) * self.notes_pitch[midi_note_number][3]
+                                            self.notes_pitch[midi_note_number][3] = portament_heltz / abs(self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2])
+#                                            print('RATIO:', self.notes_pitch[midi_note_number][3])
+                                            
+                                        # Constant time mode
+                                        else:
+                                            self.notes_pitch[midi_note_number][3] += (portament_diff / portament_steps)
+                                        
+                                        # Adjust portament ratio
                                         if self.notes_pitch[midi_note_number][3] > 1.0:
                                             self.notes_pitch[midi_note_number][3] = 1.0
+                                            
+                                        # Portament frequency shift
                                         self.frequency_shift(midi_note_number, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
-#                                        print('PORTAMENT:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
+#                                        print('PORTAMENT S:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
 
                     # Ignore unknown events (normally Active Sensing Event comming so frequently)
                     if isinstance(midi_msg, MIDIUnknownEvent):
@@ -2266,21 +2285,21 @@ class SynthIO_class:
         # Parameter attributes
         self._params_attr = {
             'SOUND': {
-                'BANK'        : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
-                'SOUND'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':  999, 'VIEW': '{:03d}'},
-                'SOUND_NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':    0, 'MAX':   12, 'VIEW': '{:12s}'},
-                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
-                'LFO_RATE_A'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'LFO_SCALE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
-                'LFO_RATE_B'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'LFO_SCALE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
-                'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    1, 'MAX':    9, 'VIEW': '{:1d}'},
-                'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':    9, 'VIEW': '{:1d}'},
-                'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'PITCH_BEND'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':    0, 'MAX':   12, 'VIEW': '{:1d}'},
-                'PORTAMENT'   : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.00, 'MAX': 5.00, 'VIEW': '{:4.2f}'},
-                'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
+                'BANK'        : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'SOUND'       : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':  999, 'VIEW': '{:03d}'},
+                'SOUND_NAME'  : {'TYPE': SynthIO_class.TYPE_STRING, 'MIN':     0, 'MAX':   12, 'VIEW': '{:12s}'},
+                'AMPLITUDE'   : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
+                'LFO_RATE_A'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':  0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_A' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':  0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'VIBR'        : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX':    2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
+                'LFO_RATE_B'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':  0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'LFO_SCALE_B' : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN':  0.00, 'MAX': 20.0, 'VIEW': '{:6.3f}'},
+                'VOLUME'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     1, 'MAX':    9, 'VIEW': '{:1d}'},
+                'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':    9, 'VIEW': '{:1d}'},
+                'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'PITCH_BEND'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':   12, 'VIEW': '{:1d}'},
+                'PORTAMENT'   : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': -5.00, 'MAX': 5.00, 'VIEW': '{:+5.2f}'},
+                'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
             'OSCILLATORS': {
