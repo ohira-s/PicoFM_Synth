@@ -163,6 +163,9 @@
 #     0.5.7: 06/23/2025
 #           Portament is available.
 #
+#     0.5.8: 06/23/2025
+#           Improve the editor response.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -258,12 +261,12 @@ PICO2_LED.direction = digitalio.Direction.OUTPUT
 # MIDI IN in async task
 ##########################################
 async def midi_in():
-    wait_count = 0
+    wait_count = 0		# Sequencer wait counter to play next event
     while True:
         # Receive and treat MIDI events
         MIDI_obj.receive_midi_events()
 
-        # Sequencer
+        # Sequencer events
         if wait_count <= 0:
             sequence = Application.pop_sequence()
             if sequence is not None:                
@@ -290,18 +293,13 @@ async def midi_in():
                     sound_name = SynthIO.get_sound_name_of_file(sequence['BANK'], sequence['SOUND'])
                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': sequence['BANK'], 'SOUND': sequence['SOUND'], 'SOUND_NAME': ''})
                     SynthIO.synthio_parameter('SAVE', {'BANK': sequence['BANK'], 'SOUND': sequence['SOUND'], 'SOUND_NAME': sound_name})
-
-#                    Application_class.DISPLAY_PAGE = 18
-#                    Application.show_OLED_page()
-                    
                     SynthIO.audio_pause(False)
 
         # Sequencer wait time
         else:
             wait_count -= 1
 
-        # Gives away process time to the other tasks.
-        # If there is no task, let give back process time to me.
+        # Watch 8encoder
         await asyncio.sleep(0.0)
 
 
@@ -310,10 +308,10 @@ async def midi_in():
 ##########################################
 async def get_8encoder():
     while True:
-#        await asyncio.sleep(0.01)
-#        continue
-
+        # Lock the I2C for 8encoder
         Encoder_obj.i2c_lock()
+        
+        # Reset 8encoder events
         on_change = False
         M5Stack_8Encoder_class.status['on_change']['switch'] = False
         for rt in list(range(8)):
@@ -321,56 +319,64 @@ async def get_8encoder():
             M5Stack_8Encoder_class.status['on_change']['button'][rt] = False
             
         try:
+            # Get the slide switch
             enc_switch  = Encoder_obj.get_switch()
             change = (M5Stack_8Encoder_class.status['switch'] != enc_switch)
             on_change = on_change or change
             M5Stack_8Encoder_class.status['on_change']['switch'] = change
             M5Stack_8Encoder_class.status['switch'] = enc_switch
             
+            # Pause the DAC in the parameter editing mode
             if change and Application.EDITOR_MODE == False:
                 Application.EDITOR_MODE = True
                 SynthIO.audio_pause()
 
-#            await asyncio.sleep(0.01)
+            # Watch MIDI preferentially
             await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
             
             if not on_change:
+                # Watch each encoder
                 for rt in list(range(8)):
-                    # Increment
+                    # Watch encoder increment/decrement
                     enc_rotary = Encoder_obj.get_rotary_increment(rt)
-#                    change = (enc_rotary != 0)
                     change = abs(enc_rotary) >= 2
                     on_change = on_change or change
                     M5Stack_8Encoder_class.status['on_change']['rotary_inc'][rt] = change
                     M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
                     
+                    # Pause the DAC in the parameter editing mode
                     if change and Application.EDITOR_MODE == False:
                         Application.EDITOR_MODE = True
                         SynthIO.audio_pause()
 
-#                    await asyncio.sleep(0.01)
+                    # Watch MIDI preferentially
                     await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
                     
+                    # Got an increment/decrement
                     if on_change:
                         break
 
-                    # Button
+                    # Watch each button
                     if Encoder_obj.get_button(rt):
                         if M5Stack_8Encoder_class.status['button'][rt] == False:
                             M5Stack_8Encoder_class.status['button'][rt] = True
                             M5Stack_8Encoder_class.status['on_change']['button'][rt] = True
                             on_change = True
+
+                            # Pause the DAC in the parameter editing mode
                             if change and Application.EDITOR_MODE == False:
                                 Application.EDITOR_MODE = True
                                 SynthIO.audio_pause()
 
+                            # Watch MIDI preferentially
                             await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
                             break
                         
                     else:
                         M5Stack_8Encoder_class.status['button'][rt] = False
                         await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
-                            
+
+            # Release the I2C for 8encoder
             Encoder_obj.i2c_unlock()
 
             # Do 8encoder tasks if something changed
@@ -380,8 +386,7 @@ async def get_8encoder():
         finally:
             Encoder_obj.i2c_unlock()
 
-        # Gives away process time to the other tasks.
-        # If there is no task, let give back process time to me.
+        # Watch MIDI
         if Application.EDITOR_MODE == False:
             await asyncio.sleep(0.01)
 
@@ -421,10 +426,6 @@ class OLED_SSD1306_class:
     def i2c(self):
         return self._i2c
     
-#    def get_display(self):
-#        print('DISPLAY')
-#        return self._display
-    
     def width(self):
         return self._width
     
@@ -450,7 +451,6 @@ class OLED_SSD1306_class:
     def show_message(self, msg, x=0, y=0, w=0, h=0, color=1):
         self._display.fill_rect(x, y, w, h, 0 if color == 1 else 1)
         self._display.text(msg, x, y, color)
-#        print('SHOW MSG:', x, y, msg)
 
     def show(self):
         if self.is_available():
@@ -469,7 +469,7 @@ class OLED_SSD1306_class:
 ### ADC MIC class
 ########################
 class ADC_MIC_class:
-    SAMPLED_WAVE = np.array([])
+    SAMPLED_WAVE = np.array([])		# Memory to store sampling data
     
     def __init__(self, adc_pin, adc_name):
         self._adc = AnalogIn(adc_pin)
@@ -482,8 +482,7 @@ class ADC_MIC_class:
         return self._adc_name
 
     def get_voltage(self):
-#        print('======= ADC MIC:', self._adc.value)
-        voltage = int(self._adc.value / 65535.0 * 64000 - FM_Waveshape_class.SAMPLE_VOLUME)
+        voltage = int(self._adc.value / 65535.0 * FM_Waveshape_class.SAMPLE_VOLUME * 2 - FM_Waveshape_class.SAMPLE_VOLUME)
         return voltage
 
     def sampling(self, duration=1.0, cut_min=100, samples=512):
@@ -542,7 +541,6 @@ class ADC_MIC_class:
                     wave = wave.tolist()
                     
                 json.dump(wave, f)
-#                print('SAVED:', file_name)
                 f.close()
                 self.find_sampling_files()
                 success = True
@@ -559,7 +557,6 @@ class ADC_MIC_class:
         try:
             with open('/sd/SYNTH/WAVE/' + name + '.json', 'r') as f:
                 wave = json.load(f)
-#                print('LOADED:', wave)
                 ADC_MIC_class.SAMPLED_WAVE = wave
                 f.close()
 
@@ -578,9 +575,7 @@ class ADC_MIC_class:
         # Search files
         finds = 0
         path_files = os.listdir('/sd/SYNTH/WAVE')
-#        print('FILES:', path_files)
         for pf in path_files:
-#            print('FILE=', pf)
             if pf[-5:] == '.json':
                 SynthIO_class.VIEW_SAMPLE_WAVES.append(pf[:-5])
 
@@ -598,7 +593,6 @@ class M5Stack_8Encoder_class:
     
     def __init__(self, i2c, scl=board.GP2, sda=board.GP1, i2c_address=0x41):
         self._i2c_address = i2c_address
-#        self._i2c = busio.I2C(scl, sda)			# board.I2C does NOT work for PICO, use busio.I2C
         self._i2c = i2c
         self.i2c_lock()
         dev_hex = hex(i2c_address)
@@ -686,7 +680,6 @@ class M5Stack_8Encoder_class:
         shift = 0
         
         try:
-#            for bs in list(range(3, -1, -1)):
             for bs in list(range(4)):
                 self._i2c.writeto(self._i2c_address, bytearray([base + bs]))
                 self._i2c.readfrom_into(self._i2c_address, bytes_read)
@@ -705,7 +698,6 @@ class M5Stack_8Encoder_class:
         try:
             self._i2c.writeto(self._i2c_address, bytearray([0x50 + button]))
             self._i2c.readfrom_into(self._i2c_address, bytes_read)
-#            print('BUTTON', button + 1, '=', bytes_read[0] == 0)
 
         except:
             pass
@@ -789,7 +781,7 @@ class MIDI_class:
         self.notes_pitch = {}				# {note number: [Note frequency, Pitch bend frequency, Portament start frequency, Portament ratio]}
         self.filters = {}					# {note number: filter number=voice}
         self.notes_stack = []				# [note1, note2,...]  contains only notes playing.
-        self.latest_note_hz = None				# The latest noted playing
+        self.latest_note_hz = None			# The latest noted playing
         self.synthIO = synthesizer
         self.synthesizer = synthesizer.synth()
 
@@ -805,12 +797,9 @@ class MIDI_class:
         if self._init:
             print('Looking for midi device')
 
-        try_count = 5000
+
         Encoder_obj.i2c_lock()
         while self._raw_midi_host is None and Encoder_obj.get_switch() == 0:
-#        while self._raw_midi_host is None and try_count > 0:
-
-            try_count = try_count - 1
             devices_found = usb.core.find(find_all=True)
 
             if self._init:
@@ -826,7 +815,6 @@ class MIDI_class:
 
 #                    self._raw_midi_host = MIDI(device)				# bloking mode
                     self._raw_midi_host = MIDI(device, 0.05)		# none-blocking mode
-#                    self._raw_midi_host = MIDI(device, 0.1)		# none-blocking mode
                     if self._init:
                         print('CONNECT MIDI')
 
@@ -873,7 +861,6 @@ class MIDI_class:
         # MIDI-IN via USB
         if self._midi_in_usb:
             try:
-#                start = int(time.monotonic() * 1000) % 10000
                 start = Ticks.ms()
                 portament_ms = start
                 while True:
@@ -882,8 +869,7 @@ class MIDI_class:
                     else:
                         midi_msg = self._usb_midi.receive()
 
-#                    print('MIDI MSG:', midi_msg, isinstance(midi_msg, MIDIUnknownEvent))                   
-#                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend):
+                    # Got a MIDI event then treat it
                     if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend) or isinstance(midi_msg, ControlChange):
                         break
 
@@ -905,12 +891,13 @@ class MIDI_class:
                                         self.frequency_shift(midi_note_number, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
 #                                        print('PORTAMENT:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
 
-                    # Ignore unknown events (normally Active Sensing)
+                    # Ignore unknown events (normally Active Sensing Event comming so frequently)
                     if isinstance(midi_msg, MIDIUnknownEvent):
-#                        monotonic = int(time.monotonic() * 1000) % 10000
+                        # Ignore the unknown events a certain period of time to keep getting MIDI-IN preferentially
                         if Ticks.diff(now, start) < 100:
                             continue
                     
+                    # Exit MIDI-IN process to do the other tasks
                     midi_msg = None
                     break
 
@@ -937,6 +924,7 @@ class MIDI_class:
             while True:
                 # Note on
                 if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
+                    # Back to the play mode
                     if Application.EDITOR_MODE == True:
                         Application.EDITOR_MODE = False
                         self.synthIO.audio_pause(False)
@@ -966,7 +954,7 @@ class MIDI_class:
                                 del self.filters[stop_note]
                             
 #                        else:
-#z                            print('NEW NOTE:', midi_note_number)
+#                            print('NEW NOTE:', midi_note_number)
 
                         # Generate a filter for the note, then store the filter number
                         self.filters[midi_note_number] = SynthIO.filter(None, midi_msg.velocity, midi_note_number)
@@ -974,24 +962,26 @@ class MIDI_class:
 #                        print('FILTERS NEW:', midi_note_number, self.filters)
                         init_filter = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
 
-                        # Note on velocity
-                        attack_level  = (midi_msg.velocity * vca['ATTACK_LEVEL']) / 127.0
-                        sustain_level = (midi_msg.velocity * vca['SUSTAIN']) / 127.0
+                        # Calculate the VCA ADSR volume
+                        attack_level  = vca['ATTACK_LEVEL']
+                        sustain_level = vca['SUSTAIN']
                             
                         # VCA key senesitivity
-                        if   vca['KEYSENSE'] > 0:
-                            magni = -vca['KEYSENSE'] * (128 - midi_msg.note) / 1280
-#                            print('VCA KEY SENSE+:', attack_level, magni)
-                            attack_level  = attack_level  + magni
-                            sustain_level = sustain_level + magni
-#                            print('VCA KEY SENSE+:', attack_level, vca['KEYSENSE'])
-                            
-                        elif vca['KEYSENSE'] < 0:
-                            magni = vca['KEYSENSE'] * midi_msg.note / 1280
-#                            print('VCA KEY SENSE-:', attack_level, magni)
-                            attack_level  = attack_level  + magni
-                            sustain_level = sustain_level + magni
-#                            print('VCA KEY SENSE-:', attack_level, vca['KEYSENSE'])
+                        if vca['KEYSENSE'] != 0:
+                            magni = vca['KEYSENSE'] * (midi_msg.note - (0 if vca['KEYSENSE'] > 0 else 128)) / 850
+                            if magni < 0.1:
+                                magni = 0.1
+                            elif magni > 0.9:
+                                magni = 1.0
+                                
+                            attack_level  *= magni
+                            sustain_level *= magni
+#                            print('MAGNI=', midi_msg.note, vca['KEYSENSE'], magni)
+
+                        # Note on velocity with the key sensitivity
+                        attack_level  = (midi_msg.velocity * attack_level) / 127.0
+                        sustain_level = (midi_msg.velocity * sustain_level) / 127.0
+#                        print('AS:', midi_msg.velocity, attack_level, sustain_level)
 
                         # Adjust VCA ADSR ranges
                         if   attack_level > 1.0:
@@ -1004,7 +994,7 @@ class MIDI_class:
                         elif sustain_level < 0.0:
                             sustain_level = 0.0
 
-                        # Generate an ADSR for note
+                        # Generate an ADSR for the note
                         note_env = synthio.Envelope(
                                         attack_time=vca['ATTACK'],
                                         decay_time=vca['DECAY'],
@@ -1013,7 +1003,7 @@ class MIDI_class:
                                         sustain_level=sustain_level
                                     )
 
-                        # Play the note
+                        # Filter for the note
                         filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
 
                         # Copy the wave shape to a note waveform as python list slice
@@ -1042,6 +1032,8 @@ class MIDI_class:
                             envelope=note_env,
                             waveform=wave_shape
                         )
+                        
+                        # Copy the wave shape data to the note
                         self.notes[midi_note_number].waveform[:] = SynthIO.wave_shape(0)
                         
                         # Wave shape switch status
@@ -1055,12 +1047,13 @@ class MIDI_class:
                         if self.synthIO.lfo_sound_bend() is not None:
                             self.notes[midi_note_number].bend=self.synthIO.lfo_sound_bend()
 
-#                        self.synthesizer.envelope = SynthIO.vca_envelope()
+                        # Play the note
                         self.synthesizer.press(self.notes[midi_note_number])
                         self.notes_stack.insert(0, midi_note_number)
 
                     # Note Off
                     else:
+                        # Back to the play mode
                         if Application.EDITOR_MODE == True:
                             Application.EDITOR_MODE = False
                             self.synthIO.audio_pause(False)
@@ -1084,7 +1077,7 @@ class MIDI_class:
 #                        print('===NOTES :', self.notes)
 #                        print('===VOICES:', self.notes_stack)
 
-                # ControlChange
+                # ControlChange (modulation)
                 elif isinstance(midi_msg, ControlChange):
 #                    print('CONTROL CHANGE:', midi_msg)
                     cc_mode = self.synthIO.generate_sound_lfo(midi_msg)
@@ -1129,7 +1122,7 @@ class MIDI_class:
 #                print('UPDATE NOTE FILTER:', note, self.filters[note], self.synthIO.filter(self.filters[note]))
                 self.notes[note].filter=self.synthIO.filter(self.filters[note])['FILTER']
 
-        # Change the note wave shape according to the VCA envelope phase
+        # Change the note wave shape along the VCA envelope phase
         for midi_note_number in self.notes.keys():
             if self.notes[midi_note_number] is not None:
                 note = self.notes[midi_note_number]
@@ -3079,13 +3072,16 @@ class SynthIO_class:
         return (0, 0.0)
 
     # Set up the synthio
-    def setup_synthio(self):
+    def setup_synthio(self, wave_shape=True):
         # Start the setup
         PICO2_LED.value = True
 
         self.mixer_voice_level()
         self.generate_sound_lfo()
-        self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
+        if wave_shape:
+            print('REMAKE WAVE SHAPES.')
+            self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
+
         self.generate_filter_adsr()
         self.generate_filter()
         self._synth.envelope = self._envelope_vca
@@ -4473,7 +4469,7 @@ class Application_class:
                             # Sound parameter pages
                             else:
                                 if parameter != 'CURSOR':
-                                    SynthIO.setup_synthio()
+                                    SynthIO.setup_synthio(oscillator is not None)
 
 ################# End of Applicatio  Class Definition #################
 
