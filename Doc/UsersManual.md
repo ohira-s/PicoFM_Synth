@@ -222,7 +222,7 @@ Set 0 to PBND if you don't need the PITCH BEND.
 
 ### 6-7. PORT: 0.00 (RT6) 
 
-You can set a PORTAMENT time in second.  
+You can set a PORTAMENT.  If you need the time constant mode, set PORTAMENT time in second.  If you need the frequency constant mode, set PORTAMENT in negative number.  Normally from -0.01 to -5.00.  
 Set 0 to PORT if you don't need the PORTAMENT.  
 
 ### 6-8. CURS (RT7)  
