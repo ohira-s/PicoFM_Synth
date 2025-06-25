@@ -169,6 +169,9 @@
 #     0.5.9: 06/23/2025
 #           Portament constant frequency mode is available adding to constant time mode.
 #
+#     0.6.0: 06/25/2025
+#           Program code improvement.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -1259,9 +1262,6 @@ class FM_Waveshape_class:
                                       'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
                                       'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0})
             
-        for osc in list(range(len(self._oscillators))):
-            self.oscillator_adsr(osc)
-    
         # Sampling wave names
         self._sampling_file = ['', '', '', '']
         
@@ -1287,72 +1287,7 @@ class FM_Waveshape_class:
             if ky in specs:
                 self._oscillators[osc_num][ky] = specs[ky]
                 
-            self.oscillator_adsr(osc_num)
-                
         return self._oscillators[osc_num]
- 
-    # Generate adsr shape data in an oscillator
-    def oscillator_adsr(self, osc_num):
-        return
-    
-        # Calculate a linear equation {y=(end-start)/duration*x+start, tm-->x|0..duration}
-        def calc_linear(tm, duration, start, end):
-            adsr = (end - start) / duration * tm + start
-            if adsr > 1.0:
-                adsr = 1.0
-            elif adsr < 0.0:
-                adsr = 0.0
-                
-            return adsr
-            
-        # Generate oscillator ADSR
-        osc = self.oscillator(osc_num)
-        osc['adsr'] = []
-        
-        # Attack
-        stlevel = osc['attack_factor']
-        start = stlevel
-        osc['adsr'].append(start)
-        duration = osc['attack_additive']
-        if duration > 0:
-            for tm in list(range(1, duration)):
-                adsr = calc_linear(tm, duration, stlevel, 1.0)
-                osc['adsr'].append(adsr)  
-                start = adsr
-                
-        # Decay to Sustain
-        stlevel = start
-        duration = osc['decay_additive'] - 1
-        sustain  = osc['decay_factor']
-        if duration > 0:
-            for tm in list(range(1, duration)):
-                adsr = calc_linear(tm, duration, stlevel, sustain)
-                osc['adsr'].append(adsr)
-                start = adsr
-
-        # No decay
-        else:
-            osc['adsr'].append(sustain)
-            start = sustain
-        
-        # Sustain
-        duration = osc['sustain_additive']
-        sustain_dur = FM_Waveshape_class.SAMPLE_SIZE - duration - len(osc['adsr'])
-        if sustain_dur > 0:
-            for tm in list(range(sustain_dur)):
-                osc['adsr'].append(sustain)
-
-        # Release
-        end_level = osc['sustain_factor']
-        if duration > 0:
-            for tm in list(range(0, duration)):
-                adsr = calc_linear(tm, duration, start, end_level)
-                osc['adsr'].append(adsr)
-
-        if len(osc['adsr']) > FM_Waveshape_class.SAMPLE_SIZE:
-            osc['adsr'] = osc['adsr'][:FM_Waveshape_class.SAMPLE_SIZE]
-            
-#        print('ADSR:', osc_num, len(osc['adsr']), osc['adsr'])
 
     # Generate sine wave
     def wave_sine(self, adsr, an, fn, modulator=None):
@@ -2737,15 +2672,9 @@ class SynthIO_class:
 
         # Make wave shapes along the VCA envelope phases
         if algo >= 0:
-            self._wave_shape[0] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 0)
-            self._wave_shape[1] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 1)
-            self._wave_shape[2] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 2)
-            self._wave_shape[3] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 3)
-            self._wave_shape[4] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 4)
-            self._wave_shape[5] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 5)
-            self._wave_shape[6] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, 6)
+            for ws in list(range(7)):
+                self._wave_shape[ws] = FM_Waveshape.fm_algorithm(algo, audio_output_level_adjust, ws)
 
-#        Application.show_OLED_waveshape()
         return self._wave_shape
 
     # GET/SET waveshape
@@ -3013,7 +2942,6 @@ class SynthIO_class:
                 adsr = 0.0
                 
             return adsr
-
 
         # Generate filter ADSR
         FILTER_STEPS = 126
