@@ -172,6 +172,9 @@
 #     0.6.0: 06/25/2025
 #           Program code improvement.
 #
+#     0.6.1: 06/25/2025
+#           Fixed bugs in the filter generation process.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -936,7 +939,7 @@ class MIDI_class:
     # Treat MIDI events
     def treat_midi_event(self, midi_msg, unison_heltz=0):                            
         # Upate working filters
-        self.synthIO.generate_filter(True, -1 if not isinstance(midi_msg, ControlChange) else midi_msg.value)
+        self.synthIO.update_filters(True, -1 if not isinstance(midi_msg, ControlChange) else midi_msg.value)
         vca = self.synthIO.synthio_parameter('VCA')
 
         # MIDI IN exsists
@@ -963,6 +966,9 @@ class MIDI_class:
 #                                print('REUSE NOTE:', midi_note_number)
                                 self.synthesizer.release(self.notes[midi_note_number])
                                 self.notes_stack.remove(midi_note_number)
+                                if midi_note_number in self.filters:
+                                    self.synthIO.filter_release(self.filters[midi_note_number])
+                                    del self.filters[midi_note_number]
 
                         # New note
                         elif len(self.notes_stack) == SynthIO_class.MAX_VOICES:
@@ -1024,9 +1030,6 @@ class MIDI_class:
                                         attack_level=attack_level,
                                         sustain_level=sustain_level
                                     )
-
-                        # Filter for the note
-                        filter_to_set = self.synthIO.filter(self.filters[midi_note_number])['FILTER']
 
                         # Copy the wave shape to a note waveform as python list slice
                         wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
@@ -2150,6 +2153,7 @@ class SynthIO_class:
     # DAC buffer size
 #    DAC_BUFFER = 2048
     DAC_BUFFER = 3072
+#    DAC_BUFFER = 4096
     
     # Synthesize voices
     MAX_VOICES = 12
@@ -2763,8 +2767,24 @@ class SynthIO_class:
     def lfo_sound_bend(self):
         return self._lfo_sound_bend
 
-    # Generate and/or Update a Filter
-    def generate_filter(self, update=False, modulation=0):
+    # Make a filter
+    def make_filter(self, ftype, frequency, resonance):
+        if   ftype == SynthIO_class.FILTER_LPF:
+            return self._synth.low_pass_filter(frequency, resonance)
+
+        elif ftype == SynthIO_class.FILTER_HPF:
+            return self._synth.high_pass_filter(frequency, resonance)
+
+        elif ftype == SynthIO_class.FILTER_BPF:
+            return self._synth.band_pass_filter(frequency, resonance)
+
+        elif ftype == SynthIO_class.FILTER_NOTCH:
+            return synthio.BlockBiquad(synthio.FilterMode.NOTCH, frequency, resonance)
+                    
+        return None
+
+    # Generate new filter LFO and update filters working
+    def update_filters(self, update=False, modulation=0):
 
         # Update the filte LFO value
         def update_filter_lfo(modulation):
@@ -2837,12 +2857,21 @@ class SynthIO_class:
 
                 self._synth.blocks.append(self._lfo_filter)  # add lfo to global LFO runner to get it to tick
         
-        # Generate a filter
+
+        # Filter's LFO modulation values
+        delta = update_filter_lfo(self._filter_modulation_value)
+
+        # Update working filters
         for v in list(range(len(self.filter_storage))):
-            if self.filter_storage[v] is not None:
-                if self.filter_storage[v]['TIME'] < 0:
-                    continue
-                
+            # No filter defined
+            if self.filter_storage[v] is None:
+                continue
+            
+            # Filter not working
+            if self.filter_storage[v]['TIME'] < 0:    
+                continue
+            
+            # All pass filter
             if   ftype == SynthIO_class.FILTER_PASS:
                 self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
 
@@ -2851,56 +2880,29 @@ class SynthIO_class:
                 # Keep the latest modulation value
                 if modulation != -1:
                     self._filter_modulation_value = modulation
-                    
-                delta = update_filter_lfo(self._filter_modulation_value)
+
+                # LFO and filter ADSR modulation values
                 offset = get_offset_by_adsr(v)
-                
-                if ftype == SynthIO_class.FILTER_LPF:
-                    # Make new filter
-                    if self.filter_storage[v] is None:
-                        if update == False:
-                            self.filter_storage[v] = {'FILTER': self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-#                            print('MAKE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
-                    # Re-use or update the filters
-                    else:
-                        # Update a filter for a voice
-                        self.filter_storage[v]['FILTER'] = self._synth.low_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                        print('UPDATE LPF:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
+                # Update the filters
+                if self.filter_storage[v]['TIME'] > 0:
+                    # Update a filter for a voice
+                    self.filter_storage[v]['FILTER'] = self.make_filter(ftype, freq + delta + offset[0], reso + offset[1])
+#                    print('UPDATE FILTER:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
-                elif ftype == SynthIO_class.FILTER_HPF:
-                    if self.filter_storage[v] is None:
-                        if update == False:
-                            self.filter_storage[v] = {'FILTER': self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                    else:
-                        self.filter_storage[v]['FILTER'] = self._synth.high_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                        print('FILTER HPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
-                    
-                elif ftype == SynthIO_class.FILTER_BPF:
-                    if self.filter_storage[v] is None:
-                        if update == False:
-                            self.filter_storage[v] = {'FILTER': self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                    else:
-                        self.filter_storage[v]['FILTER'] = self._synth.band_pass_filter(freq + delta + offset[0], reso + offset[1])
-#                        print('FILTER BPF FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
-        
-                elif ftype == SynthIO_class.FILTER_NOTCH:
-                    if self.filter_storage[v] is None:
-                        if update == False:
-                            self.filter_storage[v] = {'FILTER': synthio.BlockBiquad(synthio.FilterMode.synthio.NOTCH, freq + delta + offset[0], reso + offset[1]), 'TIME': -1, 'START_TIME': -1, 'VELOCITY': 127}
-                    else:
-                        self.filter_storage[v]['FILTER'] = synthio.BlockBiquad(synthio.FilterMode.NOTCH, freq + delta + offset[0], reso + offset[1])
-#                        print('FILTER NOTCH FREQ:', freq, 'No LFO' if self._lfo_filter is None else self._lfo_filter.value, fqmax, delta, offset, freq + delta + offset)
-
-    # Get the filter
+    # Generate new filter / Get a filter
     def filter(self, voice=None, velocity=127, note_number=60):
         # Get a vacant filter number
         if voice is None:
             for flt in list(range(len(self.filter_storage))):
+                if self.filter_storage[flt] is None:
+                    self.filter_storage[flt] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
+
                 if self.filter_storage[flt] is not None:
-                    if self.filter_storage[flt]['TIME'] < 0:
+                    if self.filter_storage[flt]['TIME'] < 0:		# Released filter
                         self.filter_storage[flt]['TIME'] = 0
                         self.filter_storage[flt]['START_TIME'] = 0
+                        self.filter_storage[flt]['FILTER'] = self.make_filter(self._synth_params['FILTER']['TYPE'], self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
                         keys = self._synth_params['FILTER']['FILTER_KEYSENSE']
                         if keys == 0:
                             magni = 1.0
@@ -2913,11 +2915,11 @@ class SynthIO_class:
 
                         self.filter_storage[flt]['VELOCITY'] = int(velocity * magni)
                         return flt
-                    
+
             return -1
         
         # Return the filter for the voice
-#        print('GET FILTER:', voice)
+#        print('GET FILTER:', voice, self.filter_storage[voice])
         return self.filter_storage[voice]
 
     def filter_release(self, voice):
@@ -3030,7 +3032,7 @@ class SynthIO_class:
             self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
 
         self.generate_filter_adsr()
-        self.generate_filter()
+        self.update_filters()
         self._synth.envelope = self._envelope_vca
 
         # End of the setup
