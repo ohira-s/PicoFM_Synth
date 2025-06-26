@@ -175,6 +175,9 @@
 #     0.6.1: 06/25/2025
 #           Fixed bugs in the filter generation process.
 #
+#     0.6.2: 06/25/2025
+#           The parameter unit of the protament in the constant frequency is second.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -762,6 +765,9 @@ class Ticks:
 # CLASS: USB MIDI
 ###################################
 class MIDI_class:
+    # The geometoric progression ration between notes next to ach other
+    GEOMETRIC_PROG = 1.059463094
+    
     # Constructor
     #   USB MIDI
     #     usb_midi_host_port: A tuple of (D+, D-)
@@ -787,7 +793,7 @@ class MIDI_class:
         # For receiving and treating MIDI events
         self.notes = {}						# {note number: Note object}
         self.notes_phase = {}				# {note number: Note envelope phase}
-        self.notes_pitch = {}				# {note number: [Note frequency, Pitch bend frequency, Portament start frequency, Portament ratio]}
+        self.notes_pitch = {}				# {note number: [Original note heltz, Pitch-bend to, Potament from, Portament Ratio, Portament Progression Ratio, Portament Progression Duration]}
         self.filters = {}					# {note number: filter number=voice}
         self.notes_stack = []				# [note1, note2,...]  contains only notes playing.
         self.latest_note_hz = None			# The latest noted playing
@@ -900,9 +906,11 @@ class MIDI_class:
                                         # Constant frequency mode
                                         if portament_steps < 0:
 #                                            print('PORTAMENT C:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
-                                            portament_heltz = portament_diff * (-portament_steps) * 1000 + abs(self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2]) * self.notes_pitch[midi_note_number][3]
-                                            self.notes_pitch[midi_note_number][3] = portament_heltz / abs(self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2])
-#                                            print('RATIO:', self.notes_pitch[midi_note_number][3])
+#                                            print('PORT PROG RATIO-0:', portament_diff, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][3], self.notes_pitch[midi_note_number][4])
+                                            portament_heltz = self.notes_pitch[midi_note_number][2] * (self.notes_pitch[midi_note_number][4] ** (-self.notes_pitch[midi_note_number][5] / portament_steps))
+                                            self.notes_pitch[midi_note_number][3] = (portament_heltz - self.notes_pitch[midi_note_number][2]) / (self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2])
+                                            self.notes_pitch[midi_note_number][5] += portament_diff
+#                                            print('PORT PROG RATIO-1:', portament_heltz, self.notes_pitch[midi_note_number][3], self.notes_pitch[midi_note_number][4])
                                             
                                         # Constant time mode
                                         else:
@@ -1034,14 +1042,22 @@ class MIDI_class:
                         # Copy the wave shape to a note waveform as python list slice
                         wave_shape = np.zeros(FM_Waveshape_class.SAMPLE_SIZE, dtype=np.int16)
                         
-                        # Note requencies [Original note heltz, Pitch-bend to, Potament from, Portament Ratio]
+                        # Note related frequencies 
                         original_hz = synthio.midi_to_hz(midi_msg.note)
                         note_hz =  original_hz + unison_hz
+                        portament_prog_ratio = -SynthIO._synth_params['SOUND']['PORTAMENT']
+                        
+                        if self.latest_note_hz is None:
+                            self.latest_note_hz = note_hz
+                            
+                        # Note information [Original note heltz, Pitch-bend to, Potament from, Portament Ratio, Portament Progression Ratio, Portament Progression Duration]
                         self.notes_pitch[midi_note_number] = [
                             note_hz,
                             synthio.midi_to_hz(midi_msg.note + SynthIO._synth_params['SOUND']['PITCH_BEND']) - original_hz,
-                            note_hz if self.latest_note_hz is None or SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else self.latest_note_hz,
-                            1.0 if self.latest_note_hz is None or SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else 0.0
+                            note_hz if SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else self.latest_note_hz,
+                            1.0 if SynthIO._synth_params['SOUND']['PORTAMENT'] == 0.0 else 0.0,
+                            MIDI_class.GEOMETRIC_PROG if note_hz >= self.latest_note_hz else 1.0 / MIDI_class.GEOMETRIC_PROG,
+                            0.0
                         ]
                         
                         # Portament starting note heltz
@@ -2237,7 +2253,7 @@ class SynthIO_class:
                 'UNISON'      : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':    9, 'VIEW': '{:1d}'},
                 'ADJUST_LEVEL': {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX':    1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'PITCH_BEND'  : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':     0, 'MAX':   12, 'VIEW': '{:1d}'},
-                'PORTAMENT'   : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': -5.00, 'MAX': 5.00, 'VIEW': '{:+5.2f}'},
+                'PORTAMENT'   : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': -5.00, 'MAX': 5.00, 'VIEW': '{:+6.3f}'},
                 'CURSOR'      : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':     0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
             
