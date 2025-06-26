@@ -220,9 +220,11 @@ You can set a PITCH BEND pitch.  PiFM+S will change notes pitches playing when i
 If PBND is 2 and PiFM+S plays a C4 note, PiFM+S changes the pitch from C4 to D4 when it receives the PITCH BEND + event.  And changes from C4 to A3# when it receives the PITCH BEND - event.  
 Set 0 to PBND if you don't need the PITCH BEND.  
 
-### 6-7. PORT: +0.00 (RT6) 
+### 6-7. PORT: +0.000 (RT6) 
 
-You can set a PORTAMENT.  If you need the time constant mode, set PORTAMENT time in second.  If you need the frequency constant mode, set PORTAMENT in negative number.  Normally from -0.01 to -5.00.  
+You can set a PORTAMENT.  
+If you need the time constant mode, set PORTAMENT time in second.  
+If you need the frequency constant mode, set PORTAMENT time in negative number.  The time is the duration in second moving up/down a semitone.  
 Set 0 to PORT if you don't need the PORTAMENT.  
 
 ### 6-8. CURS (RT7)  
