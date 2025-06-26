@@ -1047,7 +1047,6 @@ class MIDI_class:
                         # Note related frequencies 
                         original_hz = synthio.midi_to_hz(midi_msg.note)
                         note_hz =  original_hz + unison_hz
-                        portament_prog_ratio = -SynthIO._synth_params['SOUND']['PORTAMENT']
                         
                         if self.latest_note_hz is None:
                             self.latest_note_hz = note_hz
@@ -1063,14 +1062,14 @@ class MIDI_class:
                         ]
                         
                         # Portament starting note heltz
-                        if unison_hz == 0:
+                        if unison_heltz == 0 or unison_hz != 0:
                             self.latest_note_hz = note_hz
 #                            print('PORTAMENT START HZ:', self.latest_note_hz)
 
                         # Generate a note to play
+#                        print('PLAY NOTE:', midi_note_number, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2])
                         self.notes[midi_note_number] = synthio.Note(
                             frequency=self.notes_pitch[midi_note_number][2],
-#                            frequency=self.notes_pitch[midi_note_number][0],
                             filter=init_filter,
                             envelope=note_env,
                             waveform=wave_shape
