@@ -909,14 +909,16 @@ class MIDI_class:
 #                                            print('PORT PROG RATIO-0:', portament_diff, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][3], self.notes_pitch[midi_note_number][4])
                                             portament_heltz = self.notes_pitch[midi_note_number][2] * (self.notes_pitch[midi_note_number][4] ** (-self.notes_pitch[midi_note_number][5] / portament_steps))
                                             self.notes_pitch[midi_note_number][3] = (portament_heltz - self.notes_pitch[midi_note_number][2]) / (self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2])
-                                            self.notes_pitch[midi_note_number][5] += portament_diff
 #                                            print('PORT PROG RATIO-1:', portament_heltz, self.notes_pitch[midi_note_number][3], self.notes_pitch[midi_note_number][4])
                                             
                                         # Constant time mode
                                         else:
-                                            self.notes_pitch[midi_note_number][3] += (portament_diff / portament_steps)
+                                            current_notes = (self.notes_pitch[midi_note_number][5] / portament_steps) * abs((self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2]))
+                                            portament_heltz = self.notes_pitch[midi_note_number][2] * (self.notes_pitch[midi_note_number][4] ** current_notes)
+                                            self.notes_pitch[midi_note_number][3] = (portament_heltz - self.notes_pitch[midi_note_number][2]) / (self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2])
                                         
                                         # Adjust portament ratio
+                                        self.notes_pitch[midi_note_number][5] += portament_diff
                                         if self.notes_pitch[midi_note_number][3] > 1.0:
                                             self.notes_pitch[midi_note_number][3] = 1.0
                                             
