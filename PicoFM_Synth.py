@@ -2250,7 +2250,7 @@ class SynthIO_class:
                 'decay_factor'    : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'sustain_additive': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'sustain_factor'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'muted'           : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':   1, 'VIEW': '{:1d}'}
+                'muted'           : {'TYPE': SynthIO_class.TYPE_INDEX,  'MIN':   0, 'MAX':   1, 'VIEW': SynthIO_class.VIEW_OFF_ON}
             },
             
             'ADDITIVEWAVE': {
@@ -3370,7 +3370,7 @@ class Application_class:
 
         {'PAGE': PAGE_OSCILLTOR_WAVE1, 'EDITOR': [
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 0},
-            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 0},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 0},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 0},
@@ -3380,7 +3380,7 @@ class Application_class:
 
         {'PAGE': PAGE_OSCILLTOR_WAVE2, 'EDITOR': [
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 1},
-            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 1},
@@ -3390,7 +3390,7 @@ class Application_class:
 
         {'PAGE': PAGE_OSCILLTOR_WAVE3, 'EDITOR': [
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 2},
-            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 2},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 2},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 2},
@@ -3400,7 +3400,7 @@ class Application_class:
 
         {'PAGE': PAGE_OSCILLTOR_WAVE4, 'EDITOR': [
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 3},
-            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'algorithm', 'OSCILLATOR': -1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 3},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 3},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 3},
