@@ -154,7 +154,7 @@ The wave form is as below.
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/17_clarinet.jpg) 　
 
-## 3. FM合成＋加算合成
+## 3. FM Synthesis and Additive Synthesis
 PiFM+S adds both waves made with the FM Synthesis and the Additive Synthesis.  
 
 ![PiFMS](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/PiFMS_Wave_Synthesis.png)  

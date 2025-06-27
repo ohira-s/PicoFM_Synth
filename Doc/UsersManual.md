@@ -178,7 +178,7 @@ The following text shows you the current sound.  The first 1 digit is the bank n
 	
 ### 6-3. ALGO:1:<1>+2 (RT2) 
 
-You can see the FM algorithm of the current sound.  
+You can see the FM algorithm of the current sound.  You can change the algorithm by turning RT2.  
 On this page, FM algorithms are shown with something like an expression.  For istance, '<1>\+2' or '<1>\*2'.  
 
 |NOTATION|DESCRIPTIONS|
@@ -333,9 +333,9 @@ You can change the operator to edit by rotating RT8.  The top line on the OLED d
 In addition, you can mute the operator's output level (LEVL) by rotating RT1.  LEVL's value will be 'MUT' in the muting mode.  You can test the sound without the operator easily.  
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators3.jpg) 　
 
-### 10-3. ALGO (---)  
+### 10-3. ALGO (RT2)  
 
-You can see the current algorithm.  
+You can see the FM algorithm of the current sound.  You can change the algorithm by turning RT2.  
 	
 ### 10-4. WAVE (RT3)  
 
