@@ -2254,11 +2254,11 @@ class SynthIO_class:
             },
             
             'ADDITIVEWAVE': {
-                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':   7, 'VIEW': '{:3d}'},
-                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 1, 'MAX':  99, 'VIEW': '{:3d}'},
-                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':  99, 'VIEW': '{:3d}'},
-                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX': 255, 'VIEW': '{:3d}'},
-                'muted'        : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':   1, 'VIEW': '{:1d}'}
+                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': 0, 'MAX':   7, 'VIEW': '{:3d}'},
+                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': 1, 'MAX':  99, 'VIEW': '{:3d}'},
+                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': 0, 'MAX':  99, 'VIEW': '{:3d}'},
+                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': 0, 'MAX': 255, 'VIEW': '{:3d}'},
+                'muted'        : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN': 0, 'MAX':   1, 'VIEW': SynthIO_class.VIEW_OFF_ON}
             },
             
             'FILTER': {
@@ -3782,7 +3782,7 @@ class Application_class:
     # Algorithm chart
     ALGOLITHM = [
         [	# 0|<1>*2
-            '',
+            '             ALGO:0',
             '',
             '',
             '<1>-->2-->',
@@ -3791,7 +3791,7 @@ class Application_class:
             ''
         ],
         [	# 1|<1>+2
-            '',
+            '             ALGO:1',
             '',
             '<1>--',
             '     +-->',
@@ -3800,7 +3800,7 @@ class Application_class:
             ''
         ],
         [	# 2|<1>+2+<3>+4
-            '<1>--',
+            '<1>--        ALGO:2',
             '     +',
             ' 2---',
             '     +-->',
@@ -3809,7 +3809,7 @@ class Application_class:
             ' 4---'
         ],
         [	# 3|(<1>+2*3)*4
-            '',
+            '             ALGO:3',
             '',
             '<1>-----',
             '        +-->4',
@@ -3818,7 +3818,7 @@ class Application_class:
             ''
         ],
         [	# 4|<1>*2*3*4
-            '',
+            '             ALGO:4',
             '',
             '',
             '<1>-->2-->3-->4',
@@ -3827,7 +3827,7 @@ class Application_class:
             ''
         ],
         [	# 5|<1>*2+<3>*4
-            '',
+            '             ALGO:5',
             '',
             '<1>-->2--',
             '         +-->',
@@ -3836,49 +3836,50 @@ class Application_class:
             ''
         ],
         [	# 6|<1>+2*3*4
+            '             ALGO:6',
             '',
             '<1>---------',
             '            +-->',
             '<2>->3-->4--',
-            '',
+
             '',
             ''
         ],
         [	# 7|<1>+2*3+4']
+            '             ALGO:7',
             '',
             '<1>-----',
             '        +',
             '<2>->3--+-->',
             '        +',
-            '<4>-----',
-            ''
+            '<4>-----'
         ],
         [	# 8|<1>*(2+3)+4']
+            '             ALGO:8',
             '',
             '     -->2--',
             '<1>-|      |',
             '     -->3--+-->',
             '           |',
-            '<4>--------',
-            ''
+            '<4>--------'
         ],
         [	# 9|<1>*(2*3+4)']
+            '             ALGO:9',
             '',
             '     -->2-->3--',
             '<1>-|          +-->',
             '     -->4------',
             '',
-            '',
             ''
         ],
         [	# 10|<1>*(2+3+4)']
+            '            ALGO:10',
             '',
             '     -->2--',
             '    |      |',
             '<1>-+-->3--+-->',
             '    |      |',
-            '     -->4--',
-            ''
+            '     -->4--'
         ]
     ]
 
