@@ -324,12 +324,15 @@ You can edit the oscillator parameters of the 4 operators.
 ### 10-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/05_oscillators.jpg) 　
 
-### 10-2. OSCW (RT8)  
+### 10-2. OSCW (RT8/RT1)  
 
 You can change the operator to edit by rotating RT8.  The top line on the OLED display shows you the current operator number.  '[1]' means that the 1st operator is the target to edit.  In this case turn RT8 clockwise, you will get '[2]'.  
 
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators2.jpg) 　
-	
+
+In addition, you can mute the operator's output level (LEVL) by rotating RT1.  LEVL's value will be 'MUT' in the muting mode.  You can test the sound without the operator easily.  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/06_oscillators3.jpg) 　
+
 ### 10-3. ALGO (---)  
 
 You can see the current algorithm.  
@@ -378,9 +381,12 @@ Wave synthesis adding 8 sine waves maximum is suitable for wind instruments and 
 
 A sine wave consists of 3 parameters (FREQ, DETU and LEVL).  There are 4 columns (Oscillator Group A, B, C, D) and each column has 2 sine waves.  So you can add 8 sine waves maximum.  
 
-### 11-2. ADDW (RT8)  
+### 11-2. ADDW (RT8/RT1)  
 
 You can change the oscillators to edit by rotating RT8.  The top line on the OLED display shows you the current oscillator group name.  '[A]' means that the 1st and 2nd oscillators are the target to edit.  In this case turn RT8 clockwise, you will get '[B]'.  
+
+In addition, you can mute the oscillator group's output level (LEVL) by rotating RT1.  LEVL's value will be 'MUT' in the muting mode.  You can test the sound without the oscillator group easily.  
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/16_addwave2.jpg) 　
 
 ### 11-3. FREQ (RT2/RT5)  
 
