@@ -178,6 +178,9 @@
 #     0.6.2: 06/25/2025
 #           The parameter unit of the protament in the constant frequency is second.
 #
+#     0.6.3: 06/27/2025
+#           The mute function for the Operators and the Oscillators is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -1280,7 +1283,8 @@ class FM_Waveshape_class:
         for osc in list(range(FM_Waveshape_class.OPERATOR_MAX)):
             self._oscillators.append({'waveshape': 0, 'frequency': 1, 'freq_decimal': 0, 'feedback': 0, 'amplitude': 1, 'adsr': [],
                                       'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
-                                      'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0})
+                                      'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0,
+                                      'muted': 0})
             
         # Sampling wave names
         self._sampling_file = ['', '', '', '']
@@ -1566,11 +1570,17 @@ class FM_Waveshape_class:
 
     # Calculate an operator output level in a phase
     def operator_output_level(self, op_num, phase=0, audio_operator = False):
+        # Muted operator
+        if self._oscillators[op_num]['muted'] == 1:
+            return 0.0
+        
+        # Adjust the output level
         level = self.operator_level(self._oscillators[op_num]['amplitude'], audio_operator)
         
         if SynthIO is None:
             return 1.0
         
+        # VCO ADSR
         operator = SynthIO.wave_parameter(op_num)
         if   phase == 1:
             factor = (operator['decay_additive'] - operator['attack_additive']) / 3 + operator['attack_additive']
@@ -1601,7 +1611,6 @@ class FM_Waveshape_class:
         wm = self._oscillators[osc_m]['waveshape']
         bm = self._oscillators[osc_m]['feedback']
         fm = self._oscillators[osc_m]['frequency'] * 100 + self._oscillators[osc_m]['freq_decimal']
-#        am = self.operator_level(self._oscillators[osc_m]['amplitude'])
         am = self.operator_output_level(osc_m, phase)
         tm = self._oscillators[osc_m]['adsr']
         
@@ -1609,7 +1618,6 @@ class FM_Waveshape_class:
         wc = self._oscillators[osc_c]['waveshape']
         bc = self._oscillators[osc_c]['feedback']
         fc = self._oscillators[osc_c]['frequency'] * 100 + self._oscillators[osc_c]['freq_decimal']
-#        ac = self.operator_level(self._oscillators[osc_c]['amplitude'], True)
         ac = self.operator_output_level(osc_c, phase, True)
         tc = self._oscillators[osc_c]['adsr']
 
@@ -1631,7 +1639,6 @@ class FM_Waveshape_class:
         wm = self._oscillators[osc_m]['waveshape']
         bm = self._oscillators[osc_m]['feedback']
         fm = self._oscillators[osc_m]['frequency'] * 100 + self._oscillators[osc_m]['freq_decimal']
-#        am = self.operator_level(self._oscillators[osc_m]['amplitude'], True)
         am = self.operator_output_level(osc_m, phase, True)
         tm = self._oscillators[osc_m]['adsr']
         
@@ -1639,7 +1646,6 @@ class FM_Waveshape_class:
         wc = self._oscillators[osc_c]['waveshape']
         bc = self._oscillators[osc_c]['feedback']
         fc = self._oscillators[osc_c]['frequency'] * 100 + self._oscillators[osc_c]['freq_decimal']
-#        ac = self.operator_level(self._oscillators[osc_c]['amplitude'], True)
         ac = self.operator_output_level(osc_c, phase, True)
         tc = self._oscillators[osc_c]['adsr']
 
@@ -1669,28 +1675,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
         a0 = self.operator_output_level(osc_ma, phase)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca]['waveshape']
         f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b1 = self._oscillators[osc_ca]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'])
         a1 = self.operator_output_level(osc_ca, phase)
         t1 = self._oscillators[osc_ca]['adsr']
 
         w2 = self._oscillators[osc_mb]['waveshape']
         f2 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
         b2 = self._oscillators[osc_mb]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_mb]['amplitude'])
         a2 = self.operator_output_level(osc_mb, phase)
         t2 = self._oscillators[osc_mb]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -1722,28 +1724,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
         a0 = self.operator_output_level(osc_ma, phase)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca]['waveshape']
         f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b1 = self._oscillators[osc_ca]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'])
         a1 = self.operator_output_level(osc_ca, phase)
         t1 = self._oscillators[osc_ca]['adsr']
 
         w2 = self._oscillators[osc_mb]['waveshape']
         f2 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
         b2 = self._oscillators[osc_mb]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_mb]['amplitude'])
         a2 = self.operator_output_level(osc_mb, phase)
         t2 = self._oscillators[osc_mb]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -1772,28 +1770,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'], True)
         a0 = self.operator_output_level(osc_ma, phase, True)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca]['waveshape']
         f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b1 = self._oscillators[osc_ca]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'])
         a1 = self.operator_output_level(osc_ca, phase)
         t1 = self._oscillators[osc_ca]['adsr']
 
         w2 = self._oscillators[osc_mb]['waveshape']
         f2 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
         b2 = self._oscillators[osc_mb]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_mb]['amplitude'])
         a2 = self.operator_output_level(osc_mb, phase)
         t2 = self._oscillators[osc_mb]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -1826,28 +1820,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'], True)
         a0 = self.operator_output_level(osc_ma, phase, True)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca]['waveshape']
         f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b1 = self._oscillators[osc_ca]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'])
         a1 = self.operator_output_level(osc_ca, phase)
         t1 = self._oscillators[osc_ca]['adsr']
 
         w2 = self._oscillators[osc_mb]['waveshape']
         f2 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
         b2 = self._oscillators[osc_mb]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_mb]['amplitude'], True)
         a2 = self.operator_output_level(osc_mb, phase, True)
         t2 = self._oscillators[osc_mb]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -1887,28 +1877,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
         a0 = self.operator_output_level(osc_ma, phase)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca1]['waveshape']
         f1 = self._oscillators[osc_ca1]['frequency'] * 100 + self._oscillators[osc_ca1]['freq_decimal']
         b1 = self._oscillators[osc_ca1]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca1]['amplitude'], True)
         a1 = self.operator_output_level(osc_ca1, phase, True)
         t1 = self._oscillators[osc_ca1]['adsr']
 
         w2 = self._oscillators[osc_ca2]['waveshape']
         f2 = self._oscillators[osc_ca2]['frequency'] * 100 + self._oscillators[osc_ca2]['freq_decimal']
         b2 = self._oscillators[osc_ca2]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_ca2]['amplitude'], True)
         a2 = self.operator_output_level(osc_ca2, phase, True)
         t2 = self._oscillators[osc_ca2]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -1954,28 +1940,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
         a0 = self.operator_output_level(osc_ma, phase)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_mb]['waveshape']
         f1 = self._oscillators[osc_mb]['frequency'] * 100 + self._oscillators[osc_mb]['freq_decimal']
         b1 = self._oscillators[osc_mb]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_mb]['amplitude'])
         a1 = self.operator_output_level(osc_mb, phase)
         t1 = self._oscillators[osc_mb]['adsr']
 
         w2 = self._oscillators[osc_ca]['waveshape']
         f2 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b2 = self._oscillators[osc_ca]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_ca]['amplitude'], True)
         a2 = self.operator_output_level(osc_ca, phase, True)
         t2 = self._oscillators[osc_ca]['adsr']
 
         w3 = self._oscillators[osc_cb]['waveshape']
         f3 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b3 = self._oscillators[osc_cb]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a3 = self.operator_output_level(osc_cb, phase, True)
         t3 = self._oscillators[osc_cb]['adsr']
 
@@ -2020,28 +2002,24 @@ class FM_Waveshape_class:
         w0 = self._oscillators[osc_ma]['waveshape']
         f0 = self._oscillators[osc_ma]['frequency'] * 100 + self._oscillators[osc_ma]['freq_decimal']
         b0 = self._oscillators[osc_ma]['feedback']
-#        a0 = self.operator_level(self._oscillators[osc_ma]['amplitude'])
         a0 = self.operator_output_level(osc_ma, phase)
         t0 = self._oscillators[osc_ma]['adsr']
 
         w1 = self._oscillators[osc_ca]['waveshape']
         f1 = self._oscillators[osc_ca]['frequency'] * 100 + self._oscillators[osc_ca]['freq_decimal']
         b1 = self._oscillators[osc_ca]['feedback']
-#        a1 = self.operator_level(self._oscillators[osc_ca]['amplitude'], True)
         a1 = self.operator_output_level(osc_ca, phase, True)
         t1 = self._oscillators[osc_ca]['adsr']
 
         w2 = self._oscillators[osc_cb]['waveshape']
         f2 = self._oscillators[osc_cb]['frequency'] * 100 + self._oscillators[osc_cb]['freq_decimal']
         b2 = self._oscillators[osc_cb]['feedback']
-#        a2 = self.operator_level(self._oscillators[osc_cb]['amplitude'], True)
         a2 = self.operator_output_level(osc_cb, phase, True)
         t2 = self._oscillators[osc_cb]['adsr']
 
         w3 = self._oscillators[osc_cc]['waveshape']
         f3 = self._oscillators[osc_cc]['frequency'] * 100 + self._oscillators[osc_cc]['freq_decimal']
         b3 = self._oscillators[osc_cc]['feedback']
-#        a3 = self.operator_level(self._oscillators[osc_cc]['amplitude'], True)
         a3 = self.operator_output_level(osc_cc, phase, True)
         t3 = self._oscillators[osc_cc]['adsr']
 
@@ -2119,7 +2097,7 @@ class FM_Waveshape_class:
                     for oscillator in list(range(FM_Waveshape_class.SINE_OSCILLATOR_MAX)):
                         dataset = SynthIO.additivewave_parameter(oscillator)
                         if dataset['amplitude'] > 0:
-                            amp = self.operator_level(dataset['amplitude'], True)
+                            amp = self.operator_level(dataset['amplitude'] * (0 if dataset['muted'] == 1 else 1), True)
                             
                             # Wave shape envelope for the additive synthsis works every two oscillators
                             operator = SynthIO.wave_parameter(oscillator//2)
@@ -2271,14 +2249,16 @@ class SynthIO_class:
                 'decay_additive'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'decay_factor'    : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
                 'sustain_additive': {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
-                'sustain_factor'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'}
+                'sustain_factor'  : {'TYPE': SynthIO_class.TYPE_FLOAT,  'MIN': 0.0, 'MAX': 1.0, 'VIEW': '{:3.1f}'},
+                'muted'           : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':   1, 'VIEW': '{:1d}'}
             },
             
             'ADDITIVEWAVE': {
-                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':   7, 'VIEW': '{:3d}'},
-                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   1, 'MAX':  99, 'VIEW': '{:3d}'},
-                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX':  99, 'VIEW': '{:3d}'},
-                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT,    'MIN':   0, 'MAX': 255, 'VIEW': '{:3d}'}
+                'oscillator'   : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':   7, 'VIEW': '{:3d}'},
+                'frequency'    : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 1, 'MAX':  99, 'VIEW': '{:3d}'},
+                'freq_decimal' : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':  99, 'VIEW': '{:3d}'},
+                'amplitude'    : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX': 255, 'VIEW': '{:3d}'},
+                'muted'        : {'TYPE': SynthIO_class.TYPE_INT, 'MIN': 0, 'MAX':   1, 'VIEW': '{:1d}'}
             },
             
             'FILTER': {
@@ -2386,22 +2366,26 @@ class SynthIO_class:
                 {
                     'oscillator': 0, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
                     'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
-                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0
+                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0,
+                    'muted': 0
                 },
                 {
                     'oscillator': 1, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
                     'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
-                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0
+                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0,
+                    'muted': 0
                 },
                 {
                     'oscillator': 2, 'waveshape': 0, 'frequency':  2, 'freq_decimal':  0, 'amplitude':  10, 'feedback': 1,
                     'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
-                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0
+                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0,
+                    'muted': 0
                 },
                 {
                     'oscillator': 3, 'waveshape': 0, 'frequency':  1, 'freq_decimal':  0, 'amplitude': 255, 'feedback': 0,
                     'attack_factor': 1.0, 'attack_additive': 1.0, 'decay_additive': 1.0,
-                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0
+                    'decay_factor': 1.0, 'sustain_additive': 1.0, 'sustain_factor': 1.0,
+                    'muted': 0
                 }
             ],
 
@@ -2411,49 +2395,57 @@ class SynthIO_class:
                     'oscillator'   : 0,
                     'frequency'    : 1,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 1,
                     'frequency'    : 2,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 2,
                     'frequency'    : 3,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 3,
                     'frequency'    : 4,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 4,
                     'frequency'    : 5,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 5,
                     'frequency'    : 6,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 6,
                     'frequency'    : 7,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 },
                 {
                     'oscillator'   : 7,
                     'frequency'    : 8,
                     'freq_decimal' : 0,
-                    'amplitude'    : 0
+                    'amplitude'    : 0,
+                    'muted'        : 0
                 }
             ],
 
@@ -2664,11 +2656,21 @@ class SynthIO_class:
             
         # Oscillators
         elif category == 'OSCILLATORS':
+            if parameter == 'amplitude':
+                muted =  self.wave_parameter(oscillator)['muted']
+                if muted == 1:
+                    return 'MUT'
+                
             value = self.wave_parameter(oscillator)[parameter]
             attr  = self._params_attr[category][parameter]              
             
         # Additive Wave
         elif category == 'ADDITIVEWAVE':
+            if parameter == 'amplitude':
+                muted =  self.additivewave_parameter(oscillator)['muted']
+                if muted == 1:
+                    return 'MUT'
+
             value = self.additivewave_parameter(oscillator)[parameter]
             attr  = self._params_attr[category][parameter]              
 
@@ -3367,8 +3369,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_WAVE1, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 0},
+            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 0},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 0},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 0},
@@ -3377,8 +3379,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_WAVE2, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 1},
+            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 1},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 1},
@@ -3387,8 +3389,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_WAVE3, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 2},
+            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 2},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 2},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 2},
@@ -3397,8 +3399,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_OSCILLTOR_WAVE4, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'muted',        'OSCILLATOR': 3},
+            {'CATEGORY': None,          'PARAMETER': None,           'OSCILLATOR': None},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'waveshape',    'OSCILLATOR': 3},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'frequency',    'OSCILLATOR': 3},
             {'CATEGORY': 'OSCILLATORS', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 3},
@@ -3407,7 +3409,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_ADDITIVE_WAVE1, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+#            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'muted',        'OSCILLATOR': 0},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 0},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 0},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 0},
@@ -3417,7 +3420,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_ADDITIVE_WAVE2, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+#            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'muted',        'OSCILLATOR': 2},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 2},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 2},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 2},
@@ -3427,7 +3431,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_ADDITIVE_WAVE3, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+#            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'muted',        'OSCILLATOR': 4},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 4},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 4},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 4},
@@ -3437,7 +3442,8 @@ class Application_class:
         ]},
 
         {'PAGE': PAGE_ADDITIVE_WAVE4, 'EDITOR': [
-            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+#            {'CATEGORY': None, 'PARAMETER': None, 'OSCILLATOR': None},
+            {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'muted',        'OSCILLATOR': 6},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'frequency',    'OSCILLATOR': 6},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'freq_decimal', 'OSCILLATOR': 6},
             {'CATEGORY': 'ADDITIVEWAVE', 'PARAMETER': 'amplitude',    'OSCILLATOR': 6},
@@ -4285,9 +4291,21 @@ class Application_class:
 
                         # Update the parameter to be incremented
                         if inc is not None:
+                            # Increment the value
 #                            print('INCREMENT:', inc, category, parameter, oscillator)
                             SynthIO.increment_value(inc, category, parameter, oscillator)
-                            self.show_OLED_page([parameter])
+                            
+                            # muted parameter
+                            if parameter == 'muted':
+                                # ADDITIVEWAVE muted
+                                if   category == 'ADDITIVEWAVE':
+                                    SynthIO.increment_value(inc, category, parameter, oscillator + 1)
+                                    
+                                self.show_OLED_page([parameter, 'amplitude'])
+                            
+                            # The other parameters
+                            else:
+                                self.show_OLED_page([parameter])
 
                             # Tasks after updated a parameter
                             dataset = SynthIO.synthio_parameter(category)
