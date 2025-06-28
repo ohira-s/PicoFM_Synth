@@ -181,6 +181,9 @@
 #     0.6.3: 06/27/2025
 #           The mute function for the Operators and the Oscillators is available.
 #
+#     0.6.4: 06/28/2025
+#           Toy sampler improvement.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -500,7 +503,10 @@ class ADC_MIC_class:
         voltage = int(self._adc.value / 65535.0 * FM_Waveshape_class.SAMPLE_VOLUME * 2 - FM_Waveshape_class.SAMPLE_VOLUME)
         return voltage
 
-    def sampling(self, duration=1.0, cut_min=100, samples=512):
+    def sampling(self, duration=1.0, cut_min=1, samples=512):
+        if cut_min <= 0:
+            cut_min = 1
+            
         samples2 = samples + samples
         sleep_sec = duration / samples2
         ADC_MIC_class.SAMPLED_WAVE = []
@@ -525,12 +531,12 @@ class ADC_MIC_class:
         for s in list(range(len(ADC_MIC_class.SAMPLED_WAVE))):
             ADC_MIC_class.SAMPLED_WAVE[s] = int(ADC_MIC_class.SAMPLED_WAVE[s] * adjust)
 
-        for s in list(range(int(samples / 2), 0, -1)):
-            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
-            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
+#        for s in list(range(int(samples / 2), 0, -1)):
+#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
+#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
 
         # Average
-        avg_range = 8 
+        avg_range = 6
         for i in list(range(4)):
             for s in list(range(0, samples - avg_range)):
                 avg = 0
@@ -551,24 +557,41 @@ class ADC_MIC_class:
             file_name = '/sd/SYNTH/WAVE/' + name + '.json'
             with open(file_name, 'w') as f:
                 if wave is None:
-                    wave = ADC_MIC_class.SAMPLED_WAVE.tolist()
+                    wave = ADC_MIC_class.SAMPLED_WAVE
+                    if isinstance(wave, np.ndarray):
+                        wave = wave.tolist()
+                        json.dump(wave, f)
+                        ADC_MIC_class.SAMPLED_WAVE = np.array(wave)
+                        
+                    else:
+                        json.dump(wave, f)
+        
                 else:
-                    wave = wave.tolist()
+                    if isinstance(wave, np.ndarray):
+                        wave = wave.tolist()
+                        json.dump(wave, f)
+
+
+                    else:
+                        print('wave LIST:', wave)
+                        json.dump(wave, f)
                     
-                json.dump(wave, f)
                 f.close()
                 self.find_sampling_files()
                 success = True
 
         except Exception as e:
-            print('SD SAVE EXCEPTION:', e)
+            print('SD SAVE SAMPLE EXCEPTION:', e)
             success = False
             
         return success
 
     # Load sampled wave file
     def load_sampling_file(self, name):
-        success = True
+        name = name.strip()
+        if len(name) == 0:
+            return None
+
         try:
             with open('/sd/SYNTH/WAVE/' + name + '.json', 'r') as f:
                 wave = json.load(f)
@@ -2310,7 +2333,7 @@ class SynthIO_class:
             },
             
             'SAMPLING': {
-                'TIME'  : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    0, 'MAX':  999, 'VIEW': '{:3d}'},
+                'TIME'  : {'TYPE': SynthIO_class.TYPE_FLOAT,          'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
                 'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,          'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
                 'CUT'   : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    0, 'MAX': 9999, 'VIEW': '{:4d}'},
                 'NAME'  : {'TYPE': SynthIO_class.TYPE_STRING,         'MIN':    0, 'MAX':    8, 'VIEW': '{:8s}'},
@@ -4432,7 +4455,8 @@ class Application_class:
                                             Encoder_obj.led(6, [0x00, 0x00, 0xff])
                                             Encoder_obj.i2c_unlock()
                                             
-                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
+#                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
+                                            ADC_Mic.sampling(dataset['TIME'], dataset['CUT'])
                                             print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
                                             self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
                                             time.sleep(2.0)
@@ -4447,7 +4471,17 @@ class Application_class:
                                     # Save the current wave sampled
                                     elif sampling == 'SAVING':
                                         ADC_Mic.save_samplig_file(dataset['NAME'])
-                                        time.sleep(0.5)
+                                        name = dataset['NAME'].strip()
+                                        waves = SynthIO.synthio_parameter('SAMPLING')
+                                        for wv in list(range(1,5)):
+                                            if waves['WAVE' + str(wv)] == name:
+                                                wv = 0
+                                                SynthIO.setup_synthio()
+                                                break
+                                            
+                                        if wv != 0:
+                                            time.sleep(0.5)
+
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
                                         self.show_OLED_page(['SAMPLE'])
 
