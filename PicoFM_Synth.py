@@ -531,11 +531,12 @@ class ADC_MIC_class:
         for s in list(range(len(ADC_MIC_class.SAMPLED_WAVE))):
             ADC_MIC_class.SAMPLED_WAVE[s] = int(ADC_MIC_class.SAMPLED_WAVE[s] * adjust)
 
-#        for s in list(range(int(samples / 2), 0, -1)):
-#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
-#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
+        # Average1
+        for s in list(range(int(samples / 2), 0, -1)):
+            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
+            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
 
-        # Average
+        # Average2
         avg_range = 6
         for i in list(range(4)):
             for s in list(range(0, samples - avg_range)):
@@ -2531,7 +2532,7 @@ class SynthIO_class:
             'SAMPLING': {
                 'TIME'  : 1,
                 'WAIT'  : 3.0,
-                'CUT'   : 500,
+                'CUT'   : 0,
                 'NAME'  : '',
                 'CURSOR': 0,
                 'SAMPLE': 0,
