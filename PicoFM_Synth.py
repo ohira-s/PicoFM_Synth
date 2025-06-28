@@ -562,7 +562,10 @@ class ADC_MIC_class:
                 ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s] = v
             
         # Volume adjuster
-        if   vmax == 0 and vmin == 0:
+        center = (vmax + vmin) / 2
+        vmax -= center
+        vmin -= center
+        if   vmax == vmin:
             adjust = 1.0
         elif vmax >= -vmin:
             adjust = FM_Waveshape_class.SAMPLE_VOLUME_f / vmax
@@ -571,7 +574,7 @@ class ADC_MIC_class:
 
         # Adjust to max or min amplitude
         for s in list(range(len(ADC_MIC_class.SAMPLED_WAVE))):
-            ADC_MIC_class.SAMPLED_WAVE[s] = int(ADC_MIC_class.SAMPLED_WAVE[s] * adjust)
+            ADC_MIC_class.SAMPLED_WAVE[s] = int((ADC_MIC_class.SAMPLED_WAVE[s] - center) * adjust)
 
         # Store the sampled wave
         ADC_MIC_class.SAMPLED_WAVE = np.array(ADC_MIC_class.SAMPLED_WAVE)
