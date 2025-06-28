@@ -506,23 +506,65 @@ class ADC_MIC_class:
     def sampling(self, duration=1.0, cut_min=1, samples=512):
         if cut_min <= 0:
             cut_min = 1
-            
-        samples2 = samples + samples
-        sleep_sec = duration / samples2
+        
+        # Sampleing size
+        over_sampling = 4
+        samplings = samples * over_sampling
+        sleep_sec = duration / samplings
         ADC_MIC_class.SAMPLED_WAVE = []
+        
+        # First sampling
+        vs = []
+        for s in list(range(over_sampling)):
+            vs.append(self.get_voltage())
+            time.sleep(sleep_sec)
+
+        # Sampling
+        for s in list(range(samples)):
+            for s in list(range(over_sampling)):
+                vs.append(self.get_voltage())
+                time.sleep(sleep_sec)
+
+            v = int((sum(vs) / (over_sampling + over_sampling) ) / cut_min) * cut_min		# Jagged shape reduction
+            ADC_MIC_class.SAMPLED_WAVE.append(v)
+            vs = vs[over_sampling:]
+
+        # Amplitude adjuster
         vmin =  FM_Waveshape_class.SAMPLE_VOLUME * 2
         vmax = -FM_Waveshape_class.SAMPLE_VOLUME * 2
-        for s in list(range(samples)):
-            v0 = self.get_voltage()
-            time.sleep(sleep_sec)
-            v1 = self.get_voltage()
-            time.sleep(sleep_sec)
-            v = int(((v1 + v0)/2) / cut_min) * cut_min		# Jagged shape reduction
-            vmin = min(vmin, v)
-            vmax = max(vmax, v)
-            ADC_MIC_class.SAMPLED_WAVE.append(v)
         
-        if vmax >= -vmin:
+        # Average1
+#        for s in list(range(int(samples / 2), 0, -1)):
+#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
+#            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
+
+        # Moving average
+        avg_range = 20
+        for i in list(range(2)):
+            for s in list(range(0, samples - avg_range)):
+                avg = 0
+                for a in list(range(avg_range)):
+                    avg = avg + ADC_MIC_class.SAMPLED_WAVE[s + a]
+
+                v = int(avg / avg_range)
+                vmin = min(vmin, v)
+                vmax = max(vmax, v)
+                ADC_MIC_class.SAMPLED_WAVE[s] = v
+
+            for s in list(range(avg_range)):
+                avg = 0
+                for a in list(range(avg_range)):
+                    avg = avg + ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s - a]
+
+                v = int(avg / avg_range)
+                vmin = min(vmin, v)
+                vmax = max(vmax, v)
+                ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s] = v
+            
+        # Volume adjuster
+        if   vmax == 0 and vmin == 0:
+            adjust = 1.0
+        elif vmax >= -vmin:
             adjust = FM_Waveshape_class.SAMPLE_VOLUME_f / vmax
         else:
             adjust = FM_Waveshape_class.SAMPLE_VOLUME_f / -vmin
@@ -531,21 +573,7 @@ class ADC_MIC_class:
         for s in list(range(len(ADC_MIC_class.SAMPLED_WAVE))):
             ADC_MIC_class.SAMPLED_WAVE[s] = int(ADC_MIC_class.SAMPLED_WAVE[s] * adjust)
 
-        # Average1
-        for s in list(range(int(samples / 2), 0, -1)):
-            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 1] = int((ADC_MIC_class.SAMPLED_WAVE[s] + ADC_MIC_class.SAMPLED_WAVE[s - 1]) / 2)
-            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
-
-        # Average2
-        avg_range = 6
-        for i in list(range(4)):
-            for s in list(range(0, samples - avg_range)):
-                avg = 0
-                for a in list(range(avg_range)):
-                    avg = avg + ADC_MIC_class.SAMPLED_WAVE[s + a]
-
-                ADC_MIC_class.SAMPLED_WAVE[s] = int(avg / avg_range)
-
+        # Store the sampled wave
         ADC_MIC_class.SAMPLED_WAVE = np.array(ADC_MIC_class.SAMPLED_WAVE)
 
     # Save sampled wave file
