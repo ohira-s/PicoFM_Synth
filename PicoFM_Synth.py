@@ -2325,15 +2325,15 @@ class SynthIO_class:
             
             'FILTER': {
                 'TYPE'           : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_FILTER) - 1, 'VIEW': SynthIO_class.VIEW_FILTER},
-                'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX':   5.0, 'VIEW': '{:3.1f}'},
+                'FREQUENCY'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': -10000, 'MAX': 10000, 'VIEW': '{:+6d}'},
+                'RESONANCE'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX':   5.0, 'VIEW': '{:6.2f}'},
                 'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
-                'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:5.2f}'},
-                'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
+                'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:6.2f}'},
+                'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:6d}'},
                 'FILTER_KEYSENSE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':  -9, 'MAX':     9, 'VIEW': '{:+2d}'},
                 'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
                 'ADSR_FQ_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:3.1f}'},
+                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:5.2f}'},
                 'ADSR_Qf_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
                 'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
                 'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
@@ -2341,8 +2341,8 @@ class SynthIO_class:
                 'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
                 'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
                 'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
-                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:3.1f}'},
-                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f5) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f5}
+                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:4.1f}'},
+                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
 
             'VCA': {
@@ -2850,6 +2850,12 @@ class SynthIO_class:
 
     # Make a filter
     def make_filter(self, ftype, frequency, resonance):
+        if frequency < 0:
+            frequency = 0
+            
+        if resonance < 0.0:
+            resonance = 0.0
+            
         if   ftype == SynthIO_class.FILTER_LPF or ftype == SynthIO_class.FILTER_LPF2:
             return self._synth.low_pass_filter(frequency, resonance)
 
@@ -4340,7 +4346,7 @@ class Application_class:
                                         elif data_view[-1] == 'd':
                                             data_view = data_view[:-1]
                                             if data_view[0] == '+':
-                                                total_len = int(data_view[1:]) - 1
+                                                total_len = int(data_view[1:])
                                                 
                                             else:
                                                 total_len = int(data_view)
