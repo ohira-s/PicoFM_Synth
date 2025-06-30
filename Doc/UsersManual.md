@@ -498,14 +498,20 @@ PiFM+S has following filters.
 |Abbr.|FILTER TYPE|
 |---|---|
 |PASS|Pass through.|
-|LPF|Low Pass Filter.|
-|HPF|High Pass Filter.|
-|BPF|Band Pass Filter.|
-|NOTCH|Notch Filter.|
+|LPF|Low Pass Filter. (Fixed cutoff frequency)|
+|HPF|High Pass Filter. (Fixed cutoff frequency)|
+|BPF|Band Pass Filter. (Fixed cutoff frequency)|
+|NOTCH|Notch Filter. (Fixed cutoff frequency)|
+|LPF2|Low Pass Filter. (Note cutoff frequency)|
+|HPF2|High Pass Filter. (Note cutoff frequency)|
+|BPF2|Band Pass Filter. (Note cutoff frequency)|
+|NOTCH2|Notch Filter. (Note cutoff frequency)|
 
 ### 14-3. FREQ (RT2)  
 
 Cut off frequency of the filter.    
+The cutoff frequency itself for the filters in 'Fixed cutoff frequency' mode.  
+The offset frequency from the frequency of the note playing for the filters in 'Note cutoff frequency' mode.  
 	
 ### 14-4. RESO (RT3)  
 
@@ -720,9 +726,9 @@ Sampling unit time.  Normally must be set 1.  Larger value, get more complex wav
 
 Duration time in second to start sampling.  
 	
-### 20-4. CUT (RT4)  
+### 20-4. AVRG (RT4)  
 
-Round up value in fluctuation of wave amplitude recorded.  Smaller value, get more complex wave shape like noise.  
+The number of samples to take moving average of the sampled wave data.  Smaller value, get more complex wave shape like noise.  Larger value, get wave shape with missing its features.
 
 ### 20-5. NAME (RT5)  
 

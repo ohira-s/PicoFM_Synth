@@ -184,32 +184,36 @@ So you can more modulate it.
 The sounds made with the FMWG can be used as music instruments.  However you can apply the PiFM+S filter to the sound.
 　
 ### 5-1. Filter Types
-|Abbr.|Filter|Descriptions|
-|---|---|---|
-|PASS|Pass Through|No filter is applied.|
-|LFP|Low Pass Filter|Reduce high sounds.|
-|HPF|High Pass Filter|Reduce low sounds.|
-|BPF|Band Path Filter|Reduce both high and low sounds.|
-|NOTCH|Notch Filter|Reduces a certain range of sounds.|
+|Abbr.|FILTER TYPE|
+|---|---|
+|PASS|Pass through.|
+|LPF|Low Pass Filter. (Fixed cutoff frequency)|
+|HPF|High Pass Filter. (Fixed cutoff frequency)|
+|BPF|Band Pass Filter. (Fixed cutoff frequency)|
+|NOTCH|Notch Filter. (Fixed cutoff frequency)|
+|LPF2|Low Pass Filter. (Note cutoff frequency)|
+|HPF2|High Pass Filter. (Note cutoff frequency)|
+|BPF2|Band Pass Filter. (Note cutoff frequency)|
+|NOTCH2|Notch Filter. (Note cutoff frequency)|
 
 ### 5-2. PASS
 There is no parameter.  
 
-### 5-3. LPF
-'FREQ' is cut off frequency.  Reduce high sounds more than FREQ.  
+### 5-3. LPF/LPF2
+'FREQ' is cut off frequency.  Reduce high sounds more than FREQ.  'FREQ' is a cut off frequency itself in LPF.  'FREQ' is an offset frequency from the frequency of the note playing in LPF2.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 　
-### 5-4. HPF
-'FREQ' is cut off frequency.  Reduce low sounds less than FREQ.  
+### 5-4. HPF/HPF2
+'FREQ' is cut off frequency.  Reduce low sounds less than FREQ.  'FREQ' is a cut off frequency itself in HPF.  'FREQ' is an offset frequency from the frequency of the note playing in HPF2.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 5-5. BPF
-'FREQ' is cut off frequency.  Reduce both high and low sounds far from FREQ.  
+### 5-5. BPF/BPF2
+'FREQ' is cut off frequency.  Reduce both high and low sounds far from FREQ.  'FREQ' is a cut off frequency itself in BPF.  'FREQ' is an offset frequency from the frequency of the note playing in BPF2.  
 'RESO' is resonance (Q-factor).  Make loud around FREQ sounds.  
 
-### 5-6. NOTCH
-'FREQ' is cut off frequency.  Reduce sounds arouond FREQ.  
-'RESO' is resonance (Q-factor).  
+### 5-6. NOTCH/NOTCH2
+'FREQ' is cut off frequency.  'FREQ' is a cut off frequency itself in NOTCH.  'FREQ' is an offset frequency from the frequency of the note playing in NOTCH2.  
+Reduce sounds arouond FREQ.  'RESO' is resonance (Q-factor).  
 
 
 ## 6. Change Filter Specs
