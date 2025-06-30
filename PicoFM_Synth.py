@@ -184,6 +184,9 @@
 #     0.6.4: 06/28/2025
 #           Toy sampler improvement.
 #
+#     0.6.5: 06/30/2025
+#           The type2 filters which moves the base cutoff frequency to the note frequency.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -2214,6 +2217,10 @@ class SynthIO_class:
     FILTER_HPF        = 2
     FILTER_BPF        = 3
     FILTER_NOTCH      = 4
+    FILTER_LPF2       = 5
+    FILTER_HPF2       = 6
+    FILTER_BPF2       = 7
+    FILTER_NOTCH2     = 8
 #    FILTER_LOW_SHELF  = 5
 #    FILTER_HIGH_SHELF = 6
 #    FILTER_PEAKING_EQ = 7
@@ -2231,7 +2238,7 @@ class SynthIO_class:
     VIEW_ALGORITHM = ['0:<1>*2', '1:<1>+2', '2:<1>+2+<3>+4', '3:(<1>+<2>*3)*4', '4:<1>*2*3*4', '5:<1>*2+<3>*4', '6:<1>+<2>*3*4', '7:<1>+<2>*3+<4>', '8:<1>*(2+3)+<4>', '9:<1>*(2*3+4)', '10:<1>*(2+3+4)']
     VIEW_WAVE = ['Sin', 'Saw', 'Tri', 'Sqr', 'aSi', '+Si', 'Noi', 'WV1', 'WV2', 'WV3', 'WV4']
 #    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LOW SHELF', 'HIGH SHELF', 'PEAKING EQ']
-    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH']
+    VIEW_FILTER = ['PASS', 'LPF', 'HPF', 'BPF', 'NOTCH', 'LPF2', 'HPF2', 'BPF2', 'NOTCH2']
     VIEW_SAVE_SOUND = ['----', 'Save?', 'SAVING', 'Save?', 'COPY', 'Copy?']
     VIEW_LOAD_SOUND = ['----', 'Load?', 'LOADING', 'Load?', 'SEARCHING', 'Search?']
     VIEW_SAMPLE     = ['----', 'Sample?', 'SAMPLING', 'Save?', 'SAVING', 'Save?']
@@ -2843,16 +2850,16 @@ class SynthIO_class:
 
     # Make a filter
     def make_filter(self, ftype, frequency, resonance):
-        if   ftype == SynthIO_class.FILTER_LPF:
+        if   ftype == SynthIO_class.FILTER_LPF or ftype == SynthIO_class.FILTER_LPF2:
             return self._synth.low_pass_filter(frequency, resonance)
 
-        elif ftype == SynthIO_class.FILTER_HPF:
+        elif ftype == SynthIO_class.FILTER_HPF or ftype == SynthIO_class.FILTER_HPF2:
             return self._synth.high_pass_filter(frequency, resonance)
 
-        elif ftype == SynthIO_class.FILTER_BPF:
+        elif ftype == SynthIO_class.FILTER_BPF or ftype == SynthIO_class.FILTER_BPF2:
             return self._synth.band_pass_filter(frequency, resonance)
 
-        elif ftype == SynthIO_class.FILTER_NOTCH:
+        elif ftype == SynthIO_class.FILTER_NOTCH or ftype == SynthIO_class.FILTER_NOTCH2:
             return synthio.BlockBiquad(synthio.FilterMode.NOTCH, frequency, resonance)
                     
         return None
@@ -2949,7 +2956,7 @@ class SynthIO_class:
             if   ftype == SynthIO_class.FILTER_PASS:
                 self.filter_storage[v] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
 
-            # Generate to update a filter
+            # Redefine a filter to update along time (ADSR)
             else:
                 # Keep the latest modulation value
                 if modulation != -1:
@@ -2958,10 +2965,14 @@ class SynthIO_class:
                 # LFO and filter ADSR modulation values
                 offset = get_offset_by_adsr(v)
 
+                # The note frequency for the type2 filters
+                note_freq = self.filter_storage[v]['NOTE_FREQUENCY'] if ftype == SynthIO_class.FILTER_LPF2 or ftype == SynthIO_class.FILTER_HPF2 or ftype == SynthIO_class.FILTER_BPF2 or ftype == SynthIO_class.FILTER_NOTCH2 else 0 
+
                 # Update the filters
                 if self.filter_storage[v]['TIME'] > 0:
                     # Update a filter for a voice
-                    self.filter_storage[v]['FILTER'] = self.make_filter(ftype, freq + delta + offset[0], reso + offset[1])
+#                    self.filter_storage[v]['FILTER'] = self.make_filter(ftype, freq + delta + offset[0], reso + offset[1])
+                    self.filter_storage[v]['FILTER'] = self.make_filter(ftype, note_freq + freq + delta + offset[0], reso + offset[1])
 #                    print('UPDATE FILTER:', v, freq, delta, offset, freq + delta + offset[0], reso + offset[1])
 
     # Generate new filter / Get a filter
@@ -2969,14 +2980,20 @@ class SynthIO_class:
         # Get a vacant filter number
         if voice is None:
             for flt in list(range(len(self.filter_storage))):
+                note_freq = synthio.midi_to_hz(note_number)
                 if self.filter_storage[flt] is None:
-                    self.filter_storage[flt] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127}
+                    self.filter_storage[flt] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127, 'NOTE': note_number, 'NOTE_FREQUENCY': note_freq}
 
                 if self.filter_storage[flt] is not None:
                     if self.filter_storage[flt]['TIME'] < 0:		# Released filter
                         self.filter_storage[flt]['TIME'] = 0
                         self.filter_storage[flt]['START_TIME'] = 0
-                        self.filter_storage[flt]['FILTER'] = self.make_filter(self._synth_params['FILTER']['TYPE'], self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
+                        self.filter_storage[flt]['NOTE'] = note_number
+                        self.filter_storage[flt]['NOTE_FREQUENCY'] = note_freq
+#                        self.filter_storage[flt]['FILTER'] = self.make_filter(self._synth_params['FILTER']['TYPE'], self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
+                        ftype = self._synth_params['FILTER']['TYPE']
+                        note_freq = self.filter_storage[flt]['NOTE_FREQUENCY'] if ftype == SynthIO_class.FILTER_LPF2 or ftype == SynthIO_class.FILTER_HPF2 or ftype == SynthIO_class.FILTER_BPF2 or ftype == SynthIO_class.FILTER_NOTCH2 else 0 
+                        self.filter_storage[flt]['FILTER'] = self.make_filter(ftype, note_freq + self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
                         keys = self._synth_params['FILTER']['FILTER_KEYSENSE']
                         if keys == 0:
                             magni = 1.0
@@ -3001,6 +3018,8 @@ class SynthIO_class:
         self.filter_storage[voice]['TIME'] = -1
         self.filter_storage[voice]['START_TIME'] = -1
         self.filter_storage[voice]['FILTER'] = None
+        self.filter_storage[voice]['NOTE'] = 0
+        self.filter_storage[voice]['NOTE_FREQUENCY'] = 0
 
     # Get the filter LFO
     def lfo_filter(self):
