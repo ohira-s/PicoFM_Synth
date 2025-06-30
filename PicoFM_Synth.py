@@ -187,6 +187,9 @@
 #     0.6.5: 06/30/2025
 #           The type2 filters which moves the base cutoff frequency to the note frequency.
 #
+#     0.6.6: 06/30/2025
+#           Fixed bugs in the filter generator for unison note.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -2985,34 +2988,42 @@ class SynthIO_class:
     def filter(self, voice=None, velocity=127, note_number=60):
         # Get a vacant filter number
         if voice is None:
+            # Unison note number
+            if note_number >= 1000:
+                note_number -= 1000
+            
+            # Find a vacant filter and make it a filter for the note played
             for flt in list(range(len(self.filter_storage))):
-                note_freq = synthio.midi_to_hz(note_number)
+                # Make a new vacant filter if not initialized
                 if self.filter_storage[flt] is None:
-                    self.filter_storage[flt] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127, 'NOTE': note_number, 'NOTE_FREQUENCY': note_freq}
+                    self.filter_storage[flt] = {'FILTER': None, 'TIME': -1, 'START_TIME': 0, 'VELOCITY': 127, 'NOTE': 0, 'NOTE_FREQUENCY': 0}
 
-                if self.filter_storage[flt] is not None:
-                    if self.filter_storage[flt]['TIME'] < 0:		# Released filter
-                        self.filter_storage[flt]['TIME'] = 0
-                        self.filter_storage[flt]['START_TIME'] = 0
-                        self.filter_storage[flt]['NOTE'] = note_number
-                        self.filter_storage[flt]['NOTE_FREQUENCY'] = note_freq
-#                        self.filter_storage[flt]['FILTER'] = self.make_filter(self._synth_params['FILTER']['TYPE'], self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
-                        ftype = self._synth_params['FILTER']['TYPE']
-                        note_freq = self.filter_storage[flt]['NOTE_FREQUENCY'] if ftype == SynthIO_class.FILTER_LPF2 or ftype == SynthIO_class.FILTER_HPF2 or ftype == SynthIO_class.FILTER_BPF2 or ftype == SynthIO_class.FILTER_NOTCH2 else 0 
-                        self.filter_storage[flt]['FILTER'] = self.make_filter(ftype, note_freq + self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
-                        keys = self._synth_params['FILTER']['FILTER_KEYSENSE']
-                        if keys == 0:
-                            magni = 1.0
-                            
-                        elif keys > 0:  # 0.1 --- 1.0
-                            magni = 1.0 - keys * (128 - note_number) / 1280
-                            
-                        else:           # 1.0 --- 0.1
-                            magni = 1.0 + keys * note_number / 1280
+                # Make a filter
+                if self.filter_storage[flt]['TIME'] < 0:		# Released filter
+                    self.filter_storage[flt]['TIME'] = 0
+                    self.filter_storage[flt]['START_TIME'] = 0
+                    self.filter_storage[flt]['NOTE'] = note_number
+                    ftype = self._synth_params['FILTER']['TYPE']
+                    note_freq = synthio.midi_to_hz(note_number)
+                    self.filter_storage[flt]['NOTE_FREQUENCY'] = note_freq
+#                    print('FILTER2:', note_number, note_freq)
+                    note_freq = self.filter_storage[flt]['NOTE_FREQUENCY'] if ftype == SynthIO_class.FILTER_LPF2 or ftype == SynthIO_class.FILTER_HPF2 or ftype == SynthIO_class.FILTER_BPF2 or ftype == SynthIO_class.FILTER_NOTCH2 else 0 
+#                    print('    CUT:', note_freq)
+                    self.filter_storage[flt]['FILTER'] = self.make_filter(ftype, note_freq + self._synth_params['FILTER']['FREQUENCY'], self._synth_params['FILTER']['RESONANCE'])
+                    keys = self._synth_params['FILTER']['FILTER_KEYSENSE']
+                    if keys == 0:
+                        magni = 1.0
+                        
+                    elif keys > 0:  # 0.1 --- 1.0
+                        magni = 1.0 - keys * (128 - note_number) / 1280
+                        
+                    else:           # 1.0 --- 0.1
+                        magni = 1.0 + keys * note_number / 1280
 
-                        self.filter_storage[flt]['VELOCITY'] = int(velocity * magni)
-                        return flt
+                    self.filter_storage[flt]['VELOCITY'] = int(velocity * magni)
+                    return flt
 
+            # Can't make filter (normally never comes here)
             return -1
         
         # Return the filter for the voice
@@ -4015,7 +4026,7 @@ class Application_class:
 
     # Start display
     def start(self):
-        self.splush_screen()
+        self.splash_screen()
 
         # Load default parameter file
         SynthIO.load_parameter_file(0, 0)
@@ -4026,8 +4037,15 @@ class Application_class:
 #        print('SOUND FILES:', finds, SynthIO_class.VIEW_SOUND_FILES)
         SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
 
-    # Splush screen
-    def splush_screen(self):
+    # Loaing screen
+    def loading_screen(self):
+        display.fill(0)
+        display.text('[LOAD]', 30, 15, 1, 2)
+        display.text('Searching files.', 15, 35, 1)
+        display.show()
+
+    # Splash screen
+    def splash_screen(self):
         display.fill(1)
         display.text('PiFM+S', 30, 15, 0, 2)
         display.text('(C) 2025 S.Ohira', 15, 35, 0)
@@ -4218,11 +4236,12 @@ class Application_class:
 
         # Search sound files just moving into the LOAD page
         elif Application_class.PAGES[Application_class.DISPLAY_PAGE]['PAGE'] == Application_class.PAGE_LOAD:
-            # File loading splush
-            display.fill(0)
-            display.text('[LOAD]', 30, 15, 1, 2)
-            display.text('Searching files.', 15, 35, 1)
-            display.show()
+            # File loading splash
+            self.loading_screen()
+#            display.fill(0)
+#            display.text('[LOAD]', 30, 15, 1, 2)
+#            display.text('Searching files.', 15, 35, 1)
+#            display.show()
 
             # Search files
             dataset = SynthIO.synthio_parameter('LOAD')
@@ -4435,10 +4454,13 @@ class Application_class:
                                     self.show_OLED_page()
 
                                 elif load_sound == 'SEARCHING' or parameter == 'BANK':
+                                    # File loading splash and search sound files to load
+                                    self.loading_screen()
                                     finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
 #                                    print('SOUND FILESl:', dataset['BANK'], dataset['SOUND_NAME'], finds, SynthIO_class.VIEW_SOUND_FILES)
                                     SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
-                                    self.show_OLED_page(['LOAD_SOUND', 'SOUND', 'SOUND_NAME'])
+#                                    self.show_OLED_page(['LOAD_SOUND', 'SOUND', 'SOUND_NAME'])
+                                    self.show_OLED_page()
 
                             # Sampling page
                             elif category == 'SAMPLING':
