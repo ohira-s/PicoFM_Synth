@@ -506,9 +506,9 @@ class ADC_MIC_class:
         voltage = int(self._adc.value / 65535.0 * FM_Waveshape_class.SAMPLE_VOLUME * 2 - FM_Waveshape_class.SAMPLE_VOLUME)
         return voltage
 
-    def sampling(self, duration=1.0, cut_min=1, samples=512):
-        if cut_min <= 0:
-            cut_min = 1
+    def sampling(self, duration=1.0, avg_range=1, samples=512):
+        if avg_range < 1:
+            avg_range = 1
         
         # Sampleing size
         over_sampling = 4
@@ -528,7 +528,7 @@ class ADC_MIC_class:
                 vs.append(self.get_voltage())
                 time.sleep(sleep_sec)
 
-            v = int((sum(vs) / (over_sampling + over_sampling) ) / cut_min) * cut_min		# Jagged shape reduction
+            v = int(sum(vs) / (over_sampling + over_sampling))		# Average over sampling
             ADC_MIC_class.SAMPLED_WAVE.append(v)
             vs = vs[over_sampling:]
 
@@ -542,27 +542,27 @@ class ADC_MIC_class:
 #            ADC_MIC_class.SAMPLED_WAVE[s * 2 - 2] = ADC_MIC_class.SAMPLED_WAVE[s - 1]
 
         # Moving average
-        avg_range = 20
-        for i in list(range(2)):
-            for s in list(range(0, samples - avg_range)):
-                avg = 0
-                for a in list(range(avg_range)):
-                    avg = avg + ADC_MIC_class.SAMPLED_WAVE[s + a]
+        if avg_range > 1:
+            for i in list(range(2)):
+                for s in list(range(0, samples - avg_range)):
+                    avg = 0
+                    for a in list(range(avg_range)):
+                        avg = avg + ADC_MIC_class.SAMPLED_WAVE[s + a]
 
-                v = int(avg / avg_range)
-                vmin = min(vmin, v)
-                vmax = max(vmax, v)
-                ADC_MIC_class.SAMPLED_WAVE[s] = v
+                    v = int(avg / avg_range)
+                    vmin = min(vmin, v)
+                    vmax = max(vmax, v)
+                    ADC_MIC_class.SAMPLED_WAVE[s] = v
 
-            for s in list(range(avg_range)):
-                avg = 0
-                for a in list(range(avg_range)):
-                    avg = avg + ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s - a]
+                for s in list(range(avg_range)):
+                    avg = 0
+                    for a in list(range(avg_range)):
+                        avg = avg + ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s - a]
 
-                v = int(avg / avg_range)
-                vmin = min(vmin, v)
-                vmax = max(vmax, v)
-                ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s] = v
+                    v = int(avg / avg_range)
+                    vmin = min(vmin, v)
+                    vmax = max(vmax, v)
+                    ADC_MIC_class.SAMPLED_WAVE[samples - 1 - s] = v
             
         # Volume adjuster
         center = (vmax + vmin) / 2
@@ -2374,7 +2374,7 @@ class SynthIO_class:
             'SAMPLING': {
                 'TIME'  : {'TYPE': SynthIO_class.TYPE_FLOAT,          'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
                 'WAIT'  : {'TYPE': SynthIO_class.TYPE_FLOAT,          'MIN': 0.00, 'MAX':  5.0, 'VIEW': '{:3.1f}'},
-                'CUT'   : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    0, 'MAX': 9999, 'VIEW': '{:4d}'},
+                'AVRG'  : {'TYPE': SynthIO_class.TYPE_INT,            'MIN':    1, 'MAX':   50, 'VIEW': '{:2d}'},
                 'NAME'  : {'TYPE': SynthIO_class.TYPE_STRING,         'MIN':    0, 'MAX':    8, 'VIEW': '{:8s}'},
                 'CURSOR': {'TYPE': SynthIO_class.TYPE_INDEX,          'MIN':    0, 'MAX': len(SynthIO_class.VIEW_CURSOR_s8) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_s8},
                 'SAMPLE': {'TYPE': SynthIO_class.TYPE_INDEX,          'MIN':    0, 'MAX': len(SynthIO_class.VIEW_SAMPLE) - 1, 'VIEW': SynthIO_class.VIEW_SAMPLE},
@@ -2570,7 +2570,7 @@ class SynthIO_class:
             'SAMPLING': {
                 'TIME'  : 1,
                 'WAIT'  : 3.0,
-                'CUT'   : 0,
+                'AVRG'  : 20,
                 'NAME'  : '',
                 'CURSOR': 0,
                 'SAMPLE': 0,
@@ -3706,7 +3706,7 @@ class Application_class:
             {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'TIME',   'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'WAIT',   'OSCILLATOR': None},
-            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CUT',    'OSCILLATOR': None},
+            {'CATEGORY': 'SAMPLING', 'PARAMETER': 'AVRG',   'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'NAME',   'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'CURSOR', 'OSCILLATOR': None},
             {'CATEGORY': 'SAMPLING', 'PARAMETER': 'SAMPLE', 'OSCILLATOR': None}
@@ -3840,7 +3840,7 @@ class Application_class:
         'SAMPLING': {
             'TIME'  : {PAGE_SAMPLING: {'label': 'TIME:', 'x':  30, 'y': 10, 'w': 98}},
             'WAIT'  : {PAGE_SAMPLING: {'label': 'WAIT:', 'x':  30, 'y': 19, 'w': 98}},
-            'CUT'   : {PAGE_SAMPLING: {'label': 'CUT :', 'x':  30, 'y': 28, 'w': 98}},
+            'AVRG'  : {PAGE_SAMPLING: {'label': 'AVRG:', 'x':  30, 'y': 28, 'w': 98}},
             'NAME'  : {PAGE_SAMPLING: {'label': 'NAME:', 'x':  30, 'y': 37, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE2: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE3: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE4: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE5: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE6: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}, PAGE_WAVE_SHAPE7: {'label': 'NAME:', 'x':  30, 'y':  1, 'w': 50}},
             'CURSOR': {PAGE_SAMPLING: {'label': 'CURS:', 'x':  30, 'y': 46, 'w': 98}, PAGE_WAVE_SHAPE1: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE2: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE3: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE4: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE5: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE6: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}, PAGE_WAVE_SHAPE7: {'label': 'CURS:', 'x':  30, 'y': 10, 'w': 98}},
             'SAMPLE': {PAGE_SAMPLING: {'label': 'TASK:', 'x':  30, 'y': 55, 'w': 98}},
@@ -4512,8 +4512,8 @@ class Application_class:
                                             Encoder_obj.led(6, [0x00, 0x00, 0xff])
                                             Encoder_obj.i2c_unlock()
                                             
-#                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['CUT'])
-                                            ADC_Mic.sampling(dataset['TIME'], dataset['CUT'])
+#                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['AVRG'])
+                                            ADC_Mic.sampling(dataset['TIME'], dataset['AVRG'])
                                             print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
                                             self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
                                             time.sleep(2.0)
