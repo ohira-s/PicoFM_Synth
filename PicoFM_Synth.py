@@ -190,6 +190,9 @@
 #     0.6.6: 06/30/2025
 #           Fixed bugs in the filter generator for unison note.
 #
+#     0.6.7: 07/01/2025
+#           Eliminated the filter envelope reverse parameters.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -2333,18 +2336,16 @@ class SynthIO_class:
                 'MODULATION'     : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX':     2, 'VIEW': SynthIO_class.VIEW_OFF_ON_MODULATION},
                 'LFO_RATE'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 99.99, 'VIEW': '{:6.2f}'},
                 'LFO_FQMAX'      : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:6d}'},
-                'FILTER_KEYSENSE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':  -9, 'MAX':     9, 'VIEW': '{:+2d}'},
-                'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':   0, 'MAX': 10000, 'VIEW': '{:5d}'},
-                'ADSR_FQ_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
-                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:5.2f}'},
-                'ADSR_Qf_REVS'   : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_OFF_ON) - 1, 'VIEW': SynthIO_class.VIEW_OFF_ON},
+                'FILTER_KEYSENSE': {'TYPE': SynthIO_class.TYPE_INT,   'MIN':  -9, 'MAX':     9, 'VIEW': '{:+3d}'},
+                'ADSR_FQMAX'     : {'TYPE': SynthIO_class.TYPE_INT,   'MIN': -10000, 'MAX': 10000, 'VIEW': '{:+6d}'},
+                'ADSR_QfMAX'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': -5.00, 'MAX': 5.00,   'VIEW': '{:+6.2f}'},
                 'START_LEVEL'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
                 'ATTACK_TIME'    : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
                 'DECAY_TIME'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
                 'SUSTAIN_LEVEL'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
                 'SUSTAIN_RELEASE': {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN':   0, 'MAX': 9.99,  'VIEW': '{:4.2f}'},
                 'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
-                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:4.1f}'},
+                'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:5.1f}'},
                 'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
             },
 
@@ -2524,9 +2525,7 @@ class SynthIO_class:
                 'LFO_FQMAX'      : 1000,
                 'FILTER_KEYSENSE': 0,
                 'ADSR_FQMAX'     : 1000,
-                'ADSR_FQ_REVS'   : 0,
                 'ADSR_QfMAX'     : 0.0,
-                'ADSR_Qf_REVS'   : 0,
                 'START_LEVEL'    : 0.5,
                 'ATTACK_TIME'    : 10,
                 'DECAY_TIME'     : 30,
@@ -3119,13 +3118,13 @@ class SynthIO_class:
             interval = 0
 
         if 0 <= interval and interval < len(self._filter_adsr):
-            offset_freq = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_FQMAX'] * (1 if filter_params['ADSR_FQ_REVS'] == 0 else -1))
-            offset_qfac = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_QfMAX'] * (1 if filter_params['ADSR_Qf_REVS'] == 0 else -1))
+            offset_freq = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_FQMAX'])
+            offset_qfac = int(self._filter_adsr[interval] * adsr_velocity * filter_params['ADSR_QfMAX'])
             return (offset_freq, offset_qfac)
 
         if interval >= len(self._filter_adsr):
-            offset_freq = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_FQMAX'] * (1 if filter_params['ADSR_FQ_REVS'] == 0 else -1))
-            offset_qfac = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_QfMAX'] * (1 if filter_params['ADSR_Qf_REVS'] == 0 else -1))
+            offset_freq = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_FQMAX'])
+            offset_qfac = int(self._filter_adsr[-1] * adsr_velocity * filter_params['ADSR_QfMAX'])
             return (offset_freq, offset_qfac)
         
         return (0, 0.0)
@@ -3665,12 +3664,12 @@ class Application_class:
 
         {'PAGE': PAGE_FILTER_ADSR_RANGE, 'EDITOR': [
             {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQMAX',      'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_FQ_REVS',    'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_QfMAX',      'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_Qf_REVS',    'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'ADSR_VELOCITY',   'OSCILLATOR': None},
             {'CATEGORY': 'FILTER', 'PARAMETER': 'FILTER_KEYSENSE', 'OSCILLATOR': None},
-            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',          'OSCILLATOR': None}
+            {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',          'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,     'OSCILLATOR': None}
         ]},
 
         {'PAGE': PAGE_FILTER_ADSR, 'EDITOR': [
@@ -3807,13 +3806,11 @@ class Application_class:
             'MODULATION'     : {PAGE_FILTER: {'label': 'MODU:', 'x':  30, 'y': 28, 'w': 98}},
             'LFO_RATE'       : {PAGE_FILTER: {'label': 'LFOr:', 'x':  30, 'y': 37, 'w': 98}},
             'LFO_FQMAX'      : {PAGE_FILTER: {'label': 'LFOf:', 'x':  30, 'y': 46, 'w': 98}},
-            'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
+            'CURSOR'         : {PAGE_FILTER: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}, PAGE_FILTER_ADSR_RANGE: {'label': 'CURS:', 'x':  30, 'y': 37, 'w': 98}, PAGE_FILTER_ADSR: {'label': 'CURS:', 'x':  30, 'y': 55, 'w': 98}},
             'ADSR_FQMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQmx:', 'x':  30, 'y':  1, 'w': 30}},
-            'ADSR_FQ_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'FQrv:', 'x':  30, 'y': 10, 'w': 98}},
-            'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 19, 'w': 98}},
-            'ADSR_Qf_REVS'   : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfrv:', 'x':  30, 'y': 28, 'w': 98}},
-            'ADSR_VELOCITY'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'VELO:', 'x':  30, 'y': 37, 'w': 98}},
-            'FILTER_KEYSENSE': {PAGE_FILTER_ADSR_RANGE: {'label': 'KEYS:', 'x':  30, 'y': 46, 'w': 40}},
+            'ADSR_QfMAX'     : {PAGE_FILTER_ADSR_RANGE: {'label': 'Qfmx:', 'x':  30, 'y': 10, 'w': 98}},
+            'ADSR_VELOCITY'  : {PAGE_FILTER_ADSR_RANGE: {'label': 'VELO:', 'x':  30, 'y': 19, 'w': 98}},
+            'FILTER_KEYSENSE': {PAGE_FILTER_ADSR_RANGE: {'label': 'KEYS:', 'x':  30, 'y': 28, 'w': 40}},
             'START_LEVEL'    : {PAGE_FILTER_ADSR: {'label': 'StLv:', 'x':  30, 'y':  1, 'w': 30}},
             'ATTACK_TIME'    : {PAGE_FILTER_ADSR: {'label': 'ATCK:', 'x':  30, 'y': 10, 'w': 98}},
             'DECAY_TIME'     : {PAGE_FILTER_ADSR: {'label': 'DECY:', 'x':  30, 'y': 19, 'w': 98}},
@@ -4363,16 +4360,24 @@ class Application_class:
 
                                         # Integer
                                         elif data_view[-1] == 'd':
-                                            data_view = data_view[:-1]
-                                            if data_view[0] == '+':
-                                                total_len = int(data_view[1:])
-                                                
-                                            else:
-                                                total_len = int(data_view)
+                                            # 1 digit data
+                                            if data_attr['MIN'] >= -9 and data_attr['MAX'] <= 9:
+                                                inc *= inc_magni
                                             
-                                            # Not single digit
-                                            if total_len > 1:
-                                                inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
+                                            # Multi-digits data
+                                            else:                                                
+                                                data_view = data_view[:-1]
+                                                if data_view[0] == '+':
+                                                    total_len = int(data_view[1:])
+                                                    
+                                                else:
+                                                    total_len = int(data_view)
+                                            
+                                                # Not single digit
+                                                if total_len > 1:
+                                                    inc = None if cursor_pos >= total_len else 10 ** (total_len - cursor_pos - 1) * inc * inc_magni
+                                                else:
+                                                    inc *= inc_magni
 
                                         # String
                                         elif data_view[-1] == 's':
