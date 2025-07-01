@@ -193,6 +193,9 @@
 #     0.6.7: 07/01/2025
 #           Eliminated the filter envelope reverse parameters.
 #
+#     0.6.8: 07/01/2025
+#           Fixed bugs in the VCO ADSR for the FM oeprators.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -1647,22 +1650,28 @@ class FM_Waveshape_class:
         # VCO ADSR
         operator = SynthIO.wave_parameter(op_num)
         if   phase == 1:
-            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 + operator['attack_additive']
+#            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 + operator['attack_additive']
+            factor = (operator['decay_factor'] - operator['attack_factor']) / 3 + operator['attack_factor']
         
         elif phase == 2:
-            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 * 2 + operator['attack_additive']
+#            factor = (operator['decay_additive'] - operator['attack_additive']) / 3 * 2 + operator['attack_additive']
+            factor = (operator['decay_factor'] - operator['attack_factor']) / 3 * 2 + operator['attack_factor']
 
         elif phase == 3:
-            factor = operator['decay_additive']
+#            factor = operator['decay_additive']
+            factor = operator['decay_factor']
 
         elif phase == 4:
-            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 + operator['decay_additive']
+#            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 + operator['decay_additive']
+            factor = (operator['sustain_factor'] - operator['decay_factor']) / 3 + operator['decay_factor']
 
         elif phase == 5:
-            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 * 2 + operator['decay_additive']
+#            factor = (operator['sustain_additive'] - operator['decay_additive']) / 3 * 2 + operator['decay_additive']
+            factor = (operator['sustain_factor'] - operator['decay_factor']) / 3 * 2 + operator['decay_factor']
             
         elif phase == 6:
-            factor = operator['sustain_additive']
+#            factor = operator['sustain_additive']
+            factor = operator['sustain_factor']
         
         else:
             factor = operator['attack_factor']
