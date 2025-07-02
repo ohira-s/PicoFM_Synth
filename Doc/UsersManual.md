@@ -26,6 +26,7 @@ Pico FM Synthesizer (PiFM+S) is a synthesizer sound module working as a USB host
 ||Envelope|Frequency and/or Q-factor modulation.|
 |||Note-On velocity.|
 ||MIDI IN|Frequency and/or Q-factor modulation.|
+||Effector|Echo|
 |VCA|Envelope|Control note volume.|
 |||Note-On velocity.|
 |Toy sampler|Input|Built-in mic.|
@@ -603,92 +604,87 @@ End level (0.0 .. 1.0).
 Move cursor to edit position.  
 
 
-## 17. VCA
+## 17. EFFECTOR
+You can use an effector.  Currently ECHO is only available.  
+　
+### 17-1. OLED画面
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/18_effector.jpg) 
+
+### 17-2. eDLY (RT1)  
+
+The time between echos in milli second.  
+	
+### 17-3. eDCY (RT2)  
+
+The echo decay ratio from 0.0 to 1.0.  0.0 is for decay immediately and 1.0 is for never decay.  
+	
+### 17-4. eMIX (RT3)  
+
+The mixing ratio both the original sound and the echo sound.  0.0 is for the original sound only and 1.0 is for the echo sound only.  
+
+### 17-5. CURS (RT4)  
+
+Move cursor to edit position.  
+
+
+## 18. VCA
 You can edit the VCA envelope for the audio output level.  
   
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/mkg_vca_adsr.png)  
 　
-### 17-1. OLED Display
+### 18-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/10_vca.jpg) 
 
-### 17-2. ATCK (RT1)  
+### 18-2. ATCK (RT1)  
 
 Attack time in seconds.  
 	
-### 17-3. DECY (RT2)  
+### 18-3. DECY (RT2)  
 
 Decay time in seconds.  
 	
-### 17-4. SuLv (RT33)  
+### 18-4. SuLv (RT33)  
 
 Sustain level from 0.0 to 1.0.  
 
-### 17-5. RELS (RT4)  
+### 18-5. RELS (RT4)  
 
 Release time in seconds.  
 
-### 17-6. KEYS (RT5)  
+### 18-6. KEYS (RT5)  
 
 Key scale sensitivity from -9 to +9.  
 0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
 
-### 17-7. CURS (RT6)  
+### 18-7. CURS (RT6)  
 
 Move cursor to edit position.  
 
-### 17-8. ADJS (RT7) 
+### 18-8. ADJS (RT7) 
 
 Sum of audio output levels of both the FM Synthesis and the Additive Synthesis should be less or equal than 255.  However it is so hard to keep this rule during making sound.  
 When you set ADJS (ADJuSt output levels) to 'ON', PiFM+S will automatically adjust the sum of audio output levels to 255 in keeping each level ratio.  This is the internal process, so the output levels you entered are never changed.  
 In case of ADJS OFF, wave form exceeding the maximum output level will be clipped.  Normally you will get distorted sound.  
 
 
-## 18. SAVE
+## 19. SAVE
 You can save the current sound parameters into a SD card.  
 　
-### 18-1. OLED Display
+### 19-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/11_save.jpg) 
 
-### 18-2. BANK (RT2)  
+### 19-2. BANK (RT2)  
 
 You can choose a bank number to save the sound.  PiFM+S has banks from 0 to 9.  
 	
-### 18-3. SOND (RT3)  
+### 19-3. SOND (RT3)  
 
 You can choose a program number to save the sound.  PiFM+S has program numbers from 000 to 999 every bank.  
 You will see a program name too with the number if the program data exists in the SD card.  
 	
-### 18-4. NAME (RT4)  
-
-You can enter a program name for the current sound.  
-
-### 18-5. CURS (RT5)  
-
-Move cursor to edit position.  
-
-### 18-6. TASK (RT6)  
-
-Turn clockwise, you will see 'Save?'.  Then turn one more, PiFM+S saves the sound data and shows you 'SAVE'.  
-Turn anti-clockwise, you will see 'Copy?'.  Then turn one more, PiFM+S copies the selected program name to the name to save and shows you 'COPY'.  
-
-
-## 19. LOAD
-You can load a sound data into PiFM+S to play it.  
-　
-### 19-1. OLED Display
-![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/12_load.jpg) 
-
-### 19-2. BANK (RT2)  
-
-You can choose a bank number to load a sound.  PiFM+S has banks from 0 to 9.  
-	
-### 19-3. SOND (RT3)  
-
-SOND is a list of sound programs in the BANK-bank.  You can choose a program to load with turning RT3 clockwise or anti-clockwise.  
-	
 ### 19-4. NAME (RT4)  
 
-You can enter a text to search sound names.  PiFM+S filters program files by the text (partial match, needs more than 2 characters).  You can see the filtered sound list in the SOND line.  
+You can enter a program name for the current sound.  
 
 ### 19-5. CURS (RT5)  
 
@@ -696,39 +692,67 @@ Move cursor to edit position.
 
 ### 19-6. TASK (RT6)  
 
+Turn clockwise, you will see 'Save?'.  Then turn one more, PiFM+S saves the sound data and shows you 'SAVE'.  
+Turn anti-clockwise, you will see 'Copy?'.  Then turn one more, PiFM+S copies the selected program name to the name to save and shows you 'COPY'.  
+
+
+## 20. LOAD
+You can load a sound data into PiFM+S to play it.  
+　
+### 20-1. OLED Display
+![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/12_load.jpg) 
+
+### 20-2. BANK (RT2)  
+
+You can choose a bank number to load a sound.  PiFM+S has banks from 0 to 9.  
+	
+### 20-3. SOND (RT3)  
+
+SOND is a list of sound programs in the BANK-bank.  You can choose a program to load with turning RT3 clockwise or anti-clockwise.  
+	
+### 20-4. NAME (RT4)  
+
+You can enter a text to search sound names.  PiFM+S filters program files by the text (partial match, needs more than 2 characters).  You can see the filtered sound list in the SOND line.  
+
+### 20-5. CURS (RT5)  
+
+Move cursor to edit position.  
+
+### 20-6. TASK (RT6)  
+
 You can execute the search task or the load task.  
 Turn anti-clockwise, you can filter the sound programs by the search text.  Turn once, you will see 'Search?'.  Turn more, PiFM+S executes the filter process, then shows you 'SEARCH'.  
 Turn clockwise, you can load a program selected in the SOND.  Turn once, you will see 'Load?'.  Turn more, PiFM+S load the program selected, then shows you 'LOAD'.  
 
 
-## 20. SAMPLING
+## 21. SAMPLING
 PiFM+S has a mic to sample sounds.  You can make your original wave shape data with the mic.  
 This is a toy-sampler in an experimental level.  You CAN NOT get whole wave shape data recorded.  PiFM+S Toy-Sampler extracts a very short span of the recorded wave shape and makes wave shape data for the PiFM+S operators.   
 　
-### 20-1. OLED Display
+### 21-1. OLED Display
 ![SOUND MAIN](https://github.com/ohira-s/PicoFM_Synth/blob/main/Doc/images/13_sampling.jpg) 
 
-### 20-2. TIME (RT2)  
+### 21-2. TIME (RT2)  
 
 Sampling unit time.  Normally must be set 1.  Larger value, get more complex wave shape like noise.  
 	
-### 20-3. WAIT (RT3)  
+### 21-3. WAIT (RT3)  
 
 Duration time in second to start sampling.  
 	
-### 20-4. AVRG (RT4)  
+### 21-4. AVRG (RT4)  
 
 The number of samples to take moving average of the sampled wave data.  Smaller value, get more complex wave shape like noise.  Larger value, get wave shape with missing its features.
 
-### 20-5. NAME (RT5)  
+### 21-5. NAME (RT5)  
 
 You can enter a wave shape name to save.  
 
-### 20-6. CURS (RT6)  
+### 21-6. CURS (RT6)  
 
 Move cursor to edit position.  
 
-### 20-7. TASK (RT7)  
+### 21-7. TASK (RT7)  
 
 Turn clockwise, you will see 'Sample?'.  Then turn one more, PiFM+S shows you 'SAMPLING', and starts sampling sound after the WAIT time.  A LED of the RT7 guides you with flashing it.    
 Turn clockwise, you will see 'Save?'.  Then turn one more, PiFM+S saves the wave shape data and shows you 'SAVE'.  

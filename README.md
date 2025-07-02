@@ -46,6 +46,7 @@ Specifications are as below.
 ||Envelope|Frequency and/or Q-factor modulation.|
 |||Note-On velocity.|
 ||MIDI IN|Frequency and/or Q-factor modulation.|
+||Effector|Echo|
 |VCA|Envelope|Control note volume.|
 |||Note-On velocity.|
 |Toy sampler|Input|Built-in mic.|
