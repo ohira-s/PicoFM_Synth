@@ -196,6 +196,9 @@
 #     0.6.8: 07/01/2025
 #           Fixed bugs in the VCO ADSR for the FM oeprators.
 #
+#     0.7.0: 07/02/2025
+#           Echo effector is available.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -248,8 +251,10 @@ import board, busio
 import digitalio
 import sdcardio, storage, os
 
+# Synthesizer
 import audiomixer
 import synthio
+import audiodelays
 
 import ulab.numpy as np		# To generate wave shapes
 import random
@@ -2287,7 +2292,14 @@ class SynthIO_class:
         self.mixer = audiomixer.Mixer(channel_count=1, sample_rate=FM_Waveshape_class.SAMPLE_RATE, buffer_size=SynthIO_class.DAC_BUFFER)
         self.audio.play(self.mixer)
         self.audio_pause()
-        self.mixer.voice[0].play(self._synth)
+
+        # Effector: echo
+        self._echo = audiodelays.Echo(max_delay_ms=1000, delay_ms=850, decay=0.65, buffer_size=SynthIO_class.DAC_BUFFER, channel_count=1, sample_rate=FM_Waveshape_class.SAMPLE_RATE, mix=0.0, freq_shift=False)
+        self._echo.play(self._synth)
+
+        # Audio output via mixer
+        self.mixer.voice[0].play(self._echo)
+#        self.mixer.voice[0].play(self._synth)
         self.mixer.voice[0].level = 0.5
 
         # Synthesize parameters
@@ -2356,6 +2368,13 @@ class SynthIO_class:
                 'END_LEVEL'      : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 1.00,  'VIEW': '{:4.2f}'},
                 'ADSR_VELOCITY'  : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.0, 'MAX': 5.0,   'VIEW': '{:5.1f}'},
                 'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f6) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f6}
+            },
+
+            'EFFECTOR': {
+                'ECHO_DELAY_MS'  : {'TYPE': SynthIO_class.TYPE_INT,   'MIN':    0, 'MAX':  1000, 'VIEW': '{:4d}'},
+                'ECHO_DECAY'     : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.00, 'MAX':  1.00, 'VIEW': '{:4.2f}'},
+                'ECHO_MIX'       : {'TYPE': SynthIO_class.TYPE_FLOAT, 'MIN': 0.00, 'MAX':  1.00, 'VIEW': '{:4.2f}'},
+                'CURSOR'         : {'TYPE': SynthIO_class.TYPE_INDEX, 'MIN':   0, 'MAX': len(SynthIO_class.VIEW_CURSOR_f4) - 1, 'VIEW': SynthIO_class.VIEW_CURSOR_f4}
             },
 
             'VCA': {
@@ -2548,6 +2567,14 @@ class SynthIO_class:
                 'TIME_SPAN'      : 0.0		# Sum of ATTACK_TIME, DECAY_TIME, SUSTAIN_RELEASE
             },
             
+            # EFFECTOR
+            'EFFECTOR': {
+                'ECHO_DELAY_MS'  : 300,
+                'ECHO_DECAY'     : 0.50,
+                'ECHO_MIX'       : 0.0,
+                'CURSOR'         : 0
+            },
+
             # VCA
             'VCA': {
                 'ATTACK_LEVEL': 1.5,
@@ -3138,15 +3165,22 @@ class SynthIO_class:
         
         return (0, 0.0)
 
+    # Set echo effector
+    def setup_effector_echo(self):
+        self._echo.delay_ms = self._synth_params['EFFECTOR']['ECHO_DELAY_MS']
+        self._echo.decay    = self._synth_params['EFFECTOR']['ECHO_DECAY']
+        self._echo.mix      = self._synth_params['EFFECTOR']['ECHO_MIX']
+
     # Set up the synthio
     def setup_synthio(self, wave_shape=True):
         # Start the setup
         PICO2_LED.value = True
 
         self.mixer_voice_level()
+        self.setup_effector_echo()
         self.generate_sound_lfo()
         if wave_shape:
-            print('REMAKE WAVE SHAPES.')
+#            print('REMAKE WAVE SHAPES.')
             self.generate_wave_shape(self._synth_params['SOUND']['ADJUST_LEVEL'] ==1)
 
         self.generate_filter_adsr()
@@ -3275,7 +3309,7 @@ class SynthIO_class:
         try:
             with open('/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json', 'r') as f:
                 file_data = json.load(f)
-                print('LOADED:', file_data)
+#                print('LOADED:', file_data)
                 f.close()
             
             # Overwrite parameters loaded
@@ -3304,7 +3338,7 @@ class SynthIO_class:
             self.setup_synthio()
             
         except Exception as e:
-            print('SD LOAD EXCEPTION:', e)
+#            print('SD LOAD EXCEPTION:', e)
             success = False
         
         return success
@@ -3315,11 +3349,11 @@ class SynthIO_class:
             file_name = '/sd/SYNTH/SOUND/BANK' + str(bank) + '/PFMS{:03d}'.format(sound) + '.json'
             with open(file_name, 'w') as f:
                 json.dump(self.synthio_parameter(), f)
-                print('SAVED:', file_name)
+#                print('SAVED:', file_name)
                 f.close()
 
         except Exception as e:
-            print('SD SAVE EXCEPTION:', e)
+#            print('SD SAVE EXCEPTION:', e)
             success = False
 
     # Get a sound name from a file
@@ -3403,21 +3437,22 @@ class Application_class:
     PAGE_FILTER            = 18
     PAGE_FILTER_ADSR_RANGE = 19
     PAGE_FILTER_ADSR       = 20
-    PAGE_VCA               = 21
-    PAGE_SAVE              = 22
-    PAGE_LOAD              = 23
-    PAGE_SAMPLING          = 24
-    PAGE_SAMPLING_WAVES    = 25
-    PAGE_ADDITIVE_WAVE1    = 26
-    PAGE_ADDITIVE_WAVE2    = 27
-    PAGE_ADDITIVE_WAVE3    = 28
-    PAGE_ADDITIVE_WAVE4    = 29
+    PAGE_EFFECTOR          = 21
+    PAGE_VCA               = 22
+    PAGE_SAVE              = 23
+    PAGE_LOAD              = 24
+    PAGE_SAMPLING          = 25
+    PAGE_SAMPLING_WAVES    = 26
+    PAGE_ADDITIVE_WAVE1    = 27
+    PAGE_ADDITIVE_WAVE2    = 28
+    PAGE_ADDITIVE_WAVE3    = 29
+    PAGE_ADDITIVE_WAVE4    = 30
 
     # Direct page access with the 8encoders push switches
     PAGE_DIRECT_ACCESS = [
         [PAGE_SOUND_MAIN],																		# BT1
         [PAGE_OSCILLTOR_WAVE1, PAGE_ADDITIVE_WAVE1, PAGE_OSCILLTOR_ADSR1, PAGE_WAVE_SHAPE1],	# BT2
-        [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR],								# BT3
+        [PAGE_FILTER, PAGE_FILTER_ADSR_RANGE, PAGE_FILTER_ADSR, PAGE_EFFECTOR],					# BT3
         [PAGE_VCA, PAGE_SOUND_MODULATION],														# BT4
         [PAGE_SAMPLING, PAGE_SAMPLING_WAVES],													# BT5
         [PAGE_SAVE],																			# BT6
@@ -3691,6 +3726,16 @@ class Application_class:
             {'CATEGORY': 'FILTER', 'PARAMETER': 'CURSOR',          'OSCILLATOR': None}
         ]},
 
+        {'PAGE': PAGE_EFFECTOR, 'EDITOR': [
+            {'CATEGORY': 'EFFECTOR', 'PARAMETER': 'ECHO_DELAY_MS', 'OSCILLATOR': None},
+            {'CATEGORY': 'EFFECTOR', 'PARAMETER': 'ECHO_DECAY',    'OSCILLATOR': None},
+            {'CATEGORY': 'EFFECTOR', 'PARAMETER': 'ECHO_MIX',      'OSCILLATOR': None},
+            {'CATEGORY': 'EFFECTOR', 'PARAMETER': 'CURSOR',        'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,            'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,            'OSCILLATOR': None},
+            {'CATEGORY': None,       'PARAMETER': None,            'OSCILLATOR': None}
+        ]},
+
         {'PAGE': PAGE_VCA, 'EDITOR': [
             {'CATEGORY': 'VCA', 'PARAMETER': 'ATTACK',  'OSCILLATOR': None},
             {'CATEGORY': 'VCA', 'PARAMETER': 'DECAY',   'OSCILLATOR': None},
@@ -3758,6 +3803,7 @@ class Application_class:
         PAGE_FILTER           : '               FILTER',
         PAGE_FILTER_ADSR_RANGE: '            F-ENV MOD',
         PAGE_FILTER_ADSR      : '           FILTER ENV',
+        PAGE_EFFECTOR         : '             EFFECTOR',
         PAGE_VCA              : '                  VCA',
         PAGE_SAVE             : 'SAVE',
         PAGE_LOAD             : 'LOAD',
@@ -3829,6 +3875,13 @@ class Application_class:
             
         },
 
+        'EFFECTOR': {
+            'ECHO_DELAY_MS': {PAGE_EFFECTOR: {'label': 'eDLY:', 'x':  30, 'y':  1, 'w': 40}},
+            'ECHO_DECAY'   : {PAGE_EFFECTOR: {'label': 'eDCY:', 'x':  30, 'y': 10, 'w': 98}},
+            'ECHO_MIX'     : {PAGE_EFFECTOR: {'label': 'eMIX:', 'x':  30, 'y': 19, 'w': 98}},
+            'CURSOR'       : {PAGE_EFFECTOR: {'label': 'CURS:', 'x':  30, 'y': 28, 'w': 98}}
+        },
+
         'VCA': {
             'ATTACK'  : {PAGE_VCA: {'label': 'ATCK:', 'x':  30, 'y':  1, 'w': 50}},
             'DECAY'   : {PAGE_VCA: {'label': 'DECY:', 'x':  30, 'y': 10, 'w': 98}},
@@ -3875,110 +3928,6 @@ class Application_class:
             'amplitude'    : {PAGE_ADDITIVE_WAVE1: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE2: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE3: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}, PAGE_ADDITIVE_WAVE4: {'label': 'LEVL:', 'x':  30, 'y': 28, 'w': 98}}
         }
     }
-
-    # Algorithm chart
-    ALGOLITHM = [
-        [	# 0|<1>*2
-            '             ALGO:0',
-            '',
-            '',
-            '<1>-->2-->',
-            '',
-            '',
-            ''
-        ],
-        [	# 1|<1>+2
-            '             ALGO:1',
-            '',
-            '<1>--',
-            '     +-->',
-            ' 2---',
-            '',
-            ''
-        ],
-        [	# 2|<1>+2+<3>+4
-            '<1>--        ALGO:2',
-            '     +',
-            ' 2---',
-            '     +-->',
-            '<3>--',
-            '     +',
-            ' 4---'
-        ],
-        [	# 3|(<1>+2*3)*4
-            '             ALGO:3',
-            '',
-            '<1>-----',
-            '        +-->4',
-            '<2>->3--',
-            '',
-            ''
-        ],
-        [	# 4|<1>*2*3*4
-            '             ALGO:4',
-            '',
-            '',
-            '<1>-->2-->3-->4',
-            '',
-            '',
-            ''
-        ],
-        [	# 5|<1>*2+<3>*4
-            '             ALGO:5',
-            '',
-            '<1>-->2--',
-            '         +-->',
-            '<3>-->4--',
-            '',
-            ''
-        ],
-        [	# 6|<1>+2*3*4
-            '             ALGO:6',
-            '',
-            '<1>---------',
-            '            +-->',
-            '<2>->3-->4--',
-
-            '',
-            ''
-        ],
-        [	# 7|<1>+2*3+4']
-            '             ALGO:7',
-            '',
-            '<1>-----',
-            '        +',
-            '<2>->3--+-->',
-            '        +',
-            '<4>-----'
-        ],
-        [	# 8|<1>*(2+3)+4']
-            '             ALGO:8',
-            '',
-            '     -->2--',
-            '<1>-|      |',
-            '     -->3--+-->',
-            '           |',
-            '<4>--------'
-        ],
-        [	# 9|<1>*(2*3+4)']
-            '             ALGO:9',
-            '',
-            '     -->2-->3--',
-            '<1>-|          +-->',
-            '     -->4------',
-            '',
-            ''
-        ],
-        [	# 10|<1>*(2+3+4)']
-            '            ALGO:10',
-            '',
-            '     -->2--',
-            '    |      |',
-            '<1>-+-->3--+-->',
-            '    |      |',
-            '     -->4--'
-        ]
-    ]
 
     # True: Watch the 8encoder preferentially / False: MIDI-IN preferentially
     EDITOR_MODE = True
@@ -4059,6 +4008,21 @@ class Application_class:
         display.show()
         time.sleep(2)
 
+    # Load algorithm chart
+    def load_algorithm_chart(self, algorithm):
+        success = True
+        try:
+            with open('/sd/SYNTH/SYSTEM/algorithms.json', 'r') as f:
+                file_data = json.load(f)
+#                print('LOADED:', file_data)
+                f.close()
+                
+                if algorithm >= 0 and algorithm < len(file_data):
+                    return file_data[algorithm]
+
+        except:
+            return ''
+
     # Display a page
     def show_OLED_page(self, update_parms = None, page_no=None):
 #        print('SHOW OLED page')
@@ -4083,7 +4047,8 @@ class Application_class:
         if   page_no == Application_class.PAGE_ALGORITHM:
             algorithm = SynthIO.wave_parameter(-1)['algorithm']
 #            print('DISP ALGORITHM CHART:', algorithm)
-            chart = Application_class.ALGOLITHM[algorithm]
+#            chart = Application_class.ALGORITHM[algorithm]
+            chart = self.load_algorithm_chart(algorithm)
             y = 0
             for data in chart:
                 display.show_message(data, 0, y, 128, 9, 1)
