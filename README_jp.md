@@ -102,10 +102,13 @@ UNDER CONSTRUCTION...
 3) SDカードに以下のフォルダーを作成します。  
 
 - SYNTH/  
+- SYNTH/SYSTEM/  
 - SYNTH/SOUND/  
 - SYNTH/SOUND/BANK0/ .. SYNTH/SOUND/BANK9/  
 - SYNTH/WAVE/  
 
-4) SDカードのSYNTH/SOUND/BANK0にPFMS000.jsonをコピーします。  
+4) SDカードにSYNTH/SYSTEM/algorithms.jsonをコピーします。  
+
+5) SDカードのSYNTH/SOUND/BANK0にPFMS000.jsonをコピーします。  
 
 	※それ以外のPFMSxxx.jsonはコピーしてもしなくても構いません。  

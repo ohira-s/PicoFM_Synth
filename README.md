@@ -99,10 +99,13 @@ UNDER CONSTRUCTION...
 3) Make following folders in your SD card.  
 
 - SYNTH/  
+- SYNTH/SYSTEM/  
 - SYNTH/SOUND/  
 - SYNTH/SOUND/BANK0/ .. SYNTH/SOUND/BANK9/  
 - SYNTH/WAVE/  
 
-4) Copy PFMS000.json into SYNTH/SOUND/BANK0/ folder in your SD card.  
+4) Copy SYNTH/SYSTEM/algorithms.json in your SD card.    
+
+5) Copy PFMS000.json into SYNTH/SOUND/BANK0/ folder in your SD card.  
 
 	※Copy the other PFMSxxx.json files if you prefer to.  
