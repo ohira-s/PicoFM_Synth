@@ -2225,8 +2225,8 @@ class FM_Waveshape_class:
 class SynthIO_class:
     # DAC buffer size
 #    DAC_BUFFER = 2048
-    DAC_BUFFER = 3072
-#    DAC_BUFFER = 4096
+#    DAC_BUFFER = 3072
+    DAC_BUFFER = 4096
     
     # Synthesize voices
     MAX_VOICES = 12
