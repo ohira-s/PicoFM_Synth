@@ -3802,39 +3802,7 @@ class Application_class:
     DISPLAY_PAGE = 0
 
     # Page labels
-    PAGE_LABELS = {
-        PAGE_SOUND_MAIN       : '',
-        PAGE_ALGORITHM        : '',
-        PAGE_SAMPLING_WAVES   : 'SAMPLING WAVES',
-        PAGE_SOUND_MODULATION : '              VCO MOD',
-        PAGE_OSCILLTOR_WAVE1  : 'OSCW:[1]| 2 | 3 | 4  ',
-        PAGE_OSCILLTOR_WAVE2  : 'OSCW: 1 |[2]| 3 | 4  ',
-        PAGE_OSCILLTOR_WAVE3  : 'OSCW: 1 | 2 |[3]| 4  ',
-        PAGE_OSCILLTOR_WAVE4  : 'OSCW: 1 | 2 | 3 |[4] ',
-        PAGE_WAVE_SHAPE1      : '              ATTACK0',
-        PAGE_WAVE_SHAPE2      : '              ATTACK1',
-        PAGE_WAVE_SHAPE3      : '              ATTACK2',
-        PAGE_WAVE_SHAPE4      : '              DECAY0',
-        PAGE_WAVE_SHAPE5      : '              DECAY1',
-        PAGE_WAVE_SHAPE6      : '              DECAY2',
-        PAGE_WAVE_SHAPE7      : '              SUSTAIN',
-        PAGE_OSCILLTOR_ADSR1  : 'OSCA:[1]| 2 | 3 | 4  ',
-        PAGE_OSCILLTOR_ADSR2  : 'OSCA: 1 |[2]| 3 | 4  ',
-        PAGE_OSCILLTOR_ADSR3  : 'OSCA: 1 | 2 |[3]| 4  ',
-        PAGE_OSCILLTOR_ADSR4  : 'OSCA: 1 | 2 | 3 |[4] ',
-        PAGE_FILTER           : '               FILTER',
-        PAGE_FILTER_ADSR_RANGE: '            F-ENV MOD',
-        PAGE_FILTER_ADSR      : '           FILTER ENV',
-        PAGE_EFFECTOR         : '             EFFECTOR',
-        PAGE_VCA              : '                  VCA',
-        PAGE_SAVE             : 'SAVE',
-        PAGE_LOAD             : 'LOAD',
-        PAGE_SAMPLING         : 'SAMPLING',
-        PAGE_ADDITIVE_WAVE1   : 'ADDW:[A]| B | C | D  ',
-        PAGE_ADDITIVE_WAVE2   : 'ADDW: A |[B]| C | D  ',
-        PAGE_ADDITIVE_WAVE3   : 'ADDW: A | B |[C]| D  ',
-        PAGE_ADDITIVE_WAVE4   : 'ADDW: A | B | C |[D] '
-    }
+    PAGE_LABELS = {}
     
     # Parameter attributes
     DISP_PARAMETERS = {
@@ -3956,7 +3924,17 @@ class Application_class:
 
     def __init__(self):
         self.init_sdcard()
-        
+
+        # Load the page labels
+        try:
+            with open('/sd/SYNTH/SYSTEM/page_labels.json', 'r') as f:
+                Application_class.PAGE_LABELS = json.load(f)
+                f.close()
+#                print('LABELS:', Application_class.PAGE_LABELS)
+                
+        except:
+            pass
+
         # Convert the parameter page numbers to the edit page numbers
         for direct_pages in Application_class.PAGE_DIRECT_ACCESS:
             for idx in list(range(len(direct_pages))):
