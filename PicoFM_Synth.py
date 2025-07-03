@@ -200,7 +200,7 @@
 #           Echo effector is available.
 #
 #     0.7.1: 07/03/2025
-#           Back to the edit mode after invalid MIDI events has come for a while.
+#           Back to the edit mode after invalid MIDI events has come for a while (5 sec).
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -1016,7 +1016,8 @@ class MIDI_class:
                     # Ignore unknown events (normally Active Sensing Event comming so frequently)
                     if isinstance(midi_msg, MIDIUnknownEvent):
                         # Ignore the unknown events a certain period of time to keep getting MIDI-IN preferentially
-                        if Ticks.diff(now, start) < (50 if Application.EDITOR_MODE else 500):
+#                        if Ticks.diff(now, start) < (50 if Application.EDITOR_MODE else 500):
+                        if Application.EDITOR_MODE == False or Application.EDITOR_MODE and Ticks.diff(now, start) < 50:
                             continue
                     
                     # Exit MIDI-IN process to do the other tasks
