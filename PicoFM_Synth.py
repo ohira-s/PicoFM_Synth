@@ -142,7 +142,7 @@
 #           The filter key sensitivity is available.
 #
 #     0.5.1: 06/18/2025
-#           Made it larger (3072byte) that the buffer size for the audio mixer
+#           Made it larger (4096 byte) that the buffer size for the audio mixer
 #           to reduce click noise from DAC.
 #
 #     0.5.2: 06/18/2025
@@ -198,6 +198,9 @@
 #
 #     0.7.0: 07/02/2025
 #           Echo effector is available.
+#
+#     0.7.1: 07/03/2025
+#           Back to the edit mode after invalid MIDI events has come for a while.
 #
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
@@ -874,6 +877,8 @@ class MIDI_class:
         self.latest_note_hz = None			# The latest noted playing
         self.synthIO = synthesizer
         self.synthesizer = synthesizer.synth()
+        
+        self.latest_midi_in = Ticks.ms()
 
     # Is host mode or not
     def as_host(self):
@@ -959,12 +964,13 @@ class MIDI_class:
                     else:
                         midi_msg = self._usb_midi.receive()
 
-                    # Got a MIDI event then treat it
-                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend) or isinstance(midi_msg, ControlChange):
-                        break
-
                     # The current ticks in ms
                     now = Ticks.ms()
+
+                    # Got a MIDI event then treat it
+                    if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff) or isinstance(midi_msg, PitchBend) or isinstance(midi_msg, ControlChange):
+                        self.latest_midi_in = now
+                        break
 
                     # Portament
                     portament_steps = SynthIO._synth_params['SOUND']['PORTAMENT']
@@ -1001,10 +1007,16 @@ class MIDI_class:
                                         self.frequency_shift(midi_note_number, self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][0] - self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
 #                                        print('PORTAMENT S:', self.notes[midi_note_number].frequency, self.notes_pitch[midi_note_number][0], self.notes_pitch[midi_note_number][2], self.notes_pitch[midi_note_number][3])
 
+                    # Back to the edit mode after invalid midi events has come for a while
+                    if Application.EDITOR_MODE == False and Ticks.diff(now, self.latest_midi_in) > 5000:
+                        Application.EDITOR_MODE = True
+                        SynthIO.audio_pause()
+#                        print('BACK TO EDIT MODE')
+
                     # Ignore unknown events (normally Active Sensing Event comming so frequently)
                     if isinstance(midi_msg, MIDIUnknownEvent):
                         # Ignore the unknown events a certain period of time to keep getting MIDI-IN preferentially
-                        if Ticks.diff(now, start) < 100:
+                        if Ticks.diff(now, start) < (50 if Application.EDITOR_MODE else 500):
                             continue
                     
                     # Exit MIDI-IN process to do the other tasks
@@ -1012,7 +1024,7 @@ class MIDI_class:
                     break
 
             except Exception as e:
-                print('CHANGE TO DEVICE MODE:', e)
+#                print('CHANGE TO DEVICE MODE:', e)
                 Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] = Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN].replace('H:', 'D:')
                 self._usb_host_mode = False
                 midi_msg = self._usb_midi.receive()
@@ -3336,7 +3348,12 @@ class SynthIO_class:
             
             # Set up the synthesizer
             self.setup_synthio()
-            
+
+            # The latest sound file
+            with open('/sd/SYNTH/SYSTEM/latest_sound.json', 'w') as f:
+                json.dump([bank, sound], f)
+                f.close()
+
         except Exception as e:
 #            print('SD LOAD EXCEPTION:', e)
             success = False
@@ -3350,6 +3367,11 @@ class SynthIO_class:
             with open(file_name, 'w') as f:
                 json.dump(self.synthio_parameter(), f)
 #                print('SAVED:', file_name)
+                f.close()
+
+            # The latest sound file
+            with open('/sd/SYNTH/SYSTEM/latest_sound.json', 'w') as f:
+                json.dump([bank, sound], f)
                 f.close()
 
         except Exception as e:
@@ -3981,10 +4003,28 @@ class Application_class:
 
     # Start display
     def start(self):
+        # Splash screen
         self.splash_screen()
 
+        # The latest sound file
+        bank = 0
+        sound = 0
+        try:
+            # The latest sound file
+            with open('/sd/SYNTH/SYSTEM/latest_sound.json', 'r') as f:
+                file_data = json.load(f)
+#                print('LATEST:', file_data)
+                bank  = file_data[0]
+                sound = file_data[1]
+                f.close()
+                
+        except:
+            print('NO FILE')
+            pass
+
         # Load default parameter file
-        SynthIO.load_parameter_file(0, 0)
+#        SynthIO.load_parameter_file(0, 0)
+        SynthIO.load_parameter_file(bank, sound)
 
         # Sound file search
         dataset = SynthIO.synthio_parameter('LOAD')
