@@ -621,8 +621,13 @@ The echo decay ratio from 0.0 to 1.0.  0.0 is for decay immediately and 1.0 is f
 ### 17-4. eMIX (RT3)  
 
 The mixing ratio both the original sound and the echo sound.  0.0 is for the original sound only and 1.0 is for the echo sound only.  
+	
+### 17-5. PAUS (RT5)  
 
-### 17-5. CURS (RT4)  
+MIDI IN has not come for a while, PiFM+S pauses the audio output and starts working in the editor preference mode.  You can set the duration time in second.  
+If the value is too small, long note might be paused.  
+
+### 17-6. CURS (RT6)  
 
 Move cursor to edit position.  
 
@@ -656,15 +661,15 @@ Release time in seconds.
 Key scale sensitivity from -9 to +9.  
 0 for no key sensitivity.  Positive value makes both attack and sustain levels larger along getting key note higher.  Negative value makes both of them smaller along getting key note higher.  
 
-### 18-7. CURS (RT6)  
-
-Move cursor to edit position.  
-
-### 18-8. ADJS (RT7) 
+### 18-7. ADJS (RT6) 
 
 Sum of audio output levels of both the FM Synthesis and the Additive Synthesis should be less or equal than 255.  However it is so hard to keep this rule during making sound.  
 When you set ADJS (ADJuSt output levels) to 'ON', PiFM+S will automatically adjust the sum of audio output levels to 255 in keeping each level ratio.  This is the internal process, so the output levels you entered are never changed.  
 In case of ADJS OFF, wave form exceeding the maximum output level will be clipped.  Normally you will get distorted sound.  
+
+### 18-8. CURS (RT7)  
+
+Move cursor to edit position.  
 
 
 ## 19. SAVE
