@@ -205,6 +205,9 @@
 #     0.7.2: 07/03/2025
 #           The duration time parameter to back to the edit mode.
 #
+#     0.7.3: 07/05/2025
+#           Set up the synthesizer just after MIDI-IN if any parameter has changed for improving the editor respose.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -368,9 +371,8 @@ async def get_8encoder():
             M5Stack_8Encoder_class.status['switch'] = enc_switch
             
             # Pause the DAC in the parameter editing mode
-            if change and Application.EDITOR_MODE == False:
-                Application.EDITOR_MODE = True
-                SynthIO.audio_pause()
+            if change:
+                Application_class.editor_mode(True)
 
             # Watch MIDI preferentially
             await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
@@ -386,9 +388,8 @@ async def get_8encoder():
                     M5Stack_8Encoder_class.status['rotary_inc'][rt] = enc_rotary
                     
                     # Pause the DAC in the parameter editing mode
-                    if change and Application.EDITOR_MODE == False:
-                        Application.EDITOR_MODE = True
-                        SynthIO.audio_pause()
+                    if change:
+                        Application_class.editor_mode(True)
 
                     # Watch MIDI preferentially
                     await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
@@ -405,9 +406,8 @@ async def get_8encoder():
                             on_change = True
 
                             # Pause the DAC in the parameter editing mode
-                            if change and Application.EDITOR_MODE == False:
-                                Application.EDITOR_MODE = True
-                                SynthIO.audio_pause()
+                            if change:
+                                Application_class.editor_mode(True)
 
                             # Watch MIDI preferentially
                             await asyncio.sleep(0.0 if Application.EDITOR_MODE else 0.01)
@@ -495,8 +495,7 @@ class OLED_SSD1306_class:
 
     def show(self):
         if self.is_available():
-            if Application.EDITOR_MODE == False:
-                SynthIO.audio_pause()
+            Application_class.editor_mode(True)
 
             self._display.show()
 
@@ -628,7 +627,7 @@ class ADC_MIC_class:
 
 
                     else:
-                        print('wave LIST:', wave)
+#                        print('wave LIST:', wave)
                         json.dump(wave, f)
                     
                 f.close()
@@ -636,7 +635,7 @@ class ADC_MIC_class:
                 success = True
 
         except Exception as e:
-            print('SD SAVE SAMPLE EXCEPTION:', e)
+#            print('SD SAVE SAMPLE EXCEPTION:', e)
             success = False
             
         return success
@@ -654,7 +653,7 @@ class ADC_MIC_class:
                 f.close()
 
         except Exception as e:
-            print('SD LOAD EXCEPTION:', e)
+#            print('SD LOAD EXCEPTION:', e)
             ADC_MIC_class.SAMPLED_WAVE = np.array([])
             return None
 
@@ -692,10 +691,10 @@ class M5Stack_8Encoder_class:
         devices = []
         while dev_hex not in devices:
             devices = [hex(device_address) for device_address in self._i2c.scan()]
-            print('I2C addresses found:', devices)
+#            print('I2C addresses found:', devices)
             time.sleep(0.5)
 
-        print('Found 8Encoder.')
+#        print('Found 8Encoder.')
         self.reset_rotary_value()
         for led in list(range(9)):
             self.led(8, [0x00, 0x00, 0x00])
@@ -756,8 +755,8 @@ class M5Stack_8Encoder_class:
             for bs in list(range(3, -1, -1)):
                 self._i2c.writeto(self._i2c_address, bytearray([base + bs]))
                 self._i2c.readfrom_into(self._i2c_address, bytes_read)
-                if rotary == 7:
-                    print('RET BYTES_READ:', bytes_read)
+#                if rotary == 7:
+#                    print('RET BYTES_READ:', bytes_read)
                 v = (v << 8) | bytes_read[0]
 #                time.sleep(0.01)
 
@@ -854,7 +853,7 @@ class MIDI_class:
     #     usb_midi_host_port: A tuple of (D+, D-)
     def __init__(self, synthesizer, usb_midi_host_port=(board.GP26, board.GP27)):
         # USB MIDI device
-        print('USB MIDI:', usb_midi.ports)
+#        print('USB MIDI:', usb_midi.ports)
         self._usb_midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0], midi_out=usb_midi.ports[1], out_channel=0)
 
         self._init = True
@@ -862,7 +861,7 @@ class MIDI_class:
         self._usb_midi_host  = None
         self._usb_host_mode  = True
         self._midi_in_usb    = True			# True: MIDI-IN via USB, False: via UART1
-        print('USB PORTS:', usb_midi.ports)
+#        print('USB PORTS:', usb_midi.ports)
         
         # USB MIDI HOST port
         h = usb_host.Port(usb_midi_host_port[0], usb_midi_host_port[1])
@@ -892,33 +891,32 @@ class MIDI_class:
         self._raw_midi_host = None
         self._usb_midi_host = None
 
-        if self._init:
-            print('Looking for midi device')
-
+#        if self._init:
+#            print('Looking for midi device')
 
         Encoder_obj.i2c_lock()
         while self._raw_midi_host is None and Encoder_obj.get_switch() == 0:
             devices_found = usb.core.find(find_all=True)
 
-            if self._init:
-                print('USB LIST:', devices_found)
+#            if self._init:
+#                print('USB LIST:', devices_found)
 
             for device in devices_found:
-                if self._init:
-                    print('DEVICE: ', device)
+#                if self._init:
+#                    print('DEVICE: ', device)
                 
                 try:
-                    if self._init:
-                        print('Found', hex(device.idVendor), hex(device.idProduct))
+#                    if self._init:
+#                        print('Found', hex(device.idVendor), hex(device.idProduct))
 
 #                    self._raw_midi_host = MIDI(device)				# bloking mode
                     self._raw_midi_host = MIDI(device, 0.05)		# none-blocking mode
-                    if self._init:
-                        print('CONNECT MIDI')
+#                    if self._init:
+#                        print('CONNECT MIDI')
 
                 except ValueError:
                     self._raw_midi_host = None
-                    print('EXCEPTION')
+#                    print('EXCEPTION')
                     continue
 
         Encoder_obj.i2c_unlock()
@@ -927,12 +925,12 @@ class MIDI_class:
         if self._init:
             # Device mode
             if self._raw_midi_host is None:
-                print('NOT Found USB MIDI device.')
+#                print('NOT Found USB MIDI device.')
                 Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'D:'
 
             # Host mode
             else:
-                print('Found USB MIDI device.')
+#                print('Found USB MIDI device.')
                 Application_class.PAGE_LABELS[Application_class.PAGE_SOUND_MAIN] += 'H:'
 
         self._init = False
@@ -1012,8 +1010,7 @@ class MIDI_class:
 
                     # Back to the edit mode after invalid midi events has come for a while
                     if Application.EDITOR_MODE == False and Ticks.diff(now, self.latest_midi_in) > SynthIO._synth_params['EFFECTOR']['PAUSE_SEC'] * 1000:
-                        Application.EDITOR_MODE = True
-                        SynthIO.audio_pause()
+                        Application_class.editor_mode(True)
 #                        print('BACK TO EDIT MODE:', SynthIO._synth_params['EFFECTOR']['PAUSE_SEC'])
 
                     # Ignore unknown events (normally Active Sensing Event comming so frequently)
@@ -1051,9 +1048,7 @@ class MIDI_class:
                 # Note on
                 if isinstance(midi_msg, NoteOn) or isinstance(midi_msg, NoteOff):
                     # Back to the play mode
-                    if Application.EDITOR_MODE == True:
-                        Application.EDITOR_MODE = False
-                        self.synthIO.audio_pause(False)
+                    Application_class.editor_mode(False)
 
                     # Note On
                     if isinstance(midi_msg, NoteOn) and midi_msg.velocity > 0:
@@ -1187,9 +1182,7 @@ class MIDI_class:
                     # Note Off
                     else:
                         # Back to the play mode
-                        if Application.EDITOR_MODE == True:
-                            Application.EDITOR_MODE = False
-                            self.synthIO.audio_pause(False)
+                        Application_class.editor_mode(False)
                         
                         # MIDI note number with the unison heltz (offset 1000)
                         midi_note_number = midi_msg.note + (0 if unison_hz == 0 else 1000)
@@ -1228,9 +1221,7 @@ class MIDI_class:
 
                 # Pitch bend
                 elif isinstance(midi_msg, PitchBend):
-                    if Application.EDITOR_MODE == True:
-                        Application.EDITOR_MODE = False
-                        self.synthIO.audio_pause(False)
+                    Application_class.editor_mode(False)
 
 #                    print('PITCH BEND:', midi_msg)
                     for midi_note_number in self.notes.keys():
@@ -1303,7 +1294,7 @@ class MIDI_class:
     def all_notes_off(self):
         for midi_note_number in self.notes.keys():
             if self.notes[midi_note_number] is not None:
-                print('ALL NOTES OFF:', midi_note_number)
+#                print('ALL NOTES OFF:', midi_note_number)
                 self.synthesizer.release(self.notes[midi_note_number])
                 del self.notes[midi_note_number]
                 self.notes_stack.remove(midi_note_number)
@@ -1574,7 +1565,7 @@ class FM_Waveshape_class:
             wave.append(random.randint(-FM_Waveshape_class.SAMPLE_VOLUME + 1, FM_Waveshape_class.SAMPLE_VOLUME - 1))
 
         wave = np.array(wave) * ansv
-        print('NOISE:', an, ansv, len(wave), wave)
+#        print('NOISE:', an, ansv, len(wave), wave)
         return wave
 
     def wave_sampling(self, wave_num, adsr, an, fn, modulator=None):
@@ -3933,6 +3924,10 @@ class Application_class:
         }
     }
 
+    # A time edited parameter
+    EDITED_PARAMETER  = None
+    EDITED_OSCILLATOR = None
+    
     # True: Watch the 8encoder preferentially / False: MIDI-IN preferentially
     EDITOR_MODE = True
 
@@ -3956,6 +3951,46 @@ class Application_class:
 
         # Sequencer data
         self._sequencer = []
+
+    # Set up the synthesizer if needed
+    @staticmethod
+    def setup_synthesizer():
+        # Oscillator parameter has been edited
+        if   Application_class.EDITED_OSCILLATOR is not None:
+#            print('SET SYNTH OSC.')
+            SynthIO.setup_synthio(True)
+            
+        # Edited aother parameter
+        elif Application_class.EDITED_PARAMETER is not None:
+#            print('SET SYNTH.')
+            SynthIO.setup_synthio(False)
+
+        # Clear the edited parameter time flags
+        Application_class.EDITED_PARAMETER  = None
+        Application_class.EDITED_OSCILLATOR = None
+
+
+    # Set/Get EDITOR MODE
+    @staticmethod
+    def editor_mode(set_editor = None):
+        if set_editor is not None:
+            if set_editor:
+                # Change to the editor mode
+                if Application_class.EDITOR_MODE == False:
+                    Application_class.EDITOR_MODE = True
+#                    print('PAUSE')
+                    SynthIO.audio_pause()
+                
+            else:
+                # Exit from the editor mode (Go to the MIDI-IN mode)
+                if Application_class.EDITOR_MODE == True:
+                    # Set up the synthesizer if needed
+                    Application_class.EDITOR_MODE = False
+                    Application_class.setup_synthesizer()
+#                    print('PLAY')
+                    SynthIO.audio_pause(False)
+                
+        return Application_class.EDITOR_MODE
 
     # Set/Append sequncer data
     #   {'ON'  : note_number, 'VELOCITY': velocity}
@@ -4011,7 +4046,7 @@ class Application_class:
                 f.close()
                 
         except:
-            print('NO FILE')
+#            print('NO FILE')
             pass
 
         # Load default parameter file
@@ -4020,8 +4055,8 @@ class Application_class:
         # Sound file search
         dataset = SynthIO.synthio_parameter('LOAD')
         finds = SynthIO.find_sound_files(dataset['BANK'], dataset['SOUND_NAME'])
-#        print('SOUND FILES:', finds, SynthIO_class.VIEW_SOUND_FILES)
-        SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'SOUND': 0 if finds > 0 else -1})
+        SynthIO.synthio_parameter('LOAD', {'LOAD_SOUND': 0, 'BANK': bank, 'SOUND': sound if finds > 0 else -1})
+        SynthIO.synthio_parameter('SAVE', {'BANK': bank, 'SOUND': sound, 'SOUND_NAME': SynthIO.get_sound_name_of_file(bank, sound)})
 
     # Loaing screen
     def loading_screen(self):
@@ -4074,6 +4109,10 @@ class Application_class:
             if len(label) > 0:
                 display.text(label, 0, 1, 1)
         
+        # Set up the synthesizer if needed before showing the page
+        if page_no in[Application_class.PAGE_SAVE, Application_class.PAGE_WAVE_SHAPE1, Application_class.PAGE_WAVE_SHAPE2, Application_class.PAGE_WAVE_SHAPE3, Application_class.PAGE_WAVE_SHAPE4, Application_class.PAGE_WAVE_SHAPE5, Application_class.PAGE_WAVE_SHAPE6, Application_class.PAGE_WAVE_SHAPE7]:
+            Application_class.setup_synthesizer()
+
         # ALGORITHM custom page
         if   page_no == Application_class.PAGE_ALGORITHM:
             algorithm = SynthIO.wave_parameter(-1)['algorithm']
@@ -4541,7 +4580,7 @@ class Application_class:
                                             
 #                                            ADC_Mic.sampling(dataset['TIME'] / 100000, dataset['AVRG'])
                                             ADC_Mic.sampling(dataset['TIME'], dataset['AVRG'])
-                                            print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
+#                                            print('SAMPLES=', len(ADC_MIC_class.SAMPLED_WAVE))
                                             self.show_OLED_waveshape(ADC_MIC_class.SAMPLED_WAVE)
                                             time.sleep(2.0)
 
@@ -4569,10 +4608,17 @@ class Application_class:
                                         SynthIO.synthio_parameter('SAMPLING', {'SAMPLE': 0})
                                         self.show_OLED_page(['SAMPLE'])
 
-                            # Sound parameter pages
+                            # Sound parameter pages: Set the edited times to set up the synthesizer later
                             else:
                                 if parameter != 'CURSOR':
-                                    SynthIO.setup_synthio(oscillator is not None)
+#                                    SynthIO.setup_synthio(oscillator is not None)
+                                    if oscillator is None:
+                                        if Application_class.EDITED_PARAMETER is None:
+                                            Application_class.EDITED_PARAMETER  = Ticks.ms()
+                                            
+                                    else:
+                                        if Application_class.EDITED_OSCILLATOR is None:
+                                            Application_class.EDITED_OSCILLATOR = Ticks.ms()
 
 ################# End of Applicatio  Class Definition #################
 
