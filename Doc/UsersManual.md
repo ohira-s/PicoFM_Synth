@@ -164,6 +164,14 @@ There are the following parameter pages.  'BT4x2' means that press BT4 twice.
 |SAVE|Save the current sound parameters.|BT6|
 |LOAD|Load a sound parameters.|BT7|
 |SAMPLING|Sample sound to generate wave shape data.|BT5|
+　
+### 5-3. Timing of changing the synthesizer settings
+It takes from 1 to 3 seconds to change the synthesizer settings when the parameters have been changed.  So PiFM+S don't change the synthesizer settings whenever any parameter has been changed immediately.  It happens timings as below.  
+
+	1) Any parameter change has not happened for a while.  
+	2) Any MIDI-IN has come.  
+
+You can't edit any parameter and play PiFM+S during the synthesizer setting process.  Wait for finishing it.  The rotary encoder's CH8 LED turns on in blue in this process.  
 
 
 ## 6. SOUND MAIN
