@@ -208,6 +208,9 @@
 #     0.7.3: 07/05/2025
 #           Set up the synthesizer just after MIDI-IN if any parameter has changed for improving the editor respose.
 #
+#     0.7.4: 07/05/2025
+#           Set up the synthesizer after the time-out automatically if it is needed.
+#
 # I2C Unit-1:: DAC PCM1502A
 #   BCK: GP9 (12)
 #   SDA: GP10(14)
@@ -423,6 +426,16 @@ async def get_8encoder():
             # Do 8encoder tasks if something changed
             if on_change:
                 Application.task_8encoder()
+            
+            # Set up the synthesizer if needed after the time-out
+            else:
+                if Application_class.EDITED_OSCILLATOR is not None:
+                    if Ticks.diff(Ticks.ms(), Application_class.EDITED_OSCILLATOR) > 4000:
+                        Application_class.setup_synthesizer()
+
+                if Application_class.EDITED_PARAMETER is not None:
+                    if Ticks.diff(Ticks.ms(), Application_class.EDITED_PARAMETER)  > 2000:
+                        Application_class.setup_synthesizer()
         
         finally:
             Encoder_obj.i2c_unlock()
@@ -4613,12 +4626,10 @@ class Application_class:
                                 if parameter != 'CURSOR':
 #                                    SynthIO.setup_synthio(oscillator is not None)
                                     if oscillator is None:
-                                        if Application_class.EDITED_PARAMETER is None:
-                                            Application_class.EDITED_PARAMETER  = Ticks.ms()
+                                        Application_class.EDITED_PARAMETER  = Ticks.ms()
                                             
                                     else:
-                                        if Application_class.EDITED_OSCILLATOR is None:
-                                            Application_class.EDITED_OSCILLATOR = Ticks.ms()
+                                        Application_class.EDITED_OSCILLATOR = Ticks.ms()
 
 ################# End of Applicatio  Class Definition #################
 
