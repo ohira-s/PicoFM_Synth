@@ -3199,6 +3199,7 @@ class SynthIO_class:
     # Set up the synthio
     def setup_synthio(self, wave_shape=True):
         # Start the setup
+#        print('SETUP:', wave_shape)
         Encoder_obj.led(7, [0x00, 0xa0, 0xff])
 
         self.mixer_voice_level()
@@ -3367,7 +3368,9 @@ class SynthIO_class:
             FM_Waveshape.sampling_file(3, dataset['WAVE4'])
 
             # Set up the synthesizer
+            Encoder_obj.i2c_lock()
             self.setup_synthio()
+            Encoder_obj.i2c_unlock()
 
             # The latest sound file
             with open('/sd/SYNTH/SYSTEM/latest_sound.json', 'w') as f:
@@ -4127,7 +4130,9 @@ class Application_class:
         
         # Set up the synthesizer if needed before showing the page
         if page_no in[Application_class.PAGE_SAVE, Application_class.PAGE_WAVE_SHAPE1, Application_class.PAGE_WAVE_SHAPE2, Application_class.PAGE_WAVE_SHAPE3, Application_class.PAGE_WAVE_SHAPE4, Application_class.PAGE_WAVE_SHAPE5, Application_class.PAGE_WAVE_SHAPE6, Application_class.PAGE_WAVE_SHAPE7]:
+            Encoder_obj.i2c_lock()
             Application_class.setup_synthesizer()
+            Encoder_obj.i2c_unlock()
 
         # ALGORITHM custom page
         if   page_no == Application_class.PAGE_ALGORITHM:
@@ -4526,19 +4531,27 @@ class Application_class:
                             elif category == 'SAMPLING':
                                 if   parameter == 'WAVE1':
                                     FM_Waveshape.sampling_file(0, dataset['WAVE1'])
+                                    Encoder_obj.i2c_lock()
                                     SynthIO.setup_synthio()
-                                    
+                                    Encoder_obj.i2c_unlock()
+                                        
                                 elif parameter == 'WAVE2':
                                     FM_Waveshape.sampling_file(1, dataset['WAVE2'])
+                                    Encoder_obj.i2c_lock()
                                     SynthIO.setup_synthio()
+                                    Encoder_obj.i2c_unlock()
                                     
                                 elif parameter == 'WAVE3':
                                     FM_Waveshape.sampling_file(2, dataset['WAVE3'])
+                                    Encoder_obj.i2c_lock()
                                     SynthIO.setup_synthio()
+                                    Encoder_obj.i2c_unlock()
                                     
                                 elif parameter == 'WAVE4':
                                     FM_Waveshape.sampling_file(3, dataset['WAVE4'])
+                                    Encoder_obj.i2c_lock()
                                     SynthIO.setup_synthio()
+                                    Encoder_obj.i2c_unlock()
 
                                 # Save the current wave shape
                                 elif parameter == 'SAVING':
@@ -4574,7 +4587,6 @@ class Application_class:
                                     # Sampling sound
                                     if   sampling == 'SAMPLING':
                                         Encoder_obj.i2c_lock()
-                                        
                                         wait = dataset['WAIT'] / 6
                                         if wait > 0.0:
                                             for i in list(range(2)):
