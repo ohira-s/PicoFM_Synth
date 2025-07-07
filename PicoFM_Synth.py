@@ -431,12 +431,15 @@ async def get_8encoder():
             else:
                 if Application_class.EDITED_OSCILLATOR is not None:
                     if Ticks.diff(Ticks.ms(), Application_class.EDITED_OSCILLATOR) > 4000:
+                        Encoder_obj.i2c_lock()
                         Application_class.setup_synthesizer()
+                        Encoder_obj.i2c_unlock()
 
                 if Application_class.EDITED_PARAMETER is not None:
                     if Ticks.diff(Ticks.ms(), Application_class.EDITED_PARAMETER)  > 2000:
+                        Encoder_obj.i2c_lock()
                         Application_class.setup_synthesizer()
-        
+                        Encoder_obj.i2c_unlock()        
         finally:
             Encoder_obj.i2c_unlock()
 
@@ -3196,7 +3199,7 @@ class SynthIO_class:
     # Set up the synthio
     def setup_synthio(self, wave_shape=True):
         # Start the setup
-        PICO2_LED.value = True
+        Encoder_obj.led(7, [0x00, 0xa0, 0xff])
 
         self.mixer_voice_level()
         self.setup_effector_echo()
@@ -3210,7 +3213,7 @@ class SynthIO_class:
         self._synth.envelope = self._envelope_vca
 
         # End of the setup
-        PICO2_LED.value = False
+        Encoder_obj.led(7, [0x00, 0x00, 0x00])
 
     def view_value(self, category, parameter, oscillator=None):
         # Oscillator category parameter
